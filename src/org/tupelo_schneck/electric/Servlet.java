@@ -26,8 +26,6 @@ import com.sleepycat.je.DatabaseException;
 public class Servlet extends DataSourceServlet {
     Main main;
     
-    public int maxDataPoints = 1000;
-
     public Servlet(Main main) {
         this.main = main;
     }
@@ -35,7 +33,7 @@ public class Servlet extends DataSourceServlet {
     public TimeSeriesDatabase databaseForRange(int start, int end) {
         int range = end - start;
         for (int i = 0; i < Main.durations.length - 1; i++) {
-            if(Main.durations[i] * maxDataPoints > range) {
+            if(Main.durations[i] * main.maxDataPoints > range) {
                 if(Main.DEBUG) System.out.println("Using duration: " + Main.durations[i]); 
                 return main.databases[i];
             }
@@ -43,9 +41,11 @@ public class Servlet extends DataSourceServlet {
         return main.databases[Main.durations.length-1];
     }
     
-    public int addRowsFromIterator(DataTable data, Iterator<Triple> iter) throws TypeMismatchException {
-        GregorianCalendar cal = new GregorianCalendar();
-        cal.setTimeZone(TimeZone.getTimeZone("GMT"));
+    private static TimeZone GMT = TimeZone.getTimeZone("GMT");
+    
+    public static final String TIME_ZONE_OFFSET = "timeZoneOffset";
+    
+    private int addRowsFromIterator(DataTable data, Iterator<Triple> iter, GregorianCalendar cal) throws TypeMismatchException {
         int lastTime = 0;
         int lastMTU = 0;
         TableRow row = null;
@@ -60,6 +60,7 @@ public class Servlet extends DataSourceServlet {
                 }
                 row = new TableRow();
                 lastTime = triple.timestamp;
+                // note have to add in the time zone offset
                 cal.setTimeInMillis((long)(triple.timestamp + Main.timeZoneOffset) * 1000);
                 row.addCell(new DateTimeValue(cal));
                 lastMTU = -1;
@@ -105,16 +106,18 @@ public class Servlet extends DataSourceServlet {
 
         // Fill the data table.
         try {
+            GregorianCalendar cal = new GregorianCalendar();
+            cal.setTimeZone(GMT);
             TimeSeriesDatabase bigDb = databaseForRange(main.minimum, max);
             TimeSeriesDatabase smallDb = databaseForRange(start,end);
-            int lastTime = addRowsFromIterator(data, bigDb.read(main.minimum,start*2-end-1));
-            int nextTime = addRowsFromIterator(data, smallDb.read(start*2-end,end*2-start));
+            int lastTime = addRowsFromIterator(data, bigDb.read(main.minimum,start*2-end-1),cal);
+            int nextTime = addRowsFromIterator(data, smallDb.read(start*2-end,end*2-start),cal);
             if(nextTime > 0) lastTime = nextTime;
-            nextTime = addRowsFromIterator(data, bigDb.read(end*2-start+1,max));
+            nextTime = addRowsFromIterator(data, bigDb.read(end*2-start+1,max),cal);
             if(nextTime > 0) lastTime = nextTime;
             for(int i = Main.durations.length - 1; i >= 0; i--) {
                 if(lastTime>=max) break;
-                nextTime = addRowsFromIterator(data,main.databases[i].read(lastTime+1,max));
+                nextTime = addRowsFromIterator(data,main.databases[i].read(lastTime+1,max),cal);
                 if(nextTime > 0) lastTime = nextTime;
             }
         }
@@ -123,6 +126,8 @@ public class Servlet extends DataSourceServlet {
             return null;
         }
 
+        // send time zone info so that client can adjust (Annotated Time Line bug)
+        data.setCustomProperty(TIME_ZONE_OFFSET, String.valueOf(Main.timeZoneOffset));
         return data;
     }
 
@@ -132,8 +137,8 @@ public class Servlet extends DataSourceServlet {
     }
 
     public static void startServlet(Main main) throws Exception {
-        Server server = new Server(8081);
-        ServletContextHandler root = new ServletContextHandler(server, "/", ServletContextHandler.SESSIONS);
+        Server server = new Server(main.port);
+        ServletContextHandler root = new ServletContextHandler(server, "/", ServletContextHandler.NO_SESSIONS|ServletContextHandler.NO_SECURITY);
         root.addServlet(new ServletHolder(new Servlet(main)), "/*");
         server.start();
     }

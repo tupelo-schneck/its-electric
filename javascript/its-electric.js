@@ -1,10 +1,9 @@
-
 var range = null;
 var annotatedtimeline;
 
 function init() {
     annotatedtimeline = new google.visualization.AnnotatedTimeLine(
-      document.getElementById('visualization'));
+      document.getElementById('timeline'));
 
     google.visualization.events.addListener(annotatedtimeline, 'ready', readyHandler);
     google.visualization.events.addListener(annotatedtimeline,
@@ -16,10 +15,10 @@ function init() {
 function requery() {
     var query;
     if(range==null) {
-        query = new google.visualization.Query('http://tupelo-schneck.org:8081');
+        query = new google.visualization.Query(itsElectricURL);
     }
     else {
-        query = new google.visualization.Query('http://tupelo-schneck.org:8081?start='
+        query = new google.visualization.Query(itsElectricURL + '?start='
                                                + Math.floor(range.start.getTime()/1000) +
                                                '&end='
                                                + Math.floor(range.end.getTime()/1000));
@@ -36,15 +35,14 @@ function handleQueryResponse(response) {
     var data = response.getDataTable();
     if(range==null) {
         annotatedtimeline.draw(data, {'displayAnnotations': false, 'displayExactValues': true});
-//                'allowRedraw': true});
     }
     else {
+        var timeZoneOffset = parseInt(data.getTableProperty('timeZoneOffset'));
         var newStart = new Date();
-        newStart.setTime(range.start.getTime() - newStart.getTimezoneOffset()*60000);
+        newStart.setTime(range.start.getTime() + timeZoneOffset*1000);
         var newEnd = new Date();
-        newEnd.setTime(range.end.getTime() - newEnd.getTimezoneOffset()*60000);
+        newEnd.setTime(range.end.getTime() + timeZoneOffset*1000);
         annotatedtimeline.draw(data, {'displayAnnotations': false, 'displayExactValues': true,
-//                'allowRedraw': true});
                     'zoomStartTime': newStart, 'zoomEndTime': newEnd});
     }
 }

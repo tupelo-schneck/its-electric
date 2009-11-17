@@ -16,11 +16,6 @@ public class TimeSeriesDatabase {
     Database database;
     Cursor writeCursor;
 
-    byte[] keyBuf = new byte[5];
-    byte[] dataBuf = new byte[4];
-    DatabaseEntry key = new DatabaseEntry();
-    DatabaseEntry data = new DatabaseEntry();
-
     public static final DatabaseConfig DEFERRED_WRITE_CONFIG;
     static {
         DatabaseConfig config = new DatabaseConfig();
@@ -71,21 +66,31 @@ public class TimeSeriesDatabase {
 
     }
     
-    public DatabaseEntry keyEntry(DatabaseEntry entry, byte[] buf, int timestamp, byte mtu) {
+    // writing reuses the same key and data---does this actually save memory?
+    private byte[] keyBuf = new byte[5];
+    private byte[] dataBuf = new byte[4];
+    private DatabaseEntry key = new DatabaseEntry();
+    private DatabaseEntry data = new DatabaseEntry();
+
+    private DatabaseEntry _keyEntry(DatabaseEntry entry, byte[] buf, int timestamp, byte mtu) {
         buf[0] = (byte) ((timestamp >> 24) & 0xFF);
         buf[1] = (byte) ((timestamp >> 16) & 0xFF);
         buf[2] = (byte) ((timestamp >> 8) & 0xFF);
         buf[3] = (byte) (timestamp & 0xFF);
-        buf[4] = mtu;		
+        buf[4] = mtu;
         entry.setData(buf);
         return entry;
     }
 
-    public DatabaseEntry keyEntry(int timestamp, byte mtu) {
-        return keyEntry(key,keyBuf,timestamp,mtu);
+    private DatabaseEntry reusedKeyEntry(int timestamp, byte mtu) {
+        return _keyEntry(key,keyBuf,timestamp,mtu);
     }
 
-    public DatabaseEntry dataEntry(DatabaseEntry entry, byte[] buf, int power) {
+    private DatabaseEntry newKeyEntry(int timestamp, byte mtu) {
+        return _keyEntry(new DatabaseEntry(),new byte[5],timestamp,mtu);
+    }
+    
+    private DatabaseEntry _dataEntry(DatabaseEntry entry, byte[] buf, int power) {
         buf[0] = (byte) ((power >> 24) & 0xFF);
         buf[1] = (byte) ((power >> 16) & 0xFF);
         buf[2] = (byte) ((power >> 8) & 0xFF);
@@ -100,8 +105,8 @@ public class TimeSeriesDatabase {
         return entry;
     }
 
-    public DatabaseEntry dataEntry(int power) {
-        return dataEntry(data,dataBuf,power);
+    private DatabaseEntry reusedDataEntry(int power) {
+        return _dataEntry(data,dataBuf,power);
     }
 
     public TimeSeriesDatabase(Environment environment, String name, byte mtus) {
@@ -141,10 +146,7 @@ public class TimeSeriesDatabase {
 
     public void put(int timestamp, byte mtu, int power) throws DatabaseException {
         OperationStatus status;
-        status = writeCursor.put(keyEntry(timestamp, mtu), dataEntry(power));
-        if(status!=OperationStatus.SUCCESS) {
-            throw new DatabaseException("Unexpected status " + status);
-        }
+        status = writeCursor.put(reusedKeyEntry(timestamp, mtu), reusedDataEntry(power));
         if(status!=OperationStatus.SUCCESS) {
             throw new DatabaseException("Unexpected status " + status);
         }
@@ -192,7 +194,7 @@ public class TimeSeriesDatabase {
             if(end<0 || end>=start) {
                 this.end = end;
                 readCursor = database.openCursor(null, CursorConfig.READ_UNCOMMITTED);
-                key = keyEntry(new DatabaseEntry(),new byte[5],start,(byte)0);
+                key = newKeyEntry(start,(byte)0);
                 data = new DatabaseEntry();
                 status = readCursor.getSearchKeyRange(key, data, LockMode.READ_UNCOMMITTED);
                 if(Main.DEBUG) System.out.println("Opening cursor from " + start + "; status: " + status);
@@ -200,7 +202,7 @@ public class TimeSeriesDatabase {
             }
         }
 
-        public void closeIfNeeded() {
+        private void closeIfNeeded() {
             if(status==OperationStatus.SUCCESS) {
                 if(end>=0) {
                     byte[] buf = key.getData();
