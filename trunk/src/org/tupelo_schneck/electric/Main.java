@@ -2,9 +2,8 @@ package org.tupelo_schneck.electric;
 
 import java.io.File;
 import java.util.Arrays;
-import java.util.Deque;
 import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.PriorityQueue;
 import java.util.TimeZone;
 
 import com.sleepycat.je.DatabaseException;
@@ -12,8 +11,6 @@ import com.sleepycat.je.Environment;
 import com.sleepycat.je.EnvironmentConfig;
 
 public class Main {
-    public static boolean DEBUG = true;
-
     public static final int[] durations = new int[] { 
         1, 4, 15, 60, 60*4, 60*15, 60*60, 60*60*3, 60*60*8, 60*60*24
     };
@@ -21,15 +18,21 @@ public class Main {
     public Environment environment;
     public TimeSeriesDatabase[] databases = new TimeSeriesDatabase[durations.length];
 
+    public static boolean DEBUG = true;
+
     public byte mtus;
     public String gatewayURL;
     public int importOverlap = 30;
     public int importInterval = 15; // seconds
     public int syncInterval = 60*60; // seconds
+    public int maxDataPoints = 1000;
+    public int port = 8081;
 
     public int minimum;
     public volatile int maximum;
     
+    public static final int timeZoneOffset = TimeZone.getDefault().getRawOffset() / 1000;
+
     public int[][] maxForMTU;
 
     // for i > 0, start[i][mtu] is the next entry that database i will get;
@@ -39,19 +42,14 @@ public class Main {
     public int[][] count;
 
     public boolean caughtUp;
-    public Object IMPORTING_LOCK = new Object();
 
     public void put(int timestamp, byte mtu, int power) throws DatabaseException {
-        if(minimum==0 || timestamp < minimum) minimum = timestamp;
         databases[0].put(timestamp,mtu,power);
         maxForMTU[0][mtu] = timestamp;
         if(caughtUp) {
             accumulateForAverages(timestamp,mtu,power);
         }
     }
-
-    // not dealing with daylight savings time
-    public static final int timeZoneOffset = TimeZone.getDefault().getRawOffset() / 1000;
 
     public void accumulateForAverages(int timestamp, byte mtu, int power) throws DatabaseException {
         for(int i = 1; i < durations.length; i++) {
@@ -67,6 +65,7 @@ public class Main {
                     }
                     sum[i][mtu] = 0;
                     count[i][mtu] = 0;
+                    // start at day boundaries, but not dealing with daylight savings time...
                     start[i][mtu] = ((timestamp+timeZoneOffset)/durations[i])*durations[i] - timeZoneOffset;
                 }
                 sum[i][mtu] += power;
@@ -81,6 +80,7 @@ public class Main {
             EnvironmentConfig configuration = new EnvironmentConfig();
             configuration.setLocking(false);
             configuration.setTransactional(false);
+//          first one causes out-of-heap problems for me.  The others are probably premature optimization
 //            configuration.setCachePercent(90);
 //            configuration.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
 //            configuration.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
@@ -144,122 +144,101 @@ public class Main {
         }
     }
 
-    public class Catchup implements Runnable {
-        @Override
-        public void run() {
-            int[] caughtUpTo = new int[mtus];
-            Arrays.fill(caughtUpTo, Integer.MAX_VALUE);
-            for (int i = 1; i < durations.length; i++) {
-                for(byte mtu = 0; mtu < mtus; mtu++) {
-                    if(start[i][mtu] - 1 < caughtUpTo[mtu]) {
-                        caughtUpTo[mtu] = start[i][mtu] - 1;
-                    }
+    public void catchup() {
+        int[] caughtUpTo = new int[mtus];
+        Arrays.fill(caughtUpTo, Integer.MAX_VALUE);
+        for (int i = 1; i < durations.length; i++) {
+            for(byte mtu = 0; mtu < mtus; mtu++) {
+                if(start[i][mtu] - 1 < caughtUpTo[mtu]) {
+                    caughtUpTo[mtu] = start[i][mtu] - 1;
                 }
             }
-            try {
-                while(!caughtUp) {
-                    // find starting place
-                    int catchupStart = Integer.MAX_VALUE;
-                    for(byte mtu = 0; mtu < mtus; mtu++) {
-                        if(caughtUpTo[mtu] + 1 < catchupStart) {
-                            catchupStart = caughtUpTo[mtu] + 1;
-                        }
-                    }
-                    // read the values
-                    if(DEBUG) System.out.println("Catching up from " + catchupStart);
-                    Iterator<Triple> iter = databases[0].read(catchupStart);
-                    while(iter.hasNext()) {
-                        Triple triple = iter.next();
-                        if(triple.timestamp > caughtUpTo[triple.mtu]){ 
-                            accumulateForAverages(triple.timestamp, triple.mtu, triple.power);
-                            caughtUpTo[triple.mtu] = triple.timestamp;
-                        }
-                    }
-                    if(DEBUG) System.out.println("Catch-up done(?)...");
-                    // check whether caught up
-                    synchronized (IMPORTING_LOCK) {
-                        boolean done = true;
-                        for(byte mtu = 0; mtu < mtus; mtu++) {
-                            if(caughtUpTo[mtu]<maxForMTU[0][mtu]) {
-                                done = false;
-                                break;
-                            }
-                        }
-                        caughtUp = done;
-                    }
-                    if(!caughtUp) try { Thread.sleep(1000); } catch (InterruptedException e) {}
+        }
+        try {
+            // find starting place
+            int catchupStart = Integer.MAX_VALUE;
+            for(byte mtu = 0; mtu < mtus; mtu++) {
+                if(caughtUpTo[mtu] + 1 < catchupStart) {
+                    catchupStart = caughtUpTo[mtu] + 1;
                 }
-                if(DEBUG) System.out.println("Catch-up done.");
+            }
+            // read the values
+            if(DEBUG) System.out.println("Catching up from " + catchupStart);
+            Iterator<Triple> iter = databases[0].read(catchupStart);
+            while(iter.hasNext()) {
+                Triple triple = iter.next();
+                if(triple.timestamp > caughtUpTo[triple.mtu]){ 
+                    accumulateForAverages(triple.timestamp, triple.mtu, triple.power);
+                    caughtUpTo[triple.mtu] = triple.timestamp;
+                }
+            }
+            if(DEBUG) System.out.println("Catch-up done.");
+        }
+        catch(DatabaseException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void doImport() throws Exception {
+        int newMax = Integer.MAX_VALUE;
+        for(byte mtu = 0; mtu < mtus; mtu++) {
+//            for(byte mtu = (byte)(mtus-1); mtu >= 0; mtu--) {
+            int count = (int)(System.currentTimeMillis()/1000 - maxForMTU[0][mtu] + importOverlap);
+            if(count > 3600 || count <= 0) count = 3600;
+            if(DEBUG) System.out.println("Importing " + count + " seconds for MTU " + mtu);
+            Iterator<Triple> iter = new ImportIterator(gatewayURL, mtu, count);
+            if(DEBUG) System.out.println("Receiving...");
+            PriorityQueue<Triple> reversedTriples = new PriorityQueue<Triple>(count,Triple.COMPARATOR);
+            for(int i = 0; i < count && iter.hasNext(); i++) {
+                Triple next = iter.next();
+                if(next==null) break;
+                reversedTriples.offer(next);
+            }
+            if(DEBUG) System.out.println("Reversed...");
+            Triple triple = reversedTriples.peek();
+            if(triple!=null && (minimum==0 || triple.timestamp < minimum)) minimum = triple.timestamp;
+            while((triple = reversedTriples.poll()) != null) {
+                if(triple.timestamp > maxForMTU[0][triple.mtu]) { 
+                    put(triple.timestamp,triple.mtu,triple.power);
+                }
+            }
+            if(DEBUG) System.out.println("Put to " + maxForMTU[0][mtu] + ".");
+            if(maxForMTU[0][mtu] < newMax) newMax = maxForMTU[0][mtu];
+        }
+        maximum = newMax;
+
+        if(DEBUG) System.out.println("Syncing databases...");
+        for(int i = 0; i < durations.length; i++) {
+            try {
+                databases[i].sync();
             }
             catch(DatabaseException e) {
                 e.printStackTrace();
             }
         }
+        if(DEBUG) System.out.println("Sync complete.");
     }
 
-    public class Import implements Runnable {
-        public void doit() throws Exception {
-            int newMax = Integer.MAX_VALUE;
-            for(byte mtu = 0; mtu < mtus; mtu++) {
-//            for(byte mtu = (byte)(mtus-1); mtu >= 0; mtu--) {
-                int count = (int)(System.currentTimeMillis()/1000 - maxForMTU[0][mtu] + importOverlap);
-                if(count > 3600 || count <= 0) count = 3600;
-                if(DEBUG) System.out.println("Importing " + count + " seconds for MTU " + mtu);
-                Iterator<Triple> iter = new ImportIterator(gatewayURL, mtu, count);
-                if(DEBUG) System.out.println("Receiving...");
-                Deque<Triple> reversedTriples = new LinkedList<Triple>();
-                for(int i = 0; i < count && iter.hasNext(); i++) {
-                    Triple next = iter.next();
-                    if(next==null) break;
-                    reversedTriples.addFirst(next);
-                }
-                if(DEBUG) System.out.println("Reversed...");
-                for(Triple triple : reversedTriples) {
-                    if(triple.timestamp > maxForMTU[0][triple.mtu]) { 
-                        put(triple.timestamp,triple.mtu,triple.power);
-                    }
-                }
-                if(DEBUG) System.out.println("Put to " + maxForMTU[0][mtu] + ".");
-                if(maxForMTU[0][mtu] < newMax) newMax = maxForMTU[0][mtu];
-            }
-            maximum = newMax;
-            
-            long now = System.currentTimeMillis();
-            if(DEBUG) System.out.println("Syncing databases at " + now/1000 + "...");
-            for(int i = 0; i < durations.length; i++) {
-                try {
-                    databases[i].sync();
-                }
-                catch(DatabaseException e) {
-                    e.printStackTrace();
-                }
-            }
-            long lastSync = System.currentTimeMillis();
-            if(DEBUG) System.out.println("Sync complete at " + lastSync/1000);
-            long sleepyTime = importInterval*1000 + now - lastSync;
-            if(sleepyTime>0) Thread.sleep(sleepyTime);
+    public void run() {
+        try {
+            doImport();
         }
-
-        @Override
-        public void run() {
-            while(true) {
-                try {
-                    if(caughtUp) {
-                        doit();
-                    }
-                    else {
-                        synchronized(IMPORTING_LOCK) {
-                            doit();
-                        }
-                    }
-                }
-                catch(InterruptedException e) {
-                    close();
-                    break;
-                }
-                catch(Exception e) {
-                    e.printStackTrace();
-                }
+        catch(Exception e) {
+            e.printStackTrace();
+        }
+        catchup();
+        caughtUp = true;
+        while(true) {
+            try {
+                doImport();
+                Thread.sleep(importInterval*1000);
+            }
+            catch(InterruptedException e) {
+                close();
+                break;
+            }
+            catch(Exception e) {
+                e.printStackTrace();
             }
         }
     }
@@ -278,9 +257,7 @@ public class Main {
             }
         });
         
-//        new Thread(main.new Catchup(),"Catchup").start();
-        main.new Catchup().run();
         Servlet.startServlet(main);
-        main.new Import().run();
+        main.run();
     }
 }

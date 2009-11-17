@@ -19,7 +19,10 @@ import java.util.concurrent.TimeoutException;
 
 public class ImportIterator implements Iterator<Triple> {
     static final DateFormat tedDateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
-    
+
+    // lazy coder's non-blocking IO.  I was finding that the importer would sometimes hang 
+    // on read()---the TED5000 was neither closing the connection nor sending more bytes,
+    // indefinitely?  So I put time limits on all IO using java.concurrent stuff.
     ExecutorService executor = Executors.newSingleThreadExecutor();
 
     InputStream urlStream;
@@ -52,9 +55,9 @@ public class ImportIterator implements Iterator<Triple> {
             future.cancel(true);
             close();
         }
-        
+
     }
-    
+
     public void close() {
         closed = true;
         new Thread() {
@@ -65,21 +68,21 @@ public class ImportIterator implements Iterator<Triple> {
             }
         }.start();
     }
-    
+
     boolean eof() throws IOException {
         int ch = reader.read();
         if(ch<0) return true;
         reader.unread(ch);
         return false;
     }
-    
+
     boolean lookingAt(char ch) throws IOException {
         int next = reader.read();
         if(next<0) return false;
         reader.unread(next);
         return next == ch;
     }
-    
+
     void skipWhitespace() throws IOException {
         while(true) {
             int ch = reader.read();
@@ -102,7 +105,7 @@ public class ImportIterator implements Iterator<Triple> {
             }
         }
     }
-    
+
     void skipAhead() throws IOException {
         skipWhitespace();
         if(!lookingAt('<')) return;
@@ -117,7 +120,7 @@ public class ImportIterator implements Iterator<Triple> {
         skipString("POWER>");
         skipString("DATE>");
     }
-    
+
     String nextString() throws IOException {
         StringBuilder sb = new StringBuilder();
         while(!eof() && !lookingAt('<')) {
@@ -125,7 +128,7 @@ public class ImportIterator implements Iterator<Triple> {
         }
         return sb.toString();
     }
-    
+
     @Override
     public void remove() {
         throw new UnsupportedOperationException();
@@ -152,7 +155,7 @@ public class ImportIterator implements Iterator<Triple> {
         }
         catch(Exception e) {
             e.printStackTrace();
-            return false;
+            res = false;
         }
         if(!res) {
             close();
@@ -165,16 +168,16 @@ public class ImportIterator implements Iterator<Triple> {
         final Triple res = new Triple();
         try {
             Future<?> future = executor.submit(new Callable<Object>() {
-               @Override
+                @Override
                 public Object call() throws Exception {
-                   skipAhead();
-                   String dateString = nextString();
-                   skipAhead();
-                   res.power = Integer.valueOf(nextString());
-                   res.mtu = mtu;
-                   res.timestamp = (int)(ImportIterator.tedDateFormat.parse(dateString).getTime()/1000);
-                   return null;
-               } 
+                    skipAhead();
+                    String dateString = nextString();
+                    skipAhead();
+                    res.power = Integer.valueOf(nextString());
+                    res.mtu = mtu;
+                    res.timestamp = (int)(ImportIterator.tedDateFormat.parse(dateString).getTime()/1000);
+                    return null;
+                } 
             });
             try {
                 future.get(500,TimeUnit.MILLISECONDS);
@@ -188,7 +191,7 @@ public class ImportIterator implements Iterator<Triple> {
         catch(Exception e) {
             throw new RuntimeException(e);
         }
-        
+
         return res;
     }
 }
