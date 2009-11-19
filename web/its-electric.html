@@ -1,10 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<!--
+This file is part of
+"it's electric": software for storing and viewing home energy monitoring data
+Copyright (C) 2009 Robert R. Tupelo-Schneck <schneck@gmail.com>
+http://tupelo-schneck.org/its-electric
+
+"it's electric" is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+"it's electric" is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with "it's electric", as legal/COPYING-agpl.txt.
+If not, see <http://www.gnu.org/licenses/>.
+-->
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
   <head>
     <script type='text/javascript' src='its-electric.js'></script>
     <script type="text/javascript">
-        var itsElectric = new ItsElectric('http://tupelo-schneck.org:8081',
+    
+        <!--CHANGE URL BELOW to the URL of your "it's electric" data server-->
+    
+        var itsElectric = new ItsElectric('http://localhost:8081',
                                           'timeline');
     </script>
     <title>it's electric</title>
@@ -13,7 +36,19 @@
         google.load('visualization', '1', {'packages':['annotatedtimeline']});
         google.setOnLoadCallback(function() { itsElectric.init(); });
     </script>
-    <style type="text/css">
+    <script type='text/javascript'>
+        function show(id) {
+            var e = document.getElementById(id);
+            e.style.display = '';
+            return false;
+        }
+        function hide(id) {
+            var e = document.getElementById(id);
+            e.style.display = 'none';
+            return false;
+        }
+    </script>
+    <style type='text/css'>
         .its-electric {
             font-family: monospace;
             font-size: 40px;
@@ -21,13 +56,40 @@
             letter-spacing: 5px;
             text-shadow: gray 2px 2px 2px;
         }
+        .monospace {
+            font-family: monospace;
+        }
     </style>
   </head>
   <body>
     <div style="padding-bottom: 6px">
         <span class="its-electric">i<span style="letter-spacing:-5px">t</span><span style="letter-spacing:-3px">'s</span> electric</span>
-        <span style="font-family:monospace">v0.9</span>
+        <span class="monospace">v0.9</span>
     </div>
     <div id='timeline' style='width: 1000px; height: 600px;'></div>
+
+    <!--INSERT PERSONAL TEXT HERE-->
+
+    <p style="font-size:small">
+        <span class="monospace">it's electric</span>: software for storing and viewing home energy monitoring data
+        <br/>
+        Copyright &copy; 2009 <a href="http://tupelo-schneck.org/robert">Robert R. Tupelo-Schneck</a>
+        &lt;<a href="mailto:schneck@gmail.com">schneck@gmail.com</a>&gt; -
+        <a href="#" onclick="show('copying')">free software / no warranty</a> -
+        <a href="its-electric.zip">download including source</a>
+        <span id="copying" style="display:none; color:gray; font-size:small">
+            <br/><br/>
+<span class="monospace">it's electric</span> is free software: you can redistribute it and/or modify
+it under the terms of the <a href="http://www.fsf.org/licensing/licenses/agpl.html">GNU Affero General Public License</a> as<br/>
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.<br/>
+            <br/>
+<span class="monospace">it's electric</span> is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of<br/>
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<a href="http://www.fsf.org/licensing/licenses/agpl.html">GNU Affero General Public License</a> for more details.
+&nbsp; <a href="#" onclick="hide('copying')">hide</a>
+        </span>
+    </p>
   </body>
 </html>
