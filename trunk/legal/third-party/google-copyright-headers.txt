@@ -1,3 +1,4 @@
+The Google Collections Library 1.0 (RC4)
 /*
  * Copyright (C) 2008 Google Inc.
  *
@@ -14,6 +15,7 @@
  * limitations under the License.
  */
 
+The Google Visualization Data Source Library
 // Copyright 2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
