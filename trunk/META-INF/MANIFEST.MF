@@ -1,0 +1,6 @@
+Manifest-Version: 1.0
+Ant-Version: Apache Ant 1.7.0
+Created-By: Robert R. Tupelo-Schneck
+Main-Class: com.simontuffs.onejar.Boot
+One-Jar-Main-Class: org.tupelo_schneck.electric.Main
+
