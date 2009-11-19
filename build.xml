@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="it's electric" default="its-electric.zip">
+    <target name="its-electric.zip" depends="its-electric.jar">
+	<zip destfile="build/its-electric.zip">
+	    <fileset file="build/its-electric.jar"/>
+	    <fileset dir="web"/>
+	    <fileset file="README.txt"/>
+	    <fileset dir="." includes="legal/**"/>
+	</zip>
+    </target>
+	
+    <target name="its-electric.jar" depends="its-electric-only.jar">
+	<jar destfile="build/its-electric.jar" manifest="META-INF/MANIFEST.MF">
+	    <fileset dir=".">
+                <include name="com/**"/>
+	        <include name="OneJar.class"/>
+	        <include name="main/**"/>
+	        <include name="lib/**"/>
+                <include name="legal/**"/>
+	        <include name="src/**"/>
+                <include name="web/**"/>
+	        <include name="build.xml"/>
+	        <include name="README.txt"/>
+	        <include name=".classpath"/>
+	        <include name=".project"/>
+	    </fileset>
+	</jar>
+    </target>
+	
+    <target name="its-electric-only.jar" depends="build">
+        <jar destfile="main/its-electric-only.jar">
+    	    <fileset dir="build" includes="org/**"/>
+    	</jar>
+    </target>
+	
+    <target name="build">
+	<mkdir dir="build"/>
+    	<javac srcdir="src" destdir="build">
+	    <classpath>
+	        <fileset dir="lib" includes="**"/>
+	    </classpath>
+	</javac>
+    </target>
+</project>
