@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+  <head>
+    <script type='text/javascript' src='its-electric.js'></script>
+    <script type="text/javascript">
+        var itsElectric = new ItsElectric('http://tupelo-schneck.org:8081',
+                                          'timeline');
+    </script>
+    <title>it's electric</title>
+    <script type='text/javascript' src='http://www.google.com/jsapi'></script>
+    <script type='text/javascript'>
+        google.load('visualization', '1', {'packages':['annotatedtimeline']});
+        google.setOnLoadCallback(function() { itsElectric.init(); });
+    </script>
+    <style type="text/css">
+        .its-electric {
+            font-family: monospace;
+            font-size: 40px;
+            font-weight: bold;
+            letter-spacing: 5px;
+            text-shadow: gray 2px 2px 2px;
+        }
+    </style>
+  </head>
+  <body>
+    <div style="padding-bottom: 6px">
+        <span class="its-electric">i<span style="letter-spacing:-5px">t</span><span style="letter-spacing:-3px">'s</span> electric</span>
+        <span style="font-family:monospace">v0.9</span>
+    </div>
+    <div id='timeline' style='width: 1000px; height: 600px;'></div>
+  </body>
+</html>
