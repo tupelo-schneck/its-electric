@@ -1,0 +1,2 @@
+Use of the Google Visualization API is subject to the Terms of Service
+given at http://code.google.com/apis/visualization/terms.html
