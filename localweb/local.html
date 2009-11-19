@@ -1,0 +1,36 @@
+    <div style="width:1000px"><div style="margin-left:5%; margin-right:5%">
+        <p>
+            This graph shows the electric usage of Hypatia House, a home in suburban 
+            <a href="http://www.charlottesville.org">Charlottesville VA</a> shared by
+            <a href="http://tupelo-schneck.org">the Tupelo-Schneck family</a> and 
+            the Downey/Rohdie family (of <a href="http://carpedonut.argon.org">Carpe Donut</a> fame).
+            You can zoom in for more detail; you may have to be patient since we're serving this 
+            from home.
+            The two lines correspond to two different electric panels in the house.
+            You may notice gaps in the data (early debugging) and wonkiness on MTU1 (the dreaded
+            Line Noise; I'm working on it).
+        </p>
+    
+        <p>
+            The data comes from a <a href="http://www.theenergydetective.com">TED 5000</a> home energy
+            monitoring system, and is presented using Robert's <span class="monospace">it's electric</span>
+            software.  <span class="monospace">it's electric</span> runs on the home network, polling
+            the TED 5000 for second-by-second data and storing it in a database, along with averages over
+            longer time spans; it runs a server which provides the data according to 
+            <a href="http://code.google.com/apis/visualization/">the Google Visualization API</a>; and it
+            includes this webpage to display the data interactively at various levels of resolution.
+        </p>
+        
+        <p>
+            Anyone with a TED 5000 who can run Java and a web server can
+            <a href="its-electric.zip">download <span class="monospace">it's electric</span></a>
+            and use it to store and view their own energy data, either for personal use or
+            to share over the Web.
+        </p>
+        
+        <p>
+            <a href="http://xkcd.com/523/">
+                <img style="border-style:none" src="http://imgs.xkcd.com/comics/decline.png"/>
+            </a>
+        </p>
+    </div></div>
