@@ -27,11 +27,26 @@ import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.TimeZone;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.GnuParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.sleepycat.je.DatabaseException;
 import com.sleepycat.je.Environment;
 import com.sleepycat.je.EnvironmentConfig;
 
 public class Main {
+    static {
+        System.setProperty("org.apache.commons.logging.simplelog.showdatetime", "true");
+    }
+    
+    private Log log = LogFactory.getLog(Main.class);
+    
     public static final int[] durations = new int[] { 
         1, 4, 15, 60, 60*4, 60*15, 60*60, 60*60*3, 60*60*8, 60*60*24
     };
@@ -39,13 +54,11 @@ public class Main {
     public Environment environment;
     public TimeSeriesDatabase[] databases = new TimeSeriesDatabase[durations.length];
 
-    public static boolean DEBUG = true;
-
-    public byte mtus;
-    public String gatewayURL;
+    public String gatewayURL = "http://TED5000";
+    public String serverLogFilename;
+    public byte mtus = 1;
     public int importOverlap = 30;
     public int importInterval = 15; // seconds
-    public int syncInterval = 60*60; // seconds
     public int maxDataPoints = 1000;
     public int port = 8081;
 
@@ -80,9 +93,6 @@ public class Main {
                     if(count[i][mtu]>0) {
                         int avg = sum[i][mtu]/count[i][mtu];
                         databases[i].put(start[i][mtu], mtu, avg);
-                        if(DEBUG && durations[i]>=60) {
-                            System.out.println("***Avg put: " + i + " " + start[i][mtu] + " " + mtu + " " + avg);
-                        }
                     }
                     sum[i][mtu] = 0;
                     count[i][mtu] = 0;
@@ -108,7 +118,7 @@ public class Main {
 //            configuration.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
             configuration.setAllowCreate(true);
             environment = new Environment(envHome, configuration);
-            if(DEBUG) System.out.println("Environment opened.");
+            log.info("Environment opened.");
         }
         catch(Throwable e) {
             e.printStackTrace();
@@ -132,21 +142,21 @@ public class Main {
     public void openDatabases() throws DatabaseException {
         for(int i = 0; i < durations.length; i++) {
             databases[i] = new TimeSeriesDatabase(environment, String.valueOf(durations[i]), mtus);
-            if(DEBUG) System.out.println("Database " + i + " opened");
+            log.info("Database " + i + " opened");
             for(byte mtu = 0; mtu < mtus; mtu++) {
                 start[i][mtu] = databases[i].maxForMTU(mtu) + durations[i];
                 maxForMTU[i][mtu] = start[i][mtu] - 1;
-                if(DEBUG) System.out.println("   starting at " + start[i][mtu] + " for MTU " + mtu);
+                log.info("   starting at " + start[i][mtu] + " for MTU " + mtu);
             }
         }
         minimum = databases[0].minimum();
-        if(DEBUG) System.out.println("Minimum is " + minimum);
+        log.info("Minimum is " + minimum);
         int newMax = Integer.MAX_VALUE;
         for(byte mtu = 0; mtu < mtus; mtu++) {
             if(maxForMTU[0][mtu] < newMax) newMax = maxForMTU[0][mtu];
         }
         maximum = newMax;
-        if(DEBUG) System.out.println("Maximum is " + maximum);
+        log.info("Maximum is " + maximum);
     }
 
     public void close() {
@@ -184,7 +194,7 @@ public class Main {
                 }
             }
             // read the values
-            if(DEBUG) System.out.println("Catching up from " + catchupStart);
+            log.info("Catching up from " + catchupStart);
             Iterator<Triple> iter = databases[0].read(catchupStart);
             while(iter.hasNext()) {
                 Triple triple = iter.next();
@@ -193,7 +203,7 @@ public class Main {
                     caughtUpTo[triple.mtu] = triple.timestamp;
                 }
             }
-            if(DEBUG) System.out.println("Catch-up done.");
+            log.info("Catch-up done.");
         }
         catch(DatabaseException e) {
             e.printStackTrace();
@@ -206,9 +216,9 @@ public class Main {
 //            for(byte mtu = (byte)(mtus-1); mtu >= 0; mtu--) {
             int count = (int)(System.currentTimeMillis()/1000 - maxForMTU[0][mtu] + importOverlap);
             if(count > 3600 || count <= 0) count = 3600;
-            if(DEBUG) System.out.println("Importing " + count + " seconds for MTU " + mtu);
+            log.trace("Importing " + count + " seconds for MTU " + mtu);
             Iterator<Triple> iter = new ImportIterator(gatewayURL, mtu, count);
-            if(DEBUG) System.out.println("Receiving...");
+            log.trace("Receiving...");
             PriorityQueue<Triple> reversedTriples = new PriorityQueue<Triple>(count,Triple.COMPARATOR);
             for(int i = 0; i < count && iter.hasNext(); i++) {
                 Triple next = iter.next();
@@ -217,7 +227,7 @@ public class Main {
                     reversedTriples.offer(next);
                 }
             }
-            if(DEBUG) System.out.println("Reversed...");
+            log.trace("Reversed...");
             Triple triple = reversedTriples.peek();
             if(triple!=null && (minimum==0 || triple.timestamp < minimum)) minimum = triple.timestamp;
             while((triple = reversedTriples.poll()) != null) {
@@ -225,12 +235,12 @@ public class Main {
                     put(triple.timestamp,triple.mtu,triple.power);
                 }
             }
-            if(DEBUG) System.out.println("Put to " + maxForMTU[0][mtu] + ".");
+            log.trace("Put to " + maxForMTU[0][mtu] + ".");
             if(maxForMTU[0][mtu] < newMax) newMax = maxForMTU[0][mtu];
         }
         maximum = newMax;
 
-        if(DEBUG) System.out.println("Syncing databases...");
+        log.trace("Syncing databases...");
         for(int i = 0; i < durations.length; i++) {
             try {
                 databases[i].sync();
@@ -239,7 +249,7 @@ public class Main {
                 e.printStackTrace();
             }
         }
-        if(DEBUG) System.out.println("Sync complete.");
+        log.trace("Sync complete.");
     }
 
     public void run() {
@@ -267,20 +277,90 @@ public class Main {
     }
     
     public static final void main(String[] args) throws Exception {
+        Options options = new Options();
+        options.addOption("p","port",true,"port served by datasource server (default 8081)");
+        options.addOption("m","mtus",true,"number of MTUs (default 1)");
+        options.addOption("g","gateway-url",true,"URL of TED 5000 gateway (default http://TED5000)");
+        options.addOption("n","max-data-points",true,"maximum number of data points returned over the zoom region (default 1000)");
+        options.addOption("l","server-log",true,"server request log filename; include string \"yyyy_mm_dd\" for automatic rollover; or use \"stderr\" (default no log)");
+        
+        // create the parser
+        CommandLineParser parser = new GnuParser();
+        CommandLine cmd = null;
+        boolean showUsageAndExit = false;
+        try {
+            // parse the command line arguments
+            cmd = parser.parse(options, args);
+        }
+        catch(ParseException exp) {
+            // oops, something went wrong
+            System.err.println("Parsing failed.  Reason: " + exp.getMessage());
+            showUsageAndExit = true;
+        }
+
         final Main main = new Main();
-        main.gatewayURL = "http://192.168.1.99:23048";
-        main.setupMTUsAndArrays((byte)2);
-        main.openEnvironment(new File("/Users/schneck/electricDb"));
-        main.openDatabases();
-        
-        Runtime.getRuntime().addShutdownHook(new Thread(){
-            @Override
-            public void run() {
-                main.close();
+
+        if(cmd!=null && cmd.hasOption("m")) {
+            try {
+                main.mtus = Byte.parseByte(cmd.getOptionValue("m"));
+                if(main.mtus<=0 || main.mtus >4) showUsageAndExit = true;
             }
-        });
+            catch(NumberFormatException e) {
+                showUsageAndExit = true;
+            }
+        }
+        if(cmd!=null && cmd.hasOption("p")) {
+            try {
+                main.port = Integer.parseInt(cmd.getOptionValue("p"));
+                if(main.port<=0) showUsageAndExit = true;
+            }
+            catch(NumberFormatException e) {
+                showUsageAndExit = true;
+            }            
+        }
+        if(cmd!=null && cmd.hasOption("g")) {
+            main.gatewayURL = cmd.getOptionValue("g");
+        }
+        if(cmd!=null && cmd.hasOption("n")) {
+            try {
+                main.maxDataPoints = Integer.parseInt(cmd.getOptionValue("n"));
+                if(main.maxDataPoints<=0) showUsageAndExit = true;
+            }
+            catch(NumberFormatException e) {
+                showUsageAndExit = true;
+            }            
+        }
+        if(cmd!=null && cmd.hasOption("l")) {
+            main.serverLogFilename = cmd.getOptionValue("l");
+        }
         
-        Servlet.startServlet(main);
-        main.run();
+        String dbFilename = null;
+        if(cmd!=null && cmd.getArgs().length==1) {
+            dbFilename = cmd.getArgs()[0];
+        }
+        else {
+            showUsageAndExit = true;
+        }
+        
+        if(showUsageAndExit) {
+            HelpFormatter help = new HelpFormatter();
+            help.printHelp("java -jar its-electric-*.jar [options] database-directory", 
+                    "options:",options,"The specified directory (required) is the location of the database.");
+        }
+        else {
+            main.setupMTUsAndArrays(main.mtus); 
+            main.openEnvironment(new File(dbFilename));
+            main.openDatabases();
+            
+            Runtime.getRuntime().addShutdownHook(new Thread(){
+                @Override
+                public void run() {
+                    main.close();
+                }
+            });
+            
+            Servlet.startServlet(main);
+            main.run();
+        }
     }
 }

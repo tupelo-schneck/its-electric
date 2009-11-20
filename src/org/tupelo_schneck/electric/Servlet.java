@@ -26,7 +26,12 @@ import java.util.Iterator;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.eclipse.jetty.server.NCSARequestLog;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.HandlerCollection;
+import org.eclipse.jetty.server.handler.RequestLogHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
@@ -45,6 +50,8 @@ import com.ibm.icu.util.TimeZone;
 import com.sleepycat.je.DatabaseException;
 
 public class Servlet extends DataSourceServlet {
+    private Log log = LogFactory.getLog(Servlet.class);
+
     Main main;
     
     public Servlet(Main main) {
@@ -55,7 +62,7 @@ public class Servlet extends DataSourceServlet {
         int range = end - start;
         for (int i = 0; i < Main.durations.length - 1; i++) {
             if(Main.durations[i] * main.maxDataPoints > range) {
-                if(Main.DEBUG) System.out.println("Using duration: " + Main.durations[i]); 
+                log.debug("Using duration: " + Main.durations[i]); 
                 return main.databases[i];
             }
         }
@@ -158,9 +165,29 @@ public class Servlet extends DataSourceServlet {
     }
 
     public static void startServlet(Main main) throws Exception {
-        Server server = new Server(main.port);
-        ServletContextHandler root = new ServletContextHandler(server, "/", ServletContextHandler.NO_SESSIONS|ServletContextHandler.NO_SECURITY);
+        HandlerCollection handlers = new HandlerCollection();
+        if(main.serverLogFilename!=null) {
+            RequestLogHandler requestLogHandler = new RequestLogHandler();
+            NCSARequestLog requestLog;
+            if("stderr".equals(main.serverLogFilename)) {
+                requestLog = new NCSARequestLog();
+            }
+            else {
+                requestLog = new NCSARequestLog(main.serverLogFilename);
+            }
+            //requestLog.setRetainDays(90);
+            requestLog.setAppend(true);
+            //requestLog.setExtended(false);
+            //requestLog.setLogTimeZone("GMT");
+            requestLogHandler.setRequestLog(requestLog);
+            handlers.addHandler(requestLogHandler);
+        }
+            
+        ServletContextHandler root = new ServletContextHandler(handlers, "/", ServletContextHandler.NO_SESSIONS|ServletContextHandler.NO_SECURITY);
         root.addServlet(new ServletHolder(new Servlet(main)), "/*");
+        
+        Server server = new Server(main.port);
+        server.setHandler(handlers);
         server.start();
     }
 }

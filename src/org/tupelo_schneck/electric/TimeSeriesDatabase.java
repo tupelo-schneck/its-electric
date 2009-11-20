@@ -218,7 +218,6 @@ public class TimeSeriesDatabase {
                 key = newKeyEntry(start,(byte)0);
                 data = new DatabaseEntry();
                 status = readCursor.getSearchKeyRange(key, data, LockMode.READ_UNCOMMITTED);
-                if(Main.DEBUG) System.out.println("Opening cursor from " + start + "; status: " + status);
                 closeIfNeeded();
             }
         }
@@ -229,13 +228,11 @@ public class TimeSeriesDatabase {
                     byte[] buf = key.getData();
                     if(intOfBytes(buf,0) > end) {
                         status = null;
-                        if(Main.DEBUG) System.out.println("Closing for reaching end"); 
                         close();
                     }
                 }
             }
             else {
-                if(Main.DEBUG) System.out.println("Closing for status: " + status); 
                 close();
             }
         }
