@@ -20,9 +20,11 @@ along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
 -->
 <project name="it's electric" default="its-electric.zip">
+    <property file="build.properties"/>
+
     <target name="its-electric.zip" depends="its-electric.jar">
-	<zip destfile="build/its-electric.zip">
-	    <fileset file="build/its-electric.jar"/>
+	<zip destfile="build/its-electric-${version}.zip">
+	    <fileset file="build/its-electric-${version}.jar"/>
 	    <fileset dir="web"/>
 	    <fileset file="README.txt"/>
 	    <fileset dir="." includes="legal/**"/>
@@ -30,7 +32,7 @@ If not, see <http://www.gnu.org/licenses/>.
     </target>
 	
     <target name="its-electric.jar" depends="its-electric-only.jar">
-	<jar destfile="build/its-electric.jar" manifest="META-INF/MANIFEST.MF">
+	<jar destfile="build/its-electric-${version}.jar" manifest="META-INF/MANIFEST.MF">
 	    <fileset dir=".">
                 <include name="com/**"/>
 	        <include name="OneJar.class"/>
@@ -48,7 +50,8 @@ If not, see <http://www.gnu.org/licenses/>.
     </target>
 	
     <target name="its-electric-only.jar" depends="build">
-        <jar destfile="main/its-electric-only.jar">
+        <mkdir dir="main"/>
+        <jar destfile="main/its-electric-only-${version}.jar">
     	    <fileset dir="build" includes="org/**"/>
     	</jar>
     </target>

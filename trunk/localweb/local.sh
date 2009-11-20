@@ -6,4 +6,4 @@ sed -e '/CHANGE URL HERE/ s/localhost:8081/tupelo-schneck.org:8081/' \
 cp build/its-electric.html /Library/WebServer/Documents
 cp web/its-electric.js /Library/WebServer/Documents
 ant
-cp build/its-electric.zip /Library/WebServer/Documents
+cp build/its-electric-*.zip /Library/WebServer/Documents
