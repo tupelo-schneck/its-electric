@@ -281,8 +281,9 @@ public class Main {
         options.addOption("p","port",true,"port served by datasource server (default 8081)");
         options.addOption("m","mtus",true,"number of MTUs (default 1)");
         options.addOption("g","gateway-url",true,"URL of TED 5000 gateway (default http://TED5000)");
-        options.addOption("n","max-data-points",true,"maximum number of data points returned over the zoom region (default 1000)");
+        options.addOption("n","max-points",true,"maximum number of data points returned over the zoom region (default 1000)");
         options.addOption("l","server-log",true,"server request log filename; include string \"yyyy_mm_dd\" for automatic rollover; or use \"stderr\" (default no log)");
+        options.addOption("h","help",false,"print this help text");
         
         // create the parser
         CommandLineParser parser = new GnuParser();
@@ -294,7 +295,7 @@ public class Main {
         }
         catch(ParseException exp) {
             // oops, something went wrong
-            System.err.println("Parsing failed.  Reason: " + exp.getMessage());
+            System.err.println(exp.getMessage());
             showUsageAndExit = true;
         }
 
@@ -332,6 +333,9 @@ public class Main {
         }
         if(cmd!=null && cmd.hasOption("l")) {
             main.serverLogFilename = cmd.getOptionValue("l");
+        }
+        if(cmd!=null && cmd.hasOption("h")) {
+            showUsageAndExit = true;
         }
         
         String dbFilename = null;
