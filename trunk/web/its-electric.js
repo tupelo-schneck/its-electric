@@ -19,9 +19,13 @@ along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
 */
 
-function ItsElectric(url,divId) {
+function ItsElectric(url,divId,getWMax,resolutionId) {
     this.url = url;
     this.divId = divId;
+    this.getWMax = getWMax;
+    this.ready = false;
+    this.resolution = null;
+    this.resolutionId = resolutionId;
 }
 
 ItsElectric.prototype.init = function() {
@@ -41,15 +45,20 @@ ItsElectric.prototype.init = function() {
 
 ItsElectric.prototype.requery = function() {
     var query;
-    if(this.range==null) {
-        query = new google.visualization.Query(this.url);
+    var queryURL = this.url;
+    var extendChar = '?';
+    if(this.range!=null) {
+        queryURL = queryURL + extendChar 
+                   + 'start='+ Math.floor(this.range.start.getTime()/1000)
+                   + '&end=' + Math.floor(this.range.end.getTime()/1000);
+        extendChar = '&';
     }
-    else {
-        query = new google.visualization.Query(this.url + '?start='
-                                               + Math.floor(this.range.start.getTime()/1000) +
-                                               '&end='
-                                               + Math.floor(this.range.end.getTime()/1000));
+    if(this.resolution!=null) {
+        queryURL = queryURL + extendChar 
+                   + 'resolution=' + this.resolution;
+        extendChar = '&';    
     }
+    query = new google.visualization.Query(queryURL);
     var self = this;
     query.send(function(response) {self.handleQueryResponse(response)});
 };
@@ -61,25 +70,57 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     }
 
     var data = response.getDataTable();
-    if(this.range==null) {
-        this.annotatedtimeline.draw(data, {'displayAnnotations': false, 'displayExactValues': true});
-    }
-    else {
-        var timeZoneOffset = parseInt(data.getTableProperty('timeZoneOffset'));
+    this.timeZoneOffset = parseInt(data.getTableProperty('timeZoneOffset'));
+    var wmax = this.getWMax();
+    var options = {displayAnnotations: false, displayExactValues: true,
+                   allValuesSuffix: 'W'};
+    if(this.range!=null) {
         var newStart = new Date();
-        newStart.setTime(this.range.start.getTime() + timeZoneOffset*1000);
+        newStart.setTime(this.range.start.getTime() + this.timeZoneOffset*1000);
         var newEnd = new Date();
-        newEnd.setTime(this.range.end.getTime() + timeZoneOffset*1000);
-        this.annotatedtimeline.draw(data, {'displayAnnotations': false, 'displayExactValues': true,
-                    'zoomStartTime': newStart, 'zoomEndTime': newEnd});
+        newEnd.setTime(this.range.end.getTime() + this.timeZoneOffset*1000);
+        options.zoomStartTime = newStart;
+        options.zoomEndTime = newEnd;
     }
+    if(wmax!=null && wmax!='') {
+        options.max = wmax;
+    }
+    this.annotatedtimeline.draw(data, options);
+    document.getElementById(this.resolutionId).innerHTML = data.getTableProperty('resolutionString');
 };
 
 ItsElectric.prototype.readyHandler = function(e) {
-    this.range = null;
+    this.ready = true;
 };
 
 ItsElectric.prototype.rangeChangeHandler = function(e) {
+    var oldRange = 0;
+    if(this.range != null) {
+        oldRange = this.range.end.getTime() - this.range.start.getTime();
+    }
     this.range = this.annotatedtimeline.getVisibleChartRange();
+    if(this.range.end.getTime() - this.range.start.getTime() != oldRange) {
+        this.resolution = null;
+    }
     this.requery();
 };
+
+ItsElectric.prototype.zoom = function(t) {
+    if(!this.ready) return;
+    this.range = this.annotatedtimeline.getVisibleChartRange();
+    this.resolution = null;
+    var newStart = new Date();
+    newStart.setTime(this.range.end.getTime() - t*1000);
+    var newEnd = new Date();
+    newEnd.setTime(this.range.end.getTime());    
+    this.range.start.setTime(newStart.getTime());
+    this.annotatedtimeline.setVisibleChartRange(newStart,newEnd);
+    var self = this;
+    setTimeout(function(){self.requery()},500);
+};
+
+ItsElectric.prototype.setResolution = function(t) {
+    if(!this.ready) return;
+    this.resolution = t;
+    this.requery();
+}; 

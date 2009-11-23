@@ -36,6 +36,8 @@ import com.sleepycat.je.OperationStatus;
 public class TimeSeriesDatabase {
     Database database;
     Cursor writeCursor;
+    int resolution;
+    String resolutionString;
 
     public static final DatabaseConfig DEFERRED_WRITE_CONFIG;
     static {
@@ -130,8 +132,10 @@ public class TimeSeriesDatabase {
         return _dataEntry(data,dataBuf,power);
     }
 
-    public TimeSeriesDatabase(Environment environment, String name, byte mtus) {
+    public TimeSeriesDatabase(Environment environment, String name, byte mtus, int resolution, String resolutionString) {
         try {
+            this.resolution = resolution;
+            this.resolutionString = resolutionString;
             database = environment.openDatabase(null, name, DEFERRED_WRITE_CONFIG);
             writeCursor = database.openCursor(null, CursorConfig.READ_UNCOMMITTED);
         }

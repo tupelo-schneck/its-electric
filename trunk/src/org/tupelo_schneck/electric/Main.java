@@ -50,6 +50,9 @@ public class Main {
     public static final int[] durations = new int[] { 
         1, 4, 15, 60, 60*4, 60*15, 60*60, 60*60*3, 60*60*8, 60*60*24
     };
+    public static final String[] durationStrings = new String[] {
+        "1\"","4\"","15\"","1'","4'","15'","1h","3h","8h","1d"
+    };
 
     public Environment environment;
     public TimeSeriesDatabase[] databases = new TimeSeriesDatabase[durations.length];
@@ -59,7 +62,8 @@ public class Main {
     public byte mtus = 1;
     public int importOverlap = 30;
     public int importInterval = 15; // seconds
-    public int maxDataPoints = 1000;
+    public int numDataPoints = 1000;
+    public int maxDataPoints = 5000;
     public int port = 8081;
 
     public int minimum;
@@ -141,7 +145,7 @@ public class Main {
 
     public void openDatabases() throws DatabaseException {
         for(int i = 0; i < durations.length; i++) {
-            databases[i] = new TimeSeriesDatabase(environment, String.valueOf(durations[i]), mtus);
+            databases[i] = new TimeSeriesDatabase(environment, String.valueOf(durations[i]), mtus, durations[i], durationStrings[i]);
             log.info("Database " + i + " opened");
             for(byte mtu = 0; mtu < mtus; mtu++) {
                 start[i][mtu] = databases[i].maxForMTU(mtu) + durations[i];
@@ -281,7 +285,7 @@ public class Main {
         options.addOption("p","port",true,"port served by datasource server (default 8081)");
         options.addOption("m","mtus",true,"number of MTUs (default 1)");
         options.addOption("g","gateway-url",true,"URL of TED 5000 gateway (default http://TED5000)");
-        options.addOption("n","max-points",true,"maximum number of data points returned over the zoom region (default 1000)");
+        options.addOption("n","num-points",true,"target number of data points returned over the zoom region (default 1000)");
         options.addOption("l","server-log",true,"server request log filename; include string \"yyyy_mm_dd\" for automatic rollover; or use \"stderr\" (default no log)");
         options.addOption("h","help",false,"print this help text");
         
@@ -324,8 +328,8 @@ public class Main {
         }
         if(cmd!=null && cmd.hasOption("n")) {
             try {
-                main.maxDataPoints = Integer.parseInt(cmd.getOptionValue("n"));
-                if(main.maxDataPoints<=0) showUsageAndExit = true;
+                main.numDataPoints = Integer.parseInt(cmd.getOptionValue("n"));
+                if(main.numDataPoints<=0) showUsageAndExit = true;
             }
             catch(NumberFormatException e) {
                 showUsageAndExit = true;
