@@ -61,7 +61,7 @@ public class Servlet extends DataSourceServlet {
     public TimeSeriesDatabase databaseForRange(int start, int end) {
         int range = end - start;
         for (int i = 0; i < Main.durations.length - 1; i++) {
-            if(Main.durations[i] * main.maxDataPoints > range) {
+            if(Main.durations[i] * main.numDataPoints > range) {
                 log.debug("Using duration: " + Main.durations[i]); 
                 return main.databases[i];
             }
@@ -69,9 +69,30 @@ public class Servlet extends DataSourceServlet {
         return main.databases[Main.durations.length-1];
     }
     
+    public TimeSeriesDatabase databaseForResAndRange(int res, int start, int end) {
+        if(res<=0) return databaseForRange(start,end);
+        log.debug("Looking for resolution: " + res);
+        int range = end - start;
+        TimeSeriesDatabase fallback = null;
+        for (int i = 0; i < Main.durations.length; i++) {
+            if(Main.durations[i]>=res && Main.durations[i] * main.maxDataPoints > range) {
+                log.debug("Using duration: " + Main.durations[i]); 
+                return main.databases[i];
+            }
+            if(fallback==null && Main.durations[i] * main.numDataPoints > range) {
+                log.debug("Fallback duration: " + Main.durations[i]); 
+                fallback =  main.databases[i];
+            }
+        }
+        if(fallback==null) fallback = main.databases[Main.durations.length-1];
+        log.debug("Using fallback.");
+        return fallback;
+    }
+    
     private static TimeZone GMT = TimeZone.getTimeZone("GMT");
     
     public static final String TIME_ZONE_OFFSET = "timeZoneOffset";
+    public static final String RESOLUTION_STRING = "resolutionString";
     
     private int addRowsFromIterator(DataTable data, Iterator<Triple> iter, GregorianCalendar cal) throws TypeMismatchException {
         int lastTime = 0;
@@ -121,6 +142,11 @@ public class Servlet extends DataSourceServlet {
         if(endString!=null && endString.length()>0) {
             end = Integer.parseInt(endString);
         }
+        String resString = req.getParameter("resolution");
+        int res = -1;
+        if(resString!=null && resString.length()>0) {
+            res = Integer.parseInt(resString);
+        }        
         
         // Create a data table,
         DataTable data = new DataTable();
@@ -137,7 +163,11 @@ public class Servlet extends DataSourceServlet {
             GregorianCalendar cal = new GregorianCalendar();
             cal.setTimeZone(GMT);
             TimeSeriesDatabase bigDb = databaseForRange(main.minimum, max);
-            TimeSeriesDatabase smallDb = databaseForRange(start,end);
+            TimeSeriesDatabase smallDb = databaseForResAndRange(res,start,end);
+            String resolutionString = smallDb.resolutionString;
+            if(res<0) resolutionString += " (auto)";
+            else if(res<smallDb.resolution) resolutionString += " (capped)";
+            data.setCustomProperty(RESOLUTION_STRING, resolutionString);
             int lastTime = addRowsFromIterator(data, bigDb.read(main.minimum,start*2-end-1),cal);
             int nextTime = addRowsFromIterator(data, smallDb.read(start*2-end,end*2-start),cal);
             if(nextTime > 0) lastTime = nextTime;
