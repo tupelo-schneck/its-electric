@@ -26,6 +26,8 @@ function ItsElectric(url,divId,getWMax,resolutionId) {
     this.ready = false;
     this.resolution = null;
     this.resolutionId = resolutionId;
+    this.minimum = 0;
+    this.maximum = 0;
 }
 
 ItsElectric.prototype.init = function() {
@@ -48,10 +50,15 @@ ItsElectric.prototype.requery = function() {
     var queryURL = this.url;
     var extendChar = '?';
     if(this.range!=null) {
-        queryURL = queryURL + extendChar 
-                   + 'start='+ Math.floor(this.range.start.getTime()/1000)
-                   + '&end=' + Math.floor(this.range.end.getTime()/1000);
-        extendChar = '&';
+        if(this.range.start.getTime() == this.minimum && this.range.end.getTime() == this.maximum) {
+            this.range = null;
+        }
+        else {
+            queryURL = queryURL + extendChar 
+                       + 'start='+ Math.floor(this.range.start.getTime()/1000)
+                       + '&end=' + Math.floor(this.range.end.getTime()/1000);
+            extendChar = '&';
+        }
     }
     if(this.resolution!=null) {
         queryURL = queryURL + extendChar 
@@ -70,18 +77,24 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     }
 
     var data = response.getDataTable();
+    this.minimum = data.getValue(0,0).getTime();
+    this.maximum = data.getValue(data.getNumberOfRows()-1,0).getTime();
     this.timeZoneOffset = parseInt(data.getTableProperty('timeZoneOffset'));
     var wmax = this.getWMax();
     var options = {displayAnnotations: false, displayExactValues: true,
                    allValuesSuffix: 'W'};
+    var start = this.minimum;
+    var end = this.maximum;
     if(this.range!=null) {
-        var newStart = new Date();
-        newStart.setTime(this.range.start.getTime() + this.timeZoneOffset*1000);
-        var newEnd = new Date();
-        newEnd.setTime(this.range.end.getTime() + this.timeZoneOffset*1000);
-        options.zoomStartTime = newStart;
-        options.zoomEndTime = newEnd;
+        start = this.range.start.getTime();
+        end = this.range.end.getTime();
     }
+    var startDate = new Date();
+    startDate.setTime(start + this.timeZoneOffset*1000);
+    var endDate = new Date();
+    endDate.setTime(end + this.timeZoneOffset*1000);
+    options.zoomStartTime = startDate;
+    options.zoomEndTime = endDate;
     if(wmax!=null && wmax!='') {
         options.max = wmax;
     }
