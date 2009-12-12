@@ -357,7 +357,9 @@ public class Main {
         }
         else {
             main.setupMTUsAndArrays(main.mtus); 
-            main.openEnvironment(new File(dbFilename));
+            File dbFile = new File(dbFilename);
+            dbFile.mkdirs();
+            main.openEnvironment(dbFile);
             main.openDatabases();
             
             Runtime.getRuntime().addShutdownHook(new Thread(){
