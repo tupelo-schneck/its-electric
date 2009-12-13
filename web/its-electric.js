@@ -19,20 +19,29 @@ along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
 */
 
-function ItsElectric(url,divId,getWMax,resolutionId) {
+function ItsElectric(url,divId1,divId2,getWMax,resolutionId) {
+    this.ready = false;
+    this.firstTime = true;
     this.url = url;
-    this.divId = divId;
+    this.divId1 = divId1;
+    this.divId2 = divId2;
     this.getWMax = getWMax;
     this.ready = false;
     this.resolution = null;
     this.resolutionId = resolutionId;
+    this.resolutionString = "";
     this.minimum = 0;
     this.maximum = 0;
+    this.realTime = true;
+    var self = this;
+    setInterval(function(){self.realTimeUpdate();},60000);
 }
 
 ItsElectric.prototype.init = function() {
     this.annotatedtimeline = new google.visualization.AnnotatedTimeLine(
-      document.getElementById(this.divId));
+        document.getElementById(this.divId1));
+    this.annotatedtimeline2 = new google.visualization.AnnotatedTimeLine(
+        document.getElementById(this.divId2));
     this.range = null;
 
     var self = this;
@@ -40,6 +49,12 @@ ItsElectric.prototype.init = function() {
                                             'ready',
                                             function(e){self.readyHandler(e)});
     google.visualization.events.addListener(this.annotatedtimeline,
+                                            'rangechange',
+                                            function(e){self.rangeChangeHandler(e)});
+    google.visualization.events.addListener(this.annotatedtimeline2,
+                                            'ready',
+                                            function(e){self.readyHandler(e)});
+    google.visualization.events.addListener(this.annotatedtimeline2,
                                             'rangechange',
                                             function(e){self.rangeChangeHandler(e)});
     this.requery();
@@ -66,15 +81,19 @@ ItsElectric.prototype.requery = function() {
         extendChar = '&';    
     }
     query = new google.visualization.Query(queryURL);
+    document.getElementById('busy').style.display="";
     var self = this;
     query.send(function(response) {self.handleQueryResponse(response)});
 };
 
 ItsElectric.prototype.handleQueryResponse = function(response) {
     if (response.isError()) {
+        document.getElementById('busy').style.display="none";
         alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
         return;
     }
+
+    var realTimeNeedsAdjust = this.realTime && this.range!=null && this.range.end.getTime() == this.maximum;
 
     var data = response.getDataTable();
     this.minimum = data.getValue(0,0).getTime();
@@ -86,8 +105,16 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     var start = this.minimum;
     var end = this.maximum;
     if(this.range!=null) {
-        start = this.range.start.getTime();
-        end = this.range.end.getTime();
+        if(realTimeNeedsAdjust) {
+            start = this.maximum - (this.range.end.getTime() - this.range.start.getTime());
+            end = this.maximum;
+            this.range.start.setTime(start);
+            this.range.end.setTime(end);
+        }
+        else {
+            start = this.range.start.getTime();
+            end = this.range.end.getTime();
+        }
     }
     var startDate = new Date();
     startDate.setTime(start + this.timeZoneOffset*1000);
@@ -98,12 +125,26 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     if(wmax!=null && wmax!='') {
         options.max = wmax;
     }
-    this.annotatedtimeline.draw(data, options);
-    document.getElementById(this.resolutionId).innerHTML = data.getTableProperty('resolutionString');
+    this.annotatedtimeline2.draw(data, options);
+    this.resolutionString = data.getTableProperty('resolutionString');
 };
 
 ItsElectric.prototype.readyHandler = function(e) {
+    document.getElementById('busy').style.display="none";
+    document.getElementById(this.resolutionId).innerHTML = this.resolutionString;
+
     this.ready = true;
+    var temp = this.annotatedtimeline2;
+    this.annotatedtimeline2 = this.annotatedtimeline;
+    this.annotatedtimeline = temp;
+    temp = document.getElementById(this.divId1).style.zIndex;
+    document.getElementById(this.divId1).style.zIndex = document.getElementById(this.divId2).style.zIndex;
+    document.getElementById(this.divId2).style.zIndex = temp;
+    
+    if(this.firstTime) {
+        this.firstTime = false;
+        this.zoom(4*60*60);
+    }
 };
 
 ItsElectric.prototype.rangeChangeHandler = function(e) {
@@ -135,5 +176,12 @@ ItsElectric.prototype.zoom = function(t) {
 ItsElectric.prototype.setResolution = function(t) {
     if(!this.ready) return;
     this.resolution = t;
+    this.requery();
+};
+
+ItsElectric.prototype.realTimeUpdate = function() {
+    if(!this.ready) return;
+    if(!this.realTime) return;
+    if(this.range!=null && this.range.end.getTime() < this.maximum) return;
     this.requery();
 }; 
