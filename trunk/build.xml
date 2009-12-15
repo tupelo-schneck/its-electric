@@ -23,45 +23,47 @@ If not, see <http://www.gnu.org/licenses/>.
     <property file="build.properties"/>
 
     <target name="its-electric.zip" depends="its-electric.jar">
-	<zip destfile="build/its-electric-${version}.zip">
-	    <fileset file="build/its-electric-${version}.jar"/>
-	    <fileset dir="web"/>
-	    <fileset file="README.txt"/>
-	    <fileset dir="." includes="legal/**"/>
-	</zip>
+        <zip destfile="build/its-electric-${version}.zip">
+            <fileset file="build/its-electric-${version}.jar"/>
+            <fileset dir="web"/>
+            <fileset file="README.txt"/>
+                <fileset file="NEWS.txt"/>
+            <fileset dir="." includes="legal/**"/>
+        </zip>
     </target>
-	
+
     <target name="its-electric.jar" depends="its-electric-only.jar">
-	<jar destfile="build/its-electric-${version}.jar" manifest="META-INF/MANIFEST.MF">
-	    <fileset dir=".">
+        <jar destfile="build/its-electric-${version}.jar" manifest="META-INF/MANIFEST.MF">
+            <fileset dir=".">
                 <include name="com/**"/>
-	        <include name="OneJar.class"/>
-	        <include name="main/**"/>
-	        <include name="lib/**"/>
+                <include name="OneJar.class"/>
+                <include name="main/**"/>
+                <include name="lib/**"/>
                 <include name="legal/**"/>
-	        <include name="src/**"/>
+                <include name="src/**"/>
                 <include name="web/**"/>
-	        <include name="build.xml"/>
-	        <include name="README.txt"/>
-	        <include name=".classpath"/>
-	        <include name=".project"/>
-	    </fileset>
-	</jar>
+                <include name="build.xml"/>
+                <include name="README.txt"/>
+                <include name="NEWS.txt"/>
+                <include name=".classpath"/>
+                <include name=".project"/>
+            </fileset>
+        </jar>
     </target>
-	
+
     <target name="its-electric-only.jar" depends="build">
         <mkdir dir="main"/>
         <jar destfile="main/its-electric-only-${version}.jar">
-    	    <fileset dir="build" includes="org/**"/>
-    	</jar>
+            <fileset dir="build" includes="org/**"/>
+        </jar>
     </target>
-	
+
     <target name="build">
-	<mkdir dir="build"/>
-    	<javac srcdir="src" destdir="build" target="1.5">
-	    <classpath>
-	        <fileset dir="lib" includes="**"/>
-	    </classpath>
-	</javac>
+        <mkdir dir="build"/>
+        <javac srcdir="src" destdir="build" target="1.5">
+            <classpath>
+                <fileset dir="lib" includes="**"/>
+            </classpath>
+        </javac>
     </target>
 </project>

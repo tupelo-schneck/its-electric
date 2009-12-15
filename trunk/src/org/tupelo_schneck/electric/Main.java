@@ -66,6 +66,8 @@ public class Main {
     public int maxDataPoints = 5000;
     public int port = 8081;
 
+    public int adjustment; // system time minus gateway time
+    
     public int minimum;
     public volatile int maximum;
     
@@ -214,12 +216,28 @@ public class Main {
         }
     }
 
+    public void findInitialAdjustment() throws Exception {
+        int now = (int)(System.currentTimeMillis()/1000);
+        log.trace("Importing 10 seconds for MTU 0 for initial adjustment");
+        Iterator<Triple> iter = new ImportIterator(gatewayURL, (byte)0, 10);
+        int max = 0;
+        while(iter.hasNext()) {
+            int ts = iter.next().timestamp;
+            if(ts>max) max = ts;
+        }
+        adjustment = now - max;
+        log.trace("Adjustment is: " + adjustment);
+    }
+    
     public void doImport() throws Exception {
         int newMax = Integer.MAX_VALUE;
         for(byte mtu = 0; mtu < mtus; mtu++) {
 //            for(byte mtu = (byte)(mtus-1); mtu >= 0; mtu--) {
-            int count = (int)(System.currentTimeMillis()/1000 - maxForMTU[0][mtu] + importOverlap);
-            if(count > 3600 || count <= 0) count = 3600;
+            int now = (int)(System.currentTimeMillis()/1000);
+            int count = now - maxForMTU[0][mtu] - adjustment;
+            if(count <= 0) count = 0;
+            count = count + importOverlap;
+            if(count > 3600) count = 3600;
             log.trace("Importing " + count + " seconds for MTU " + mtu);
             Iterator<Triple> iter = new ImportIterator(gatewayURL, mtu, count);
             log.trace("Receiving...");
@@ -240,6 +258,8 @@ public class Main {
                 }
             }
             log.trace("Put to " + maxForMTU[0][mtu] + ".");
+            adjustment = now - maxForMTU[0][mtu];
+            log.trace("Adjustment is: " + adjustment);
             if(maxForMTU[0][mtu] < newMax) newMax = maxForMTU[0][mtu];
         }
         maximum = newMax;
@@ -258,6 +278,7 @@ public class Main {
 
     public void run() {
         try {
+            findInitialAdjustment();
             doImport();
         }
         catch(Exception e) {
@@ -286,7 +307,10 @@ public class Main {
         options.addOption("m","mtus",true,"number of MTUs (default 1)");
         options.addOption("g","gateway-url",true,"URL of TED 5000 gateway (default http://TED5000)");
         options.addOption("n","num-points",true,"target number of data points returned over the zoom region (default 1000)");
+        options.addOption("x","max-points",true,"number of data points beyond which server will not go (default 5000)");
         options.addOption("l","server-log",true,"server request log filename; include string \"yyyy_mm_dd\" for automatic rollover; or use \"stderr\" (default no log)");
+        options.addOption("i","import-interval",true,"seconds between imports of data (default 15)");
+        options.addOption("o","import-overlap",true,"extra seconds imported each time for good measure (default 30)");        
         options.addOption("h","help",false,"print this help text");
         
         // create the parser
@@ -335,6 +359,33 @@ public class Main {
                 showUsageAndExit = true;
             }            
         }
+        if(cmd!=null && cmd.hasOption("x")) {
+            try {
+                main.maxDataPoints = Integer.parseInt(cmd.getOptionValue("x"));
+                if(main.maxDataPoints<=0) showUsageAndExit = true;
+            }
+            catch(NumberFormatException e) {
+                showUsageAndExit = true;
+            }            
+        }
+        if(cmd!=null && cmd.hasOption("i")) {
+            try {
+                main.importInterval = Integer.parseInt(cmd.getOptionValue("i"));
+                if(main.importInterval<=0) showUsageAndExit = true;
+            }
+            catch(NumberFormatException e) {
+                showUsageAndExit = true;
+            }            
+        }
+        if(cmd!=null && cmd.hasOption("o")) {
+            try {
+                main.importOverlap = Integer.parseInt(cmd.getOptionValue("o"));
+                if(main.importOverlap<0) showUsageAndExit = true;
+            }
+            catch(NumberFormatException e) {
+                showUsageAndExit = true;
+            }            
+        }
         if(cmd!=null && cmd.hasOption("l")) {
             main.serverLogFilename = cmd.getOptionValue("l");
         }
@@ -353,7 +404,7 @@ public class Main {
         if(showUsageAndExit) {
             HelpFormatter help = new HelpFormatter();
             help.printHelp("java -jar its-electric-*.jar [options] database-directory", 
-                    "options:",options,"The specified directory (required) is the location of the database.");
+                    "options:",options,"The specified directory (REQUIRED) is the location of the database.");
         }
         else {
             main.setupMTUsAndArrays(main.mtus); 
