@@ -404,7 +404,9 @@ public class Main {
         if(showUsageAndExit) {
             HelpFormatter help = new HelpFormatter();
             help.printHelp("java -jar its-electric-*.jar [options] database-directory", 
-                    "options:",options,"The specified directory (REQUIRED) is the location of the database.");
+                    "\noptions (most important are -g, -m, -p):",
+                    options,
+                    "\nThe specified database-directory (REQUIRED) is the location of the database.");
         }
         else {
             main.setupMTUsAndArrays(main.mtus); 
