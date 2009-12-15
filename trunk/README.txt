@@ -12,7 +12,7 @@ according to the Google Visualizations API.  The command is:
 
 The required database-directory is the directory in your filesystem 
 where the database will be stored.  Note: the database gets big, on 
-the order of 2GB/month.
+the order of 3-4GB/month.
 
 You also may need to specify the -m option to tell "it's electric" how 
 many MTUs you have (if you have more than one), and the -g option to 
@@ -32,12 +32,13 @@ to have "it's electric" dump trace output.
 
 
 (2) Next you'll need to set up the "it's electric" web files
-its-electric.html and its-electric.js.  You may need to edit
-its-electric.html and tell it how to contact the datasource server you
-set up in part (1); it comes looking for "http://localhost:8081" which
-may work fine for you, but will certainly need to be changed if you
-want your data accessible over the Internet---it's a client-side
-process to get the data and pass it to the chart.
+its-electric.html and its-electric.js (and also the "wait icon"
+wait20.gif).  You may need to edit its-electric.html and tell it how
+to contact the datasource server you set up in part (1); it comes
+looking for "http://localhost:8081" which may work fine for you, but
+will certainly need to be changed if you want your data accessible
+over the Internet---it's a client-side process to get the data and
+pass it to the chart.
 
 Even if you're just looking at the data yourself, you may want to 
 access the files through a webserver.  (On a Mac, this just means 

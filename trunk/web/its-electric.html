@@ -22,23 +22,23 @@ If not, see <http://www.gnu.org/licenses/>.
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
   <head>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-    <script type='text/javascript' src='its-electric.js'></script>
+    <script type="text/javascript" src="its-electric.js"></script>
     <script type="text/javascript">
     
         // CHANGE URL BELOW to the URL of your "it's electric" data server
     
         var itsElectric = new ItsElectric('http://localhost:8081', // CHANGE URL HERE
-                                          'timeline1','timeline2',
+                                          'timeline','busy',
                                           function(){return document.forms['topform'].wmax.value;},
                                           'resolutionId');
     </script>
     <title>it's electric</title>
-    <script type='text/javascript' src='http://www.google.com/jsapi'></script>
-    <script type='text/javascript'>
+    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+    <script type="text/javascript">
         google.load('visualization', '1', {'packages':['annotatedtimeline']});
         google.setOnLoadCallback(function() { itsElectric.init(); });
     </script>
-    <script type='text/javascript'>
+    <script type="text/javascript">
         function show(id) {
             var e = document.getElementById(id);
             e.style.display = '';
@@ -48,7 +48,7 @@ If not, see <http://www.gnu.org/licenses/>.
             e.style.display = 'none';
         }
     </script>
-    <style type='text/css'>
+    <style type="text/css">
         .its-electric {
             font-family: monospace;
             font-size: 40px;
@@ -80,6 +80,9 @@ If not, see <http://www.gnu.org/licenses/>.
                     <a href="#" onclick="itsElectric.zoom(8*60*60);return false;">8h</a>&nbsp;
                     <a href="#" onclick="itsElectric.zoom(12*60*60);return false;">12h</a>&nbsp;
                 </span>
+                &nbsp;
+                <a href="#" onclick="itsElectric.scrollToPresent();return false;">Scroll to present</a>
+                &nbsp;
                 &nbsp; &nbsp;
                 <b>Watts max:</b>
                 <input type="text" name="wmax" value="10000" style="width:4em;text-align:right;" onchange="itsElectric.requery();"/>W
@@ -103,16 +106,13 @@ If not, see <http://www.gnu.org/licenses/>.
                     <a href="#" onclick="itsElectric.setResolution(null);return false;">Auto</a>&nbsp;
                 </span>
                 &nbsp;
-                <i>Currently: <span id='resolutionId'></span></i>
+                <i>Currently: <span id="resolutionId"></span></i>
                 &nbsp;
                 <span id="busy" style="display:none"><img style="position:absolute;right:0;" src="wait20.gif" alt="[busy]"/></span>
             </p>
         </form>
     </div>
-    <div style='position:relative;margin:0;padding:0;'>
-        <div id='timeline1' style='width: 1000px; height: 600px; position:relative; z-index:1;'></div>
-        <div id='timeline2' style='width: 1000px; height: 600px; position:absolute; top:0; z-index:0;'></div>
-    </div>        
+    <div id="timeline" style="width:1000px;height:600px;"></div>        
 
     <!--INSERT PERSONAL TEXT HERE-->
 
