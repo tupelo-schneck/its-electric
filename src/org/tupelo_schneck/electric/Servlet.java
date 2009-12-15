@@ -168,10 +168,13 @@ public class Servlet extends DataSourceServlet {
             if(res<0) resolutionString += " (auto)";
             else if(res<smallDb.resolution) resolutionString += " (capped)";
             data.setCustomProperty(RESOLUTION_STRING, resolutionString);
-            int lastTime = addRowsFromIterator(data, bigDb.read(main.minimum,start*2-end-1),cal);
-            int nextTime = addRowsFromIterator(data, smallDb.read(start*2-end,end*2-start),cal);
+            int range = end - start;
+            int lastTime = addRowsFromIterator(data, bigDb.read(main.minimum,start-range-1),cal);
+            int nextTime = addRowsFromIterator(data, smallDb.read(start-range,end+range),cal);
             if(nextTime > 0) lastTime = nextTime;
-            nextTime = addRowsFromIterator(data, bigDb.read(end*2-start+1,max),cal);
+            nextTime = addRowsFromIterator(data, bigDb.read(end+range+1,max-2*range-1),cal);
+            if(nextTime > 0) lastTime = nextTime;
+            nextTime = addRowsFromIterator(data, smallDb.read(max-2*range,max),cal);
             if(nextTime > 0) lastTime = nextTime;
             for(int i = Main.durations.length - 1; i >= 0; i--) {
                 if(lastTime>=max) break;

@@ -1,0 +1,16 @@
+"it's electric" news
+
+Version 1.1
+======================
+Fix bug where too much or too little data would be imported when computer's clock and TED's clock have different times.
+Create database directory automatically when needed.
+Use XHTML 1.0 in order to work for poor IE users.
+Some new command-line options.
+Busy indicator.
+Use 2 timelines and CSS z-index magic to avoid seeing white flash on update.
+Make "Max" zoom all the way out even including new data.
+"Scroll to present" button.
+Automatically load new data whenever viewing at the most recent time.
+
+Version 1.0 2009-11-23
+======================
