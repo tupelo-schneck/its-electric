@@ -2,6 +2,10 @@
 
 export where=test
 
+if false
+then export where=.; rm -rf dist main build
+fi
+
 mkdir -p build
 sed -e '/CHANGE URL HERE/ s/localhost:8081/tupelo-schneck.org:8081/' \
     -e '/<!--INSERT PERSONAL TEXT HERE-->/ rlocalweb/local.html' \
