@@ -36,8 +36,12 @@ function ItsElectric(url,timelineId,busyId,getWMax,resolutionId) {
     this.resolutionString = "";
     this.minimum = 0;
     this.maximum = 0;
-    
+
     this.realTime = true; // set false to prevent auto-update at latest time
+
+    this.noFlashEvents = false; // set true to make it work (somewhat) when
+                                // accessing a file: URL without privileges
+
     var self = this;
     setInterval(function(){self.realTimeUpdate();},60000);
 }
@@ -60,7 +64,7 @@ ItsElectric.prototype.init = function() {
     document.getElementById(this.timelineId).appendChild(div0);
     div0.appendChild(this.div1);
     div0.appendChild(this.div2);
-     
+
     this.annotatedtimeline = new google.visualization.AnnotatedTimeLine(this.div1);
     this.annotatedtimeline2 = new google.visualization.AnnotatedTimeLine(this.div2);
 
@@ -96,9 +100,9 @@ ItsElectric.prototype.requery = function() {
         }
     }
     if(this.resolution!==null) {
-        queryURL = queryURL + extendChar + 
+        queryURL = queryURL + extendChar +
                    'resolution=' + this.resolution;
-        extendChar = '&';    
+        extendChar = '&';
     }
     query = new google.visualization.Query(queryURL);
     if(this.busyId!==null) document.getElementById(this.busyId).style.display="";
@@ -148,6 +152,8 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     }
     this.annotatedtimeline2.draw(data, options);
     this.resolutionString = data.getTableProperty('resolutionString');
+
+    if(this.noFlashEvents) this.readyHandler(null);
 };
 
 ItsElectric.prototype.readyHandler = function(e) {
@@ -165,8 +171,8 @@ ItsElectric.prototype.readyHandler = function(e) {
     temp = this.div1.style.zIndex;
     this.div1.style.zIndex = this.div2.style.zIndex;
     this.div2.style.zIndex = temp;
-    
-    if(this.firstTime) {
+
+    if(this.firstTime && !this.noFlashEvents) {
         this.firstTime = false;
         this.zoom(4*60*60);
     }
@@ -185,13 +191,15 @@ ItsElectric.prototype.rangeChangeHandler = function(e) {
 };
 
 ItsElectric.prototype.zoom = function(t) {
-    if(!this.ready) return;
+    if(this.noFlashEvents) alert("This won't work with noFlashEvents=true.");
+    if(!this.ready || this.noFlashEvents) return;
     this.range = this.annotatedtimeline.getVisibleChartRange();
     this.resolution = null;
     var newStart = new Date();
     newStart.setTime(this.range.end.getTime() - t*1000);
+    if(newStart.getTime()<this.minimum) newStart.setTime(this.minimum);
     var newEnd = new Date();
-    newEnd.setTime(this.range.end.getTime());    
+    newEnd.setTime(this.range.end.getTime());
     this.range.start.setTime(newStart.getTime());
     this.annotatedtimeline.setVisibleChartRange(newStart,newEnd);
     var self = this;
@@ -199,14 +207,15 @@ ItsElectric.prototype.zoom = function(t) {
 };
 
 ItsElectric.prototype.scrollToPresent = function() {
-    if(!this.ready) return;
+    if(this.noFlashEvents) alert("This won't work with noFlashEvents=true.");
+    if(!this.ready || this.noFlashEvents) return;
     this.range = this.annotatedtimeline.getVisibleChartRange();
     var size = this.range.end.getTime() - this.range.start.getTime();
     this.range.end.setTime(this.maximum - this.timeZoneOffset*1000);
     this.range.start.setTime(this.maximum - this.timeZoneOffset*1000 - size);
     this.annotatedtimeline.setVisibleChartRange(this.range.start,this.range.end);
     var self = this;
-    setTimeout(function(){self.requery();},500);        
+    setTimeout(function(){self.requery();},500);
 };
 
 ItsElectric.prototype.setResolution = function(t) {
@@ -216,8 +225,7 @@ ItsElectric.prototype.setResolution = function(t) {
 };
 
 ItsElectric.prototype.realTimeUpdate = function() {
-    if(!this.ready) return;
-    if(!this.realTime) return;
+    if(!this.ready || !this.realTime || this.noFlashEvents) return;
     if(this.range!==null && this.range.end.getTime() < this.maximum) return;
     this.requery();
-}; 
+};

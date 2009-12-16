@@ -10,7 +10,7 @@ according to the Google Visualizations API.  The command is:
  
   java -jar its-electric-{version}.jar [options] database-directory
 
-The required database-directory is the directory in your filesystem 
+The (required!) database-directory is the directory in your filesystem 
 where the database will be stored.  Note: the database gets big, on 
 the order of 3-4GB/month.
 
@@ -30,6 +30,9 @@ You can also pass options to java (before the -jar option).  I use
   -Dorg.apache.commons.logging.simplelog.defaultlog=trace
 to have "it's electric" dump trace output.
 
+If you have memory issues, consider giving java more memory using
+an option like -Xmx128M .
+
 
 (2) Next you'll need to set up the "it's electric" web files
 its-electric.html and its-electric.js (and also the "wait icon"
@@ -46,6 +49,22 @@ opening System Preferences to the Sharing pane, turning on Web
 Sharing, and putting the files in /Library/WebServer/Documents; then 
 you can point your browser at http://localhost/its-electric.html.)  
 
+***IMPORTANT***:
+If you try to access its-electric.html using a file: URL, it's 
+probably not going to work.  This has to do with Flash security 
+settings.  You can fix this by going to the Flash Player Settings 
+Manager and adding the relevant file to the trusted locations.  
+Go to
+
+http://www.macromedia.com/support/documentation/en/flashplayer/help/settings_manager04.html  
+
+click on "Add Location" in the "Edit Locations" dropdown, and browse to
+its-electric.html.
+
+(If you really want to use a file: URL without doing that, you can try
+setting itsElectric.noFlashEvents=true in the javascript near the top
+of its-electric.html, and it should limp along.  Not recommended.)
+
 If you do share your "it's electric" over the Web, make sure you 
 include a link to the source download.  You can either make 
 its-electric-{version}.zip available directly from your site, or 
@@ -53,18 +72,6 @@ change the link in its-electric.html to point back to where you
 downloaded it.  If you modify your source, you'll need to make your
 modified copy available for download, as specified by the 
 GNU Affero General Public License (see legal/COPYING-agpl.txt).
-
-If you try to access its-electric.html using a file: URL, you may find 
-that the automatic resolution-change on zoom doesn't work.  This has 
-to do with Flash security settings.  You can fix this by going to the 
-Flash Player Settings Manager and adding the relevant file to the 
-trusted locations.  Go to
-
-http://www.macromedia.com/support/documentation/en/flashplayer/help/settings_manager04.html  
-
-click on "Add Location" in the "Edit Locations" dropdown, and browse to
-its-electric.html.
-
 
 
 The Discussion Group
