@@ -245,6 +245,7 @@ public class Main {
             for(int i = 0; i < count && iter.hasNext(); i++) {
                 Triple next = iter.next();
                 if(next==null) break;
+//                log.trace("TS: " + next.timestamp + ", max:" + maxForMTU[0][next.mtu]);
                 if(next.timestamp > maxForMTU[0][next.mtu]) {
                     reversedTriples.offer(next);
                 }
