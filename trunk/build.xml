@@ -60,7 +60,7 @@ If not, see <http://www.gnu.org/licenses/>.
 
     <target name="build">
         <mkdir dir="build"/>
-        <javac srcdir="src" destdir="build" target="1.5">
+        <javac srcdir="src" destdir="build" target="1.5" debug="true">
             <classpath>
                 <fileset dir="lib" includes="**"/>
             </classpath>
