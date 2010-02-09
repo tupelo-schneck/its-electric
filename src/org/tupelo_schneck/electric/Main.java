@@ -35,7 +35,9 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
 
+import com.sleepycat.je.CheckpointConfig;
 import com.sleepycat.je.DatabaseException;
 import com.sleepycat.je.Environment;
 import com.sleepycat.je.EnvironmentConfig;
@@ -122,9 +124,24 @@ public class Main {
 //            configuration.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
 //            configuration.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
 //            configuration.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+////            configuration.setConfigParam(EnvironmentConfig.CHECKPOINTER_HIGH_PRIORITY, "true");
             configuration.setAllowCreate(true);
             environment = new Environment(envHome, configuration);
             log.info("Environment opened.");
+            boolean anyCleaned = false;
+            while (environment.cleanLog() > 0) {
+                anyCleaned = true;
+            }
+            if (anyCleaned) {
+                log.info("Environment cleaned.");
+                CheckpointConfig force = new CheckpointConfig();
+                force.setForce(true);
+                environment.checkpoint(force);
+                log.info("Environment checkpointed.");
+            }
+            else {
+                log.info("No environment clean needed.");
+            }
         }
         catch(Throwable e) {
             e.printStackTrace();
@@ -201,13 +218,18 @@ public class Main {
             }
             // read the values
             log.info("Catching up from " + catchupStart);
-            Iterator<Triple> iter = databases[0].read(catchupStart);
-            while(iter.hasNext()) {
-                Triple triple = iter.next();
-                if(triple.timestamp > caughtUpTo[triple.mtu]){ 
-                    accumulateForAverages(triple.timestamp, triple.mtu, triple.power);
-                    caughtUpTo[triple.mtu] = triple.timestamp;
+            ReadIterator iter = databases[0].read(catchupStart);
+            try {
+                while(iter.hasNext()) {
+                    Triple triple = iter.next();
+                    if(triple.timestamp > caughtUpTo[triple.mtu]){ 
+                        accumulateForAverages(triple.timestamp, triple.mtu, triple.power);
+                        caughtUpTo[triple.mtu] = triple.timestamp;
+                    }
                 }
+            }
+            finally {
+                iter.close();
             }
             log.info("Catch-up done.");
         }

@@ -182,14 +182,22 @@ public class TimeSeriesDatabase {
         DatabaseEntry data = new DatabaseEntry();
         Cursor cursor = database.openCursor(null, CursorConfig.READ_UNCOMMITTED);
         OperationStatus status = cursor.getLast(key, data, LockMode.READ_UNCOMMITTED);
-        while(status == OperationStatus.SUCCESS) {
-            byte[] buf = key.getData();
-            if(buf[4]==mtu) {
-                return intOfBytes(buf,0);
+        try {
+            while(status == OperationStatus.SUCCESS) {
+                byte[] buf = key.getData();
+                if(buf[4]==mtu) {
+                    return intOfBytes(buf,0);
+                }
+                status = cursor.getPrev(key, data, LockMode.READ_UNCOMMITTED);
             }
-            status = cursor.getPrev(key, data, LockMode.READ_UNCOMMITTED);
+            return 0;
         }
-        return 0;
+        finally {
+            try {
+                cursor.close();
+            }
+            catch (Throwable t) {}
+        }
     }
 
     public int minimum() throws DatabaseException {
@@ -200,11 +208,11 @@ public class TimeSeriesDatabase {
         return res;
     }
     
-    public Iterator<Triple> read(int start, int end) throws DatabaseException {
+    public ReadIterator read(int start, int end) throws DatabaseException {
         return new ReadIterator(start,end);
     }
 
-    public Iterator<Triple> read(int start) throws DatabaseException {
+    public ReadIterator read(int start) throws DatabaseException {
         return new ReadIterator(start,-1);
     }
 

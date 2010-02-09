@@ -22,7 +22,6 @@ If not, see <http://www.gnu.org/licenses/>.
 package org.tupelo_schneck.electric;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -34,6 +33,7 @@ import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.eclipse.jetty.server.handler.RequestLogHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
 
 import com.google.visualization.datasource.DataSourceServlet;
 
@@ -94,39 +94,44 @@ public class Servlet extends DataSourceServlet {
     public static final String TIME_ZONE_OFFSET = "timeZoneOffset";
     public static final String RESOLUTION_STRING = "resolutionString";
     
-    private int addRowsFromIterator(DataTable data, Iterator<Triple> iter, GregorianCalendar cal) throws TypeMismatchException {
-        int lastTime = 0;
-        int lastMTU = 0;
-        TableRow row = null;
-        while(iter.hasNext()) {
-            Triple triple = iter.next();
-            if (triple.timestamp > lastTime) {
-                if(row!=null) {
-                    for(int mtu = lastMTU + 1; mtu < main.mtus; mtu++) {
-                        row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
+    private int addRowsFromIterator(DataTable data, ReadIterator iter, GregorianCalendar cal) throws TypeMismatchException {
+        try {
+            int lastTime = 0;
+            int lastMTU = 0;
+            TableRow row = null;
+            while(iter.hasNext()) {
+                Triple triple = iter.next();
+                if (triple.timestamp > lastTime) {
+                    if(row!=null) {
+                        for(int mtu = lastMTU + 1; mtu < main.mtus; mtu++) {
+                            row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
+                        }
+                        data.addRow(row);
                     }
-                    data.addRow(row);
+                    row = new TableRow();
+                    lastTime = triple.timestamp;
+                    // note have to add in the time zone offset
+                    cal.setTimeInMillis((long)(triple.timestamp + Main.timeZoneOffset) * 1000);
+                    row.addCell(new DateTimeValue(cal));
+                    lastMTU = -1;
                 }
-                row = new TableRow();
-                lastTime = triple.timestamp;
-                // note have to add in the time zone offset
-                cal.setTimeInMillis((long)(triple.timestamp + Main.timeZoneOffset) * 1000);
-                row.addCell(new DateTimeValue(cal));
-                lastMTU = -1;
+                for(int mtu = lastMTU + 1; mtu < triple.mtu; mtu++) {
+                    row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
+                }
+                row.addCell(triple.power);
+                lastMTU = triple.mtu;
             }
-            for(int mtu = lastMTU + 1; mtu < triple.mtu; mtu++) {
-                row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
+            if(row!=null) {
+                for(int mtu = lastMTU + 1; mtu < main.mtus; mtu++) {
+                    row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
+                }
+                data.addRow(row);
             }
-            row.addCell(triple.power);
-            lastMTU = triple.mtu;
+            return lastTime;
         }
-        if(row!=null) {
-            for(int mtu = lastMTU + 1; mtu < main.mtus; mtu++) {
-                row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
-            }
-            data.addRow(row);
+        finally {
+            iter.close();
         }
-        return lastTime;
     }
     
     @Override
