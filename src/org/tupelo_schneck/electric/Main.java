@@ -21,11 +21,22 @@ If not, see <http://www.gnu.org/licenses/>.
 
 package org.tupelo_schneck.electric;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
+import java.net.Authenticator;
+import java.net.PasswordAuthentication;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.TimeZone;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -45,6 +56,28 @@ import com.sleepycat.je.EnvironmentConfig;
 public class Main {
     static {
         System.setProperty("org.apache.commons.logging.simplelog.showdatetime", "true");
+        
+        // The following allows you can access an https URL without having the certificate in the truststore 
+        TrustManager[] trustAllCerts = new TrustManager[] { 
+            new X509TrustManager() { 
+                public java.security.cert.X509Certificate[] getAcceptedIssuers() { 
+                    return null; 
+                } 
+                public void checkClientTrusted( java.security.cert.X509Certificate[] certs, String authType) { } 
+                public void checkServerTrusted( java.security.cert.X509Certificate[] certs, String authType) { } 
+            } 
+        }; 
+        // Install the all-trusting trust manager 
+        try { 
+            SSLContext sc = SSLContext.getInstance("SSL"); 
+            sc.init(null, trustAllCerts, new java.security.SecureRandom()); 
+            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory()); 
+            HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
+                public boolean verify(String hostname, SSLSession session) {
+                    return true;
+                }
+            });
+        } catch (Exception e) { } 
     }
     
     private Log log = LogFactory.getLog(Main.class);
@@ -60,6 +93,8 @@ public class Main {
     public TimeSeriesDatabase[] databases = new TimeSeriesDatabase[durations.length];
 
     public String gatewayURL = "http://TED5000";
+    public String username = "";
+    public String password = "";
     public String serverLogFilename;
     public byte mtus = 1;
     public int importOverlap = 30;
@@ -329,6 +364,7 @@ public class Main {
         options.addOption("p","port",true,"port served by datasource server (default 8081)");
         options.addOption("m","mtus",true,"number of MTUs (default 1)");
         options.addOption("g","gateway-url",true,"URL of TED 5000 gateway (default http://TED5000)");
+        options.addOption("u","username",true,"username for password-protected TED gateway (will prompt for password; default none)");
         options.addOption("n","num-points",true,"target number of data points returned over the zoom region (default 1000)");
         options.addOption("x","max-points",true,"number of data points beyond which server will not go (default 5000)");
         options.addOption("l","server-log",true,"server request log filename; include string \"yyyy_mm_dd\" for automatic rollover; or use \"stderr\" (default no log)");
@@ -351,7 +387,7 @@ public class Main {
         }
 
         final Main main = new Main();
-
+        
         if(cmd!=null && cmd.hasOption("m")) {
             try {
                 main.mtus = Byte.parseByte(cmd.getOptionValue("m"));
@@ -372,6 +408,12 @@ public class Main {
         }
         if(cmd!=null && cmd.hasOption("g")) {
             main.gatewayURL = cmd.getOptionValue("g");
+        }
+        if(cmd!=null && cmd.hasOption("u")) {
+            main.username = cmd.getOptionValue("u");
+            System.err.print("Please enter password for username '" + main.username + "': ");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+            main.password = reader.readLine();
         }
         if(cmd!=null && cmd.hasOption("n")) {
             try {
@@ -432,6 +474,13 @@ public class Main {
                     "\nThe specified database-directory (REQUIRED) is the location of the database.");
         }
         else {
+            Authenticator.setDefault(new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(main.username, main.password.toCharArray());
+                }
+            });
+            
             main.setupMTUsAndArrays(main.mtus); 
             File dbFile = new File(dbFilename);
             dbFile.mkdirs();
