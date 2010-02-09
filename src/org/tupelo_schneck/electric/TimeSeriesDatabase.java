@@ -222,6 +222,7 @@ public class TimeSeriesDatabase {
         DatabaseEntry data;
         OperationStatus status;
         int end;
+        boolean closed;
 
         public ReadIterator (int start, int end) throws DatabaseException {
             if(end<0 || end>=start) {
@@ -232,6 +233,7 @@ public class TimeSeriesDatabase {
                 status = readCursor.getSearchKeyRange(key, data, LockMode.READ_UNCOMMITTED);
                 closeIfNeeded();
             }
+            else { closed = true; }
         }
 
         private void closeIfNeeded() {
@@ -250,7 +252,8 @@ public class TimeSeriesDatabase {
         }
         
         public void close() {
-            try { readCursor.close(); } catch (Throwable e) { e.printStackTrace(); }
+            if(!closed) try { readCursor.close(); } catch (Throwable e) { e.printStackTrace(); }
+            closed = true;
         }
 
         public void remove() {
