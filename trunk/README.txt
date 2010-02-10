@@ -12,7 +12,7 @@ according to the Google Visualizations API.  The command is:
 
 The (required!) database-directory is the directory in your filesystem 
 where the database will be stored.  Note: the database gets big, on 
-the order of 3-4GB/month.
+the order of 1GB/month.
 
 You also may need to specify the -m option to tell "it's electric" how 
 many MTUs you have (if you have more than one), and the -g option to 
@@ -98,7 +98,7 @@ The Fine Print
 ==============
 
 "it's electric": software for storing and viewing home energy monitoring data
-Copyright (C) 2009 Robert R. Tupelo-Schneck <schneck@gmail.com>
+Copyright (C) 2009--2010 Robert R. Tupelo-Schneck <schneck@gmail.com>
 http://tupelo-schneck.org/its-electric
 
 "it's electric" is free software: you can redistribute it and/or modify
