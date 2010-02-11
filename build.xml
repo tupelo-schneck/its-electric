@@ -66,4 +66,15 @@ If not, see <http://www.gnu.org/licenses/>.
             </classpath>
         </javac>
     </target>
+	
+	<target name="clean">
+	    <delete>
+        	<fileset dir="main">
+        	    <include name="**"/>
+        	</fileset>
+            <fileset dir="build">
+                <include name="**"/>
+            </fileset>
+        </delete>
+    </target>
 </project>
