@@ -156,10 +156,8 @@ public class Main {
             configuration.setTransactional(false);
 //          first one causes out-of-heap problems for me.  The others are probably premature optimization
 //            configuration.setCachePercent(90);
-//            configuration.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false");
-//            configuration.setConfigParam(EnvironmentConfig.ENV_RUN_IN_COMPRESSOR, "false");
+//            configuration.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false"); // already off in no-locking mode
 //            configuration.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
-////            configuration.setConfigParam(EnvironmentConfig.CHECKPOINTER_HIGH_PRIORITY, "true");
             configuration.setAllowCreate(true);
             environment = new Environment(envHome, configuration);
             log.info("Environment opened.");
@@ -332,6 +330,9 @@ public class Main {
             }
         }
         log.trace("Sync complete.");
+        log.trace("Cleaning environment...");
+        int cleaned = environment.cleanLog();
+        log.trace("Cleaned " + cleaned + ".");
     }
 
     public void run() {
