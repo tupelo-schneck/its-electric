@@ -332,7 +332,7 @@ public class Main {
         log.trace("Sync complete.");
         log.trace("Cleaning environment...");
         int cleaned = environment.cleanLog();
-        log.trace("Cleaned " + cleaned + ".");
+        log.trace("Cleaned " + cleaned + " database log files.");
     }
 
     public void run() {
