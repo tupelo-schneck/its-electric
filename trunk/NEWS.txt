@@ -4,7 +4,7 @@ http://tupelo-schneck.org/its-electric
 Version 1.2 2010-02-10
 ======================
 The database environment will now be cleaned and checkpointed on startup.  This may be slow if you have many GB of database needing to be compacted; give it several minutes.
-The database environment will be cleaned as necessary.
+The database environment will be cleaned as necessary during operation.
 New option -u for username to access TED Gateway.  (If a username is specified, "it's electric" will prompt for a password.)
 Can now access TED Gateway over HTTPS.
 
