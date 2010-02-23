@@ -25,7 +25,6 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.PriorityQueue;
-import java.util.TimeZone;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -56,8 +55,6 @@ public class Main {
     public int minimum;
     public volatile int maximum;
     
-    public static final int timeZoneOffset = TimeZone.getDefault().getRawOffset() / 1000;
-
     public int[][] maxForMTU;
 
     // for i > 0, start[i][mtu] is the next entry that database i will get;
@@ -88,7 +85,7 @@ public class Main {
                     sum[i][mtu] = 0;
                     count[i][mtu] = 0;
                     // start at day boundaries, but not dealing with daylight savings time...
-                    start[i][mtu] = ((timestamp+timeZoneOffset)/durations[i])*durations[i] - timeZoneOffset;
+                    start[i][mtu] = ((timestamp+options.timeZoneOffset)/durations[i])*durations[i] - options.timeZoneOffset;
                 }
                 sum[i][mtu] += power;
                 count[i][mtu]++;
@@ -132,7 +129,6 @@ public class Main {
     }
 
     public void setupMTUsAndArrays(byte mtus) {
-        options.mtus = mtus;
         maxForMTU = new int[durations.length][mtus];
         start = new int[durations.length][mtus];
         sum = new int[durations.length][mtus];
@@ -235,7 +231,6 @@ public class Main {
     public void doImport() throws Exception {
         int newMax = Integer.MAX_VALUE;
         for(byte mtu = 0; mtu < options.mtus; mtu++) {
-//            for(byte mtu = (byte)(mtus-1); mtu >= 0; mtu--) {
             int now = (int)(System.currentTimeMillis()/1000);
             int count = now - maxForMTU[0][mtu] - adjustment;
             if(count <= 0) count = 0;

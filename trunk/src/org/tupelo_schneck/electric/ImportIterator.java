@@ -82,6 +82,7 @@ public class ImportIterator implements Iterator<Triple> {
     public void close() {
         closed = true;
         new Thread() {
+            @Override
             public void run() {
                 // things go awry if we just close the reader when it is blocked...
                 if(urlStream!=null) try { urlStream.close(); } catch (Throwable t) { t.printStackTrace(); }

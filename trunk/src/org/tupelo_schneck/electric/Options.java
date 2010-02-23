@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Authenticator;
 import java.net.PasswordAuthentication;
+import java.util.TimeZone;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -45,7 +46,9 @@ public class Options extends org.apache.commons.cli.Options {
             });
         } catch (Exception e) { } 
     }
-    
+
+    public final int timeZoneOffset = TimeZone.getDefault().getRawOffset() / 1000;
+
     public String dbFilename = null;
     public String gatewayURL = "http://TED5000";
     public String username = null;
