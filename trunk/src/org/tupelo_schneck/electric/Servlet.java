@@ -61,7 +61,7 @@ public class Servlet extends DataSourceServlet {
     public TimeSeriesDatabase databaseForRange(int start, int end) {
         int range = end - start;
         for (int i = 0; i < Main.durations.length - 1; i++) {
-            if(Main.durations[i] * main.numDataPoints > range) {
+            if(Main.durations[i] * main.options.numDataPoints > range) {
                 log.debug("Using duration: " + Main.durations[i]); 
                 return main.databases[i];
             }
@@ -75,11 +75,11 @@ public class Servlet extends DataSourceServlet {
         int range = end - start;
         TimeSeriesDatabase fallback = null;
         for (int i = 0; i < Main.durations.length; i++) {
-            if(Main.durations[i]>=res && Main.durations[i] * main.maxDataPoints > range) {
+            if(Main.durations[i]>=res && Main.durations[i] * main.options.maxDataPoints > range) {
                 log.debug("Using duration: " + Main.durations[i]); 
                 return main.databases[i];
             }
-            if(fallback==null && Main.durations[i] * main.numDataPoints > range) {
+            if(fallback==null && Main.durations[i] * main.options.numDataPoints > range) {
                 log.debug("Fallback duration: " + Main.durations[i]); 
                 fallback =  main.databases[i];
             }
@@ -103,7 +103,7 @@ public class Servlet extends DataSourceServlet {
                 Triple triple = iter.next();
                 if (triple.timestamp > lastTime || row==null) {
                     if(row!=null) {
-                        for(int mtu = lastMTU + 1; mtu < main.mtus; mtu++) {
+                        for(int mtu = lastMTU + 1; mtu < main.options.mtus; mtu++) {
                             row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
                         }
                         data.addRow(row);
@@ -122,7 +122,7 @@ public class Servlet extends DataSourceServlet {
                 lastMTU = triple.mtu;
             }
             if(row!=null) {
-                for(int mtu = lastMTU + 1; mtu < main.mtus; mtu++) {
+                for(int mtu = lastMTU + 1; mtu < main.options.mtus; mtu++) {
                     row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
                 }
                 data.addRow(row);
@@ -157,7 +157,7 @@ public class Servlet extends DataSourceServlet {
         DataTable data = new DataTable();
         ArrayList<ColumnDescription> cd = new ArrayList<ColumnDescription>();
         cd.add(new ColumnDescription("Date", ValueType.DATETIME, "Date"));
-        for(int mtu = 0; mtu < main.mtus; mtu++) {
+        for(int mtu = 0; mtu < main.options.mtus; mtu++) {
             String label = "MTU" + (mtu+1);
             cd.add(new ColumnDescription(label, ValueType.NUMBER, label));        
         }
@@ -204,14 +204,14 @@ public class Servlet extends DataSourceServlet {
 
     public static void startServlet(Main main) throws Exception {
         HandlerCollection handlers = new HandlerCollection();
-        if(main.serverLogFilename!=null) {
+        if(main.options.serverLogFilename!=null) {
             RequestLogHandler requestLogHandler = new RequestLogHandler();
             NCSARequestLog requestLog;
-            if("stderr".equals(main.serverLogFilename)) {
+            if("stderr".equals(main.options.serverLogFilename)) {
                 requestLog = new NCSARequestLog();
             }
             else {
-                requestLog = new NCSARequestLog(main.serverLogFilename);
+                requestLog = new NCSARequestLog(main.options.serverLogFilename);
             }
             //requestLog.setRetainDays(90);
             requestLog.setAppend(true);
@@ -224,7 +224,7 @@ public class Servlet extends DataSourceServlet {
         ServletContextHandler root = new ServletContextHandler(handlers, "/", ServletContextHandler.NO_SESSIONS|ServletContextHandler.NO_SECURITY);
         root.addServlet(new ServletHolder(new Servlet(main)), "/*");
         
-        Server server = new Server(main.port);
+        Server server = new Server(main.options.port);
         server.setHandler(handlers);
         server.start();
     }

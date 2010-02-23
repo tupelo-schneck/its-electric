@@ -46,6 +46,18 @@ public class Options extends org.apache.commons.cli.Options {
         } catch (Exception e) { } 
     }
     
+    public String dbFilename = null;
+    public String gatewayURL = "http://TED5000";
+    public String username = null;
+    public String password = null;
+    public String serverLogFilename;
+    public byte mtus = 1;
+    public int importOverlap = 30;
+    public int importInterval = 15; // seconds
+    public int numDataPoints = 1000;
+    public int maxDataPoints = 5000;
+    public int port = 8081;
+
     public Options() {
         this.addOption("p","port",true,"port served by datasource server (default 8081)");
         this.addOption("m","mtus",true,"number of MTUs (default 1)");
@@ -60,7 +72,7 @@ public class Options extends org.apache.commons.cli.Options {
     }
 
     /** Returns true if program should continue */
-    public boolean parseOptions(final Main main, String[] args) throws IOException {
+    public boolean parseOptions(String[] args) throws IOException {
         // create the parser
         CommandLineParser parser = new GnuParser();
         CommandLine cmd = null;
@@ -77,8 +89,8 @@ public class Options extends org.apache.commons.cli.Options {
 
         if(cmd!=null && cmd.hasOption("m")) {
             try {
-                main.mtus = Byte.parseByte(cmd.getOptionValue("m"));
-                if(main.mtus<=0 || main.mtus >4) showUsageAndExit = true;
+                mtus = Byte.parseByte(cmd.getOptionValue("m"));
+                if(mtus<=0 || mtus >4) showUsageAndExit = true;
             }
             catch(NumberFormatException e) {
                 showUsageAndExit = true;
@@ -86,23 +98,23 @@ public class Options extends org.apache.commons.cli.Options {
         }
         if(cmd!=null && cmd.hasOption("p")) {
             try {
-                main.port = Integer.parseInt(cmd.getOptionValue("p"));
-                if(main.port<=0) showUsageAndExit = true;
+                port = Integer.parseInt(cmd.getOptionValue("p"));
+                if(port<=0) showUsageAndExit = true;
             }
             catch(NumberFormatException e) {
                 showUsageAndExit = true;
             }            
         }
         if(cmd!=null && cmd.hasOption("g")) {
-            main.gatewayURL = cmd.getOptionValue("g");
+            gatewayURL = cmd.getOptionValue("g");
         }
         if(cmd!=null && cmd.hasOption("u")) {
-            main.username = cmd.getOptionValue("u");
+            username = cmd.getOptionValue("u");
         }
         if(cmd!=null && cmd.hasOption("n")) {
             try {
-                main.numDataPoints = Integer.parseInt(cmd.getOptionValue("n"));
-                if(main.numDataPoints<=0) showUsageAndExit = true;
+                numDataPoints = Integer.parseInt(cmd.getOptionValue("n"));
+                if(numDataPoints<=0) showUsageAndExit = true;
             }
             catch(NumberFormatException e) {
                 showUsageAndExit = true;
@@ -110,8 +122,8 @@ public class Options extends org.apache.commons.cli.Options {
         }
         if(cmd!=null && cmd.hasOption("x")) {
             try {
-                main.maxDataPoints = Integer.parseInt(cmd.getOptionValue("x"));
-                if(main.maxDataPoints<=0) showUsageAndExit = true;
+                maxDataPoints = Integer.parseInt(cmd.getOptionValue("x"));
+                if(maxDataPoints<=0) showUsageAndExit = true;
             }
             catch(NumberFormatException e) {
                 showUsageAndExit = true;
@@ -119,8 +131,8 @@ public class Options extends org.apache.commons.cli.Options {
         }
         if(cmd!=null && cmd.hasOption("i")) {
             try {
-                main.importInterval = Integer.parseInt(cmd.getOptionValue("i"));
-                if(main.importInterval<=0) showUsageAndExit = true;
+                importInterval = Integer.parseInt(cmd.getOptionValue("i"));
+                if(importInterval<=0) showUsageAndExit = true;
             }
             catch(NumberFormatException e) {
                 showUsageAndExit = true;
@@ -128,22 +140,22 @@ public class Options extends org.apache.commons.cli.Options {
         }
         if(cmd!=null && cmd.hasOption("o")) {
             try {
-                main.importOverlap = Integer.parseInt(cmd.getOptionValue("o"));
-                if(main.importOverlap<0) showUsageAndExit = true;
+                importOverlap = Integer.parseInt(cmd.getOptionValue("o"));
+                if(importOverlap<0) showUsageAndExit = true;
             }
             catch(NumberFormatException e) {
                 showUsageAndExit = true;
             }            
         }
         if(cmd!=null && cmd.hasOption("l")) {
-            main.serverLogFilename = cmd.getOptionValue("l");
+            serverLogFilename = cmd.getOptionValue("l");
         }
         if(cmd!=null && cmd.hasOption("h")) {
             showUsageAndExit = true;
         }
         
         if(cmd!=null && cmd.getArgs().length==1) {
-            main.dbFilename = cmd.getArgs()[0];
+            dbFilename = cmd.getArgs()[0];
         }
         else {
             showUsageAndExit = true;
@@ -158,14 +170,14 @@ public class Options extends org.apache.commons.cli.Options {
             return false;
         }
         else {
-            if(main.username!=null) {
-                System.err.print("Please enter password for username '" + main.username + "': ");
+            if(username!=null) {
+                System.err.print("Please enter password for username '" + username + "': ");
                 BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-                main.password = reader.readLine();
+                password = reader.readLine();
                 Authenticator.setDefault(new Authenticator() {
                     @Override
                     protected PasswordAuthentication getPasswordAuthentication() {
-                        return new PasswordAuthentication(main.username, main.password.toCharArray());
+                        return new PasswordAuthentication(username, password.toCharArray());
                     }
                 });
             }

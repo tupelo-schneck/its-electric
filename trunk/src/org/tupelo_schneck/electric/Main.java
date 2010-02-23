@@ -49,18 +49,8 @@ public class Main {
     public Environment environment;
     public TimeSeriesDatabase[] databases = new TimeSeriesDatabase[durations.length];
 
-    public String dbFilename = null;
-    public String gatewayURL = "http://TED5000";
-    public String username = null;
-    public String password = null;
-    public String serverLogFilename;
-    public byte mtus = 1;
-    public int importOverlap = 30;
-    public int importInterval = 15; // seconds
-    public int numDataPoints = 1000;
-    public int maxDataPoints = 5000;
-    public int port = 8081;
-
+    public Options options = new Options();
+    
     public int adjustment; // system time minus gateway time
     
     public int minimum;
@@ -142,7 +132,7 @@ public class Main {
     }
 
     public void setupMTUsAndArrays(byte mtus) {
-        this.mtus = mtus;
+        options.mtus = mtus;
         maxForMTU = new int[durations.length][mtus];
         start = new int[durations.length][mtus];
         sum = new int[durations.length][mtus];
@@ -155,9 +145,9 @@ public class Main {
 
     public void openDatabases() throws DatabaseException {
         for(int i = 0; i < durations.length; i++) {
-            databases[i] = new TimeSeriesDatabase(environment, String.valueOf(durations[i]), mtus, durations[i], durationStrings[i]);
+            databases[i] = new TimeSeriesDatabase(environment, String.valueOf(durations[i]), options.mtus, durations[i], durationStrings[i]);
             log.info("Database " + i + " opened");
-            for(byte mtu = 0; mtu < mtus; mtu++) {
+            for(byte mtu = 0; mtu < options.mtus; mtu++) {
                 start[i][mtu] = databases[i].maxForMTU(mtu) + durations[i];
                 maxForMTU[i][mtu] = start[i][mtu] - 1;
                 log.info("   starting at " + start[i][mtu] + " for MTU " + mtu);
@@ -166,7 +156,7 @@ public class Main {
         minimum = databases[0].minimum();
         log.info("Minimum is " + minimum);
         int newMax = Integer.MAX_VALUE;
-        for(byte mtu = 0; mtu < mtus; mtu++) {
+        for(byte mtu = 0; mtu < options.mtus; mtu++) {
             if(maxForMTU[0][mtu] < newMax) newMax = maxForMTU[0][mtu];
         }
         maximum = newMax;
@@ -190,10 +180,10 @@ public class Main {
     }
 
     public void catchup() {
-        int[] caughtUpTo = new int[mtus];
+        int[] caughtUpTo = new int[options.mtus];
         Arrays.fill(caughtUpTo, Integer.MAX_VALUE);
         for (int i = 1; i < durations.length; i++) {
-            for(byte mtu = 0; mtu < mtus; mtu++) {
+            for(byte mtu = 0; mtu < options.mtus; mtu++) {
                 if(start[i][mtu] - 1 < caughtUpTo[mtu]) {
                     caughtUpTo[mtu] = start[i][mtu] - 1;
                 }
@@ -202,7 +192,7 @@ public class Main {
         try {
             // find starting place
             int catchupStart = Integer.MAX_VALUE;
-            for(byte mtu = 0; mtu < mtus; mtu++) {
+            for(byte mtu = 0; mtu < options.mtus; mtu++) {
                 if(caughtUpTo[mtu] + 1 < catchupStart) {
                     catchupStart = caughtUpTo[mtu] + 1;
                 }
@@ -232,7 +222,7 @@ public class Main {
     public void findInitialAdjustment() throws Exception {
         int now = (int)(System.currentTimeMillis()/1000);
         log.trace("Importing 10 seconds for MTU 0 for initial adjustment");
-        Iterator<Triple> iter = new ImportIterator(gatewayURL, (byte)0, 10);
+        Iterator<Triple> iter = new ImportIterator(options.gatewayURL, (byte)0, 10);
         int max = 0;
         while(iter.hasNext()) {
             int ts = iter.next().timestamp;
@@ -244,15 +234,15 @@ public class Main {
     
     public void doImport() throws Exception {
         int newMax = Integer.MAX_VALUE;
-        for(byte mtu = 0; mtu < mtus; mtu++) {
+        for(byte mtu = 0; mtu < options.mtus; mtu++) {
 //            for(byte mtu = (byte)(mtus-1); mtu >= 0; mtu--) {
             int now = (int)(System.currentTimeMillis()/1000);
             int count = now - maxForMTU[0][mtu] - adjustment;
             if(count <= 0) count = 0;
-            count = count + importOverlap;
+            count = count + options.importOverlap;
             if(count > 3600) count = 3600;
             log.trace("Importing " + count + " seconds for MTU " + mtu);
-            Iterator<Triple> iter = new ImportIterator(gatewayURL, mtu, count);
+            Iterator<Triple> iter = new ImportIterator(options.gatewayURL, mtu, count);
             log.trace("Receiving...");
             PriorityQueue<Triple> reversedTriples = new PriorityQueue<Triple>(count,Triple.COMPARATOR);
             for(int i = 0; i < count && iter.hasNext(); i++) {
@@ -306,7 +296,7 @@ public class Main {
         while(true) {
             try {
                 doImport();
-                Thread.sleep(importInterval*1000);
+                Thread.sleep(options.importInterval*1000);
             }
             catch(InterruptedException e) {
                 close();
@@ -321,9 +311,9 @@ public class Main {
     public static final void main(String[] args) throws Exception {
         final Main main = new Main();
         
-        if(new Options().parseOptions(main,args)) {
-            main.setupMTUsAndArrays(main.mtus); 
-            File dbFile = new File(main.dbFilename);
+        if(main.options.parseOptions(args)) {
+            main.setupMTUsAndArrays(main.options.mtus); 
+            File dbFile = new File(main.options.dbFilename);
             dbFile.mkdirs();
             main.openEnvironment(dbFile);
             main.openDatabases();
