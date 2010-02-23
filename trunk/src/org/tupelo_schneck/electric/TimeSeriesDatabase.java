@@ -35,7 +35,6 @@ import com.sleepycat.je.OperationStatus;
 
 public class TimeSeriesDatabase {
     Database database;
-    Cursor writeCursor;
     int resolution;
     String resolutionString;
 
@@ -89,47 +88,29 @@ public class TimeSeriesDatabase {
 
     }
     
-    // writing reuses the same key and data---does this actually save memory?
-    private byte[] keyBuf = new byte[5];
-    private byte[] dataBuf = new byte[4];
-    private DatabaseEntry key = new DatabaseEntry();
-    private DatabaseEntry data = new DatabaseEntry();
-
-    private DatabaseEntry _keyEntry(DatabaseEntry entry, byte[] buf, int timestamp, byte mtu) {
+    private DatabaseEntry keyEntry(int timestamp, byte mtu) {
+        byte[] buf = new byte[5];
         buf[0] = (byte) ((timestamp >> 24) & 0xFF);
         buf[1] = (byte) ((timestamp >> 16) & 0xFF);
         buf[2] = (byte) ((timestamp >> 8) & 0xFF);
         buf[3] = (byte) (timestamp & 0xFF);
         buf[4] = mtu;
-        entry.setData(buf);
-        return entry;
-    }
-
-    private DatabaseEntry reusedKeyEntry(int timestamp, byte mtu) {
-        return _keyEntry(key,keyBuf,timestamp,mtu);
-    }
-
-    private DatabaseEntry newKeyEntry(int timestamp, byte mtu) {
-        return _keyEntry(new DatabaseEntry(),new byte[5],timestamp,mtu);
+        return new DatabaseEntry(buf);
     }
     
-    private DatabaseEntry _dataEntry(DatabaseEntry entry, byte[] buf, int power) {
-        buf[0] = (byte) ((power >> 24) & 0xFF);
-        buf[1] = (byte) ((power >> 16) & 0xFF);
-        buf[2] = (byte) ((power >> 8) & 0xFF);
-        buf[3] = (byte) (power & 0xFF);
+    private DatabaseEntry dataEntry(int power) {
         int size;
         if(power==0) size = 0;
         else if(power<=127 && power>=-128) size = 1;
         else if(power<=32767 && power>=-32768) size = 2;
         else if(power<=8388607 && power>=-8388608) size = 3;
         else size = 4;
-        entry.setData(buf,4-size,size);
-        return entry;
-    }
-
-    private DatabaseEntry reusedDataEntry(int power) {
-        return _dataEntry(data,dataBuf,power);
+        byte[] buf = new byte[4];
+        buf[0] = (byte) ((power >> 24) & 0xFF);
+        buf[1] = (byte) ((power >> 16) & 0xFF);
+        buf[2] = (byte) ((power >> 8) & 0xFF);
+        buf[3] = (byte) (power & 0xFF);
+        return new DatabaseEntry(buf,4-size,size);
     }
 
     public TimeSeriesDatabase(Environment environment, String name, byte mtus, int resolution, String resolutionString) {
@@ -137,7 +118,6 @@ public class TimeSeriesDatabase {
             this.resolution = resolution;
             this.resolutionString = resolutionString;
             database = environment.openDatabase(null, name, DEFERRED_WRITE_CONFIG);
-            writeCursor = database.openCursor(null, CursorConfig.READ_UNCOMMITTED);
         }
         catch(Throwable e) {
             e.printStackTrace();
@@ -151,14 +131,6 @@ public class TimeSeriesDatabase {
     }
 
     public void close() {
-        if(writeCursor!=null) {
-            try {
-                writeCursor.close();
-            }
-            catch(Throwable e) {
-                e.printStackTrace();
-            }
-        }
         if(database!=null) {
             try {
                 database.close();
@@ -171,7 +143,7 @@ public class TimeSeriesDatabase {
 
     public void put(int timestamp, byte mtu, int power) throws DatabaseException {
         OperationStatus status;
-        status = writeCursor.put(reusedKeyEntry(timestamp, mtu), reusedDataEntry(power));
+        status = database.put(null,keyEntry(timestamp, mtu), dataEntry(power));
         if(status!=OperationStatus.SUCCESS) {
             throw new DatabaseException("Unexpected status " + status);
         }
@@ -180,9 +152,10 @@ public class TimeSeriesDatabase {
     public int maxForMTU(byte mtu) throws DatabaseException {
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
-        Cursor cursor = database.openCursor(null, CursorConfig.READ_UNCOMMITTED);
-        OperationStatus status = cursor.getLast(key, data, LockMode.READ_UNCOMMITTED);
+        Cursor cursor = null;
         try {
+            cursor = database.openCursor(null, CursorConfig.READ_UNCOMMITTED);
+            OperationStatus status = cursor.getLast(key, data, LockMode.READ_UNCOMMITTED);
             while(status == OperationStatus.SUCCESS) {
                 byte[] buf = key.getData();
                 if(buf[4]==mtu) {
@@ -193,10 +166,7 @@ public class TimeSeriesDatabase {
             return 0;
         }
         finally {
-            try {
-                cursor.close();
-            }
-            catch (Throwable t) {}
+            if(cursor!=null) try { cursor.close(); } catch (Throwable t) {}
         }
     }
 
@@ -228,7 +198,7 @@ public class TimeSeriesDatabase {
             if(end<0 || end>=start) {
                 this.end = end;
                 readCursor = database.openCursor(null, CursorConfig.READ_UNCOMMITTED);
-                key = newKeyEntry(start,(byte)0);
+                key = keyEntry(start,(byte)0);
                 data = new DatabaseEntry();
                 status = readCursor.getSearchKeyRange(key, data, LockMode.READ_UNCOMMITTED);
                 closeIfNeeded();

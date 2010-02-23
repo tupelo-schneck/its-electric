@@ -93,8 +93,8 @@ public class Main {
     public TimeSeriesDatabase[] databases = new TimeSeriesDatabase[durations.length];
 
     public String gatewayURL = "http://TED5000";
-    public String username = "";
-    public String password = "";
+    public String username = null;
+    public String password = null;
     public String serverLogFilename;
     public byte mtus = 1;
     public int importOverlap = 30;
@@ -412,9 +412,6 @@ public class Main {
         }
         if(cmd!=null && cmd.hasOption("u")) {
             main.username = cmd.getOptionValue("u");
-            System.err.print("Please enter password for username '" + main.username + "': ");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            main.password = reader.readLine();
         }
         if(cmd!=null && cmd.hasOption("n")) {
             try {
@@ -475,12 +472,17 @@ public class Main {
                     "\nThe specified database-directory (REQUIRED) is the location of the database.");
         }
         else {
-            Authenticator.setDefault(new Authenticator() {
-                @Override
-                protected PasswordAuthentication getPasswordAuthentication() {
-                    return new PasswordAuthentication(main.username, main.password.toCharArray());
-                }
-            });
+            if(main.username!=null) {
+                System.err.print("Please enter password for username '" + main.username + "': ");
+                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+                main.password = reader.readLine();
+                Authenticator.setDefault(new Authenticator() {
+                    @Override
+                    protected PasswordAuthentication getPasswordAuthentication() {
+                        return new PasswordAuthentication(main.username, main.password.toCharArray());
+                    }
+                });
+            }
             
             main.setupMTUsAndArrays(main.mtus); 
             File dbFile = new File(dbFilename);
