@@ -111,7 +111,7 @@ public class Servlet extends DataSourceServlet {
                     row = new TableRow();
                     lastTime = triple.timestamp;
                     // note have to add in the time zone offset
-                    cal.setTimeInMillis((long)(triple.timestamp + Main.timeZoneOffset) * 1000);
+                    cal.setTimeInMillis((long)(triple.timestamp + main.options.timeZoneOffset) * 1000);
                     row.addCell(new DateTimeValue(cal));
                     lastMTU = -1;
                 }
@@ -193,7 +193,7 @@ public class Servlet extends DataSourceServlet {
         }
 
         // send time zone info so that client can adjust (Annotated Time Line bug)
-        data.setCustomProperty(TIME_ZONE_OFFSET, String.valueOf(Main.timeZoneOffset));
+        data.setCustomProperty(TIME_ZONE_OFFSET, String.valueOf(main.options.timeZoneOffset));
         return data;
     }
 
