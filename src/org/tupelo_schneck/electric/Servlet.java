@@ -101,7 +101,7 @@ public class Servlet extends DataSourceServlet {
             TableRow row = null;
             while(iter.hasNext()) {
                 Triple triple = iter.next();
-                if (triple.timestamp > lastTime) {
+                if (triple.timestamp > lastTime || row==null) {
                     if(row!=null) {
                         for(int mtu = lastMTU + 1; mtu < main.mtus; mtu++) {
                             row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
