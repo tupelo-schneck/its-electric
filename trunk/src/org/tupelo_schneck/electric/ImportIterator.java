@@ -27,68 +27,43 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PushbackReader;
 import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Iterator;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public class ImportIterator implements Iterator<Triple> {
     static final DateFormat tedDateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
-
-    // lazy coder's non-blocking IO.  I was finding that the importer would sometimes hang 
-    // on read()---the TED5000 was neither closing the connection nor sending more bytes,
-    // indefinitely?  So I put time limits on all IO using java.concurrent stuff.
-    ExecutorService executor = Executors.newSingleThreadExecutor();
 
     InputStream urlStream;
     PushbackReader reader;
     byte mtu;
     volatile boolean closed;
 
-    public ImportIterator(final String gatewayURL, final byte mtu, final int count) throws Exception {
+    public ImportIterator(final String gatewayURL, final byte mtu, final int count) throws IOException {
         this.mtu = mtu;
-        Future<?> future = executor.submit(new Callable<Object>(){
-            @Override
-            public Object call() throws Exception {
-                URL url;
-                try {
-                    url = new URL(gatewayURL+"/history/secondhistory.xml?INDEX=0&MTU="+mtu+"&COUNT="+count);
-                }
-                catch (MalformedURLException e) {
-                    throw new RuntimeException(e);
-                }
-                urlStream = url.openStream();
-                reader = new PushbackReader(new BufferedReader(new InputStreamReader(urlStream)),10);
-                skipAhead();
-                return null;
-            }
-        });
+        URL url;
         try {
-            future.get(60,TimeUnit.SECONDS);
+            url = new URL(gatewayURL+"/history/secondhistory.xml?INDEX=0&MTU="+mtu+"&COUNT="+count);
         }
-        catch(TimeoutException e) {
-            future.cancel(true);
-            close();
+        catch (MalformedURLException e) {
+            throw new RuntimeException(e);
         }
-
+        URLConnection urlConnection = url.openConnection();
+        urlConnection.setConnectTimeout(60000);
+        urlConnection.setReadTimeout(500);
+        urlConnection.connect();
+        urlStream = urlConnection.getInputStream();
+        reader = new PushbackReader(new BufferedReader(new InputStreamReader(urlStream)),10);
+        skipAhead();
     }
 
     public void close() {
         closed = true;
-        new Thread() {
-            @Override
-            public void run() {
-                // things go awry if we just close the reader when it is blocked...
-                if(urlStream!=null) try { urlStream.close(); } catch (Throwable t) { t.printStackTrace(); }
-                if(reader!=null) try { reader.close(); } catch (Throwable t) { t.printStackTrace(); }
-            }
-        }.start();
+        if(urlStream!=null) try { urlStream.close(); } catch (Throwable t) { t.printStackTrace(); }
+        if(reader!=null) try { reader.close(); } catch (Throwable t) { t.printStackTrace(); }
     }
 
     boolean eof() throws IOException {
@@ -160,22 +135,13 @@ public class ImportIterator implements Iterator<Triple> {
         if(closed) return false;
         boolean res;
         try {
-            Future<Boolean> future = executor.submit(new Callable<Boolean>() {
-                @Override
-                public Boolean call() throws Exception {
-                    skipAhead();
-                    return !eof();
-                }
-            });
-            try {
-                res = future.get(500,TimeUnit.MILLISECONDS);
-            }
-            catch(TimeoutException e) {
-                future.cancel(true);
-                res = false;
-            }
+            skipAhead();
+            res = !eof();
         }
-        catch(Exception e) {
+        catch(SocketTimeoutException e) {
+            res = false;
+        }
+        catch(IOException e) {
             e.printStackTrace();
             res = false;
         }
@@ -187,33 +153,22 @@ public class ImportIterator implements Iterator<Triple> {
     @Override
     public Triple next() {
         if(closed) return null;
-        final Triple res = new Triple();
         try {
-            Future<?> future = executor.submit(new Callable<Object>() {
-                @Override
-                public Object call() throws Exception {
-                    skipAhead();
-                    String dateString = nextString();
-                    skipAhead();
-                    res.power = Integer.valueOf(nextString());
-                    res.mtu = mtu;
-                    res.timestamp = (int)(ImportIterator.tedDateFormat.parse(dateString).getTime()/1000);
-                    return null;
-                } 
-            });
-            try {
-                future.get(500,TimeUnit.MILLISECONDS);
-            }
-            catch(TimeoutException e) {
-                future.cancel(true);
-                close();
-                return null;
-            }
+            Triple res = new Triple();
+            skipAhead();
+            String dateString = nextString();
+            skipAhead();
+            res.power = Integer.valueOf(nextString());
+            res.mtu = mtu;
+            res.timestamp = (int)(ImportIterator.tedDateFormat.parse(dateString).getTime()/1000);
+            return res;
+        }
+        catch(SocketTimeoutException e) {
+            close();
+            return null;
         }
         catch(Exception e) {
             throw new RuntimeException(e);
         }
-
-        return res;
     }
 }
