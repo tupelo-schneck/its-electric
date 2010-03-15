@@ -85,7 +85,7 @@ public class Main {
                     sum[i][mtu] = 0;
                     count[i][mtu] = 0;
                     // start at day boundaries, but not dealing with daylight savings time...
-                    start[i][mtu] = ((timestamp+options.timeZoneOffset)/durations[i])*durations[i] - options.timeZoneOffset;
+                    start[i][mtu] = ((timestamp+options.timeZoneRawOffset)/durations[i])*durations[i] - options.timeZoneRawOffset;
                 }
                 sum[i][mtu] += power;
                 count[i][mtu]++;
