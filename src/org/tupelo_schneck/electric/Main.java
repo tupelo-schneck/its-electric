@@ -99,10 +99,8 @@ public class Main {
             EnvironmentConfig configuration = new EnvironmentConfig();
             configuration.setLocking(false);
             configuration.setTransactional(false);
-//          first one causes out-of-heap problems for me.  The others are probably premature optimization
-//            configuration.setCachePercent(90);
-//            configuration.setConfigParam(EnvironmentConfig.ENV_RUN_CLEANER, "false"); // already off in no-locking mode
-//            configuration.setConfigParam(EnvironmentConfig.ENV_RUN_CHECKPOINTER, "false");
+            // this seems to help with memory issues
+            configuration.setCachePercent(40); 
             configuration.setAllowCreate(true);
             environment = new Environment(envHome, configuration);
             log.info("Environment opened.");
@@ -276,6 +274,13 @@ public class Main {
         log.trace("Cleaning environment...");
         int cleaned = environment.cleanLog();
         log.trace("Cleaned " + cleaned + " database log files.");
+//        if (cleaned>0) {
+//            CheckpointConfig force = new CheckpointConfig();
+//            force.setForce(true);
+//            environment.checkpoint(force);
+//            log.info("Environment checkpointed.");
+//        }
+//        System.gc();
     }
 
     public void run() {
