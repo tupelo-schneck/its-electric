@@ -47,7 +47,8 @@ public class Options extends org.apache.commons.cli.Options {
         } catch (Exception e) { } 
     }
 
-    public final int timeZoneOffset = TimeZone.getDefault().getRawOffset() / 1000;
+    public final TimeZone timeZone = TimeZone.getDefault();
+    public final int timeZoneRawOffset = timeZone.getRawOffset() / 1000;
 
     public String dbFilename = null;
     public String gatewayURL = "http://TED5000";
