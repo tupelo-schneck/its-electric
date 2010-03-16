@@ -90,8 +90,7 @@ ItsElectric.prototype.requery = function() {
     var queryURL = this.url;
     var extendChar = '?';
     if(this.ready) {
-        this.range = this.annotatedtimeline.getVisibleChartRange();
-        if(this.range.start.getTime() != this.minimum || this.range.end.getTime() != this.maximum) {
+        if(this.range && (this.range.start.getTime() != this.minimum || this.range.end.getTime() != this.maximum)) {
             queryURL = queryURL + extendChar +
                        'start='+ Math.floor(this.range.start.getTime()/1000) +
                        '&end=' + Math.floor(this.range.end.getTime()/1000);
@@ -211,6 +210,7 @@ ItsElectric.prototype.zoom = function(t) {
     this.resolution = null;
     var newStart = new Date();
     newStart.setTime(this.range.end.getTime() - t*1000);
+    this.range.start.setTime(this.range.end.getTime() - t*1000);
     if(newStart.getTime()<this.minimum) newStart.setTime(this.minimum);
     var newEnd = new Date();
     newEnd.setTime(this.range.end.getTime());
@@ -227,7 +227,9 @@ ItsElectric.prototype.scrollToPresent = function() {
     var newStart = new Date();
     var newEnd = new Date();
     newEnd.setTime(this.maximum);
+    this.range.end.setTime(this.maximum);
     newStart.setTime(this.maximum - size);
+    this.range.start.setTime(this.maximum - size);
     this.annotatedtimeline.setVisibleChartRange(newStart,newEnd);
     var self = this;
     setTimeout(function(){self.requery();},500);
