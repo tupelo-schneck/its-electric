@@ -19,9 +19,10 @@ along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
 */
 
-function ItsElectric(url,timelineId,busyId,getWMax,resolutionId) {
+function ItsElectric(url,timelineId,busyId,getWMax,resolutionId,initialZoom,realTimeUpdateInterval) {
     this.url = url;
     this.timelineId = timelineId;
+    this.initialZoom = initialZoom;
     this.busyId = busyId;
     this.getWMax = getWMax;
     this.resolutionId = resolutionId;
@@ -43,7 +44,7 @@ function ItsElectric(url,timelineId,busyId,getWMax,resolutionId) {
                                 // accessing a file: URL without privileges
 
     var self = this;
-    setInterval(function(){self.realTimeUpdate();},60000);
+    setInterval(function(){self.realTimeUpdate();},realTimeUpdateInterval);
 }
 
 ItsElectric.prototype.init = function() {
@@ -88,48 +89,51 @@ ItsElectric.prototype.requery = function() {
     var query;
     var queryURL = this.url;
     var extendChar = '?';
-    if(this.range!==null) {
-        if(this.range.start.getTime() == this.minimum && this.range.end.getTime() == this.maximum) {
-            this.range = null;
-        }
-        else {
+    if(this.ready) {
+        this.range = this.annotatedtimeline.getVisibleChartRange();
+        if(this.range.start.getTime() != this.minimum || this.range.end.getTime() != this.maximum) {
             queryURL = queryURL + extendChar +
                        'start='+ Math.floor(this.range.start.getTime()/1000) +
                        '&end=' + Math.floor(this.range.end.getTime()/1000);
             extendChar = '&';
         }
     }
-    if(this.resolution!==null) {
+    if(this.resolution) {
         queryURL = queryURL + extendChar +
                    'resolution=' + this.resolution;
         extendChar = '&';
     }
     query = new google.visualization.Query(queryURL);
-    if(this.busyId!==null) document.getElementById(this.busyId).style.display="";
+    if(this.busyId) document.getElementById(this.busyId).style.display="";
     var self = this;
     query.send(function(response) {self.handleQueryResponse(response);});
 };
 
+ItsElectric.prototype.options = {displayAnnotations: false, displayExactValues: true,
+                   allValuesSuffix: 'W'};
+
 ItsElectric.prototype.handleQueryResponse = function(response) {
     if (response.isError()) {
-        if(this.busyId!==null) document.getElementById(this.busyId).style.display="none";
+        if(this.busyId) document.getElementById(this.busyId).style.display="none";
         alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
         return;
     }
 
-    var realTimeNeedsAdjust = this.realTime && this.range!==null && this.range.end.getTime() == this.maximum;
+    var realTimeNeedsAdjust = this.realTime && this.range && this.range.end.getTime() == this.maximum;
 
     var data = response.getDataTable();
     this.minimum = data.getValue(0,0).getTime();
     this.maximum = data.getValue(data.getNumberOfRows()-1,0).getTime();
     this.timeZoneOffset = parseInt(data.getTableProperty('timeZoneOffset'));
     var wmax = null;
-    if(this.getWMax!==null) wmax = this.getWMax();
-    var options = {displayAnnotations: false, displayExactValues: true,
-                   allValuesSuffix: 'W'};
-    var start = this.minimum;
-    var end = this.maximum;
-    if(this.range!==null) {
+    if(this.getWMax) wmax = this.getWMax();
+    var options = {};
+    for(p in this.options) options[p] = this.options[p];
+    var startDate = new Date();
+    var endDate = new Date();
+    var start;
+    var end;
+    if(this.range) {
         if(realTimeNeedsAdjust) {
             start = this.maximum - (this.range.end.getTime() - this.range.start.getTime());
             end = this.maximum;
@@ -141,13 +145,15 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
             end = this.range.end.getTime();
         }
     }
-    var startDate = new Date();
-    startDate.setTime(start + this.timeZoneOffset*1000);
-    var endDate = new Date();
-    endDate.setTime(end + this.timeZoneOffset*1000);
+    else {
+        start = this.minimum;
+        end = this.maximum;
+    }
+    setDateAdjusted(startDate,start);
+    setDateAdjusted(endDate,end);
     options.zoomStartTime = startDate;
     options.zoomEndTime = endDate;
-    if(wmax!==null && wmax!='') {
+    if(wmax && wmax!='') {
         options.max = wmax;
     }
     this.annotatedtimeline2.draw(data, options);
@@ -156,9 +162,17 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     if(this.noFlashEvents) this.readyHandler(null);
 };
 
+// this horribleness makes things behave close to daylight saving time change
+function setDateAdjusted(date,time) {
+    date.setTime(time);
+    date.setTime(time - date.getTimezoneOffset()*60000);
+    // yes, again, in case we are close to DST
+    date.setTime(time - date.getTimezoneOffset()*60000);
+}
+
 ItsElectric.prototype.readyHandler = function(e) {
-    if(this.busyId!==null) document.getElementById(this.busyId).style.display="none";
-    if(this.resolutionId!==null) {
+    if(this.busyId) document.getElementById(this.busyId).style.display="none";
+    if(this.resolutionId) {
         var obj = document.getElementById(this.resolutionId);
         while(obj.firstChild) obj.removeChild(obj.firstChild);
         obj.appendChild(document.createTextNode(this.resolutionString));
@@ -174,13 +188,13 @@ ItsElectric.prototype.readyHandler = function(e) {
 
     if(this.firstTime && !this.noFlashEvents) {
         this.firstTime = false;
-        this.zoom(4*60*60);
+        this.zoom(this.initialZoom);
     }
 };
 
 ItsElectric.prototype.rangeChangeHandler = function(e) {
     var oldRange = 0;
-    if(this.range !== null) {
+    if(this.range) {
         oldRange = this.range.end.getTime() - this.range.start.getTime();
     }
     this.range = this.annotatedtimeline.getVisibleChartRange();
@@ -200,7 +214,6 @@ ItsElectric.prototype.zoom = function(t) {
     if(newStart.getTime()<this.minimum) newStart.setTime(this.minimum);
     var newEnd = new Date();
     newEnd.setTime(this.range.end.getTime());
-    this.range.start.setTime(newStart.getTime());
     this.annotatedtimeline.setVisibleChartRange(newStart,newEnd);
     var self = this;
     setTimeout(function(){self.requery();},500);
@@ -211,9 +224,11 @@ ItsElectric.prototype.scrollToPresent = function() {
     if(!this.ready || this.noFlashEvents) return;
     this.range = this.annotatedtimeline.getVisibleChartRange();
     var size = this.range.end.getTime() - this.range.start.getTime();
-    this.range.end.setTime(this.maximum - this.timeZoneOffset*1000);
-    this.range.start.setTime(this.maximum - this.timeZoneOffset*1000 - size);
-    this.annotatedtimeline.setVisibleChartRange(this.range.start,this.range.end);
+    var newStart = new Date();
+    var newEnd = new Date();
+    newEnd.setTime(this.maximum);
+    newStart.setTime(this.maximum - size);
+    this.annotatedtimeline.setVisibleChartRange(newStart,newEnd);
     var self = this;
     setTimeout(function(){self.requery();},500);
 };
@@ -226,6 +241,6 @@ ItsElectric.prototype.setResolution = function(t) {
 
 ItsElectric.prototype.realTimeUpdate = function() {
     if(!this.ready || !this.realTime || this.noFlashEvents) return;
-    if(this.range!==null && this.range.end.getTime() < this.maximum) return;
+    if(this.range && this.range.end.getTime() < this.maximum) return;
     this.requery();
 };
