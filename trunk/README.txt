@@ -1,5 +1,14 @@
 "it's electric": software for storing and viewing home energy monitoring data
 
+Installation advice from users
+==============================
+
+I've been told that the instructions in this README are a little terse.
+I've highlighted a couple of posts by users, detailing installation on their
+platforms, on the entry page to our Google Group:
+http://groups.google.com/group/its-electric-software
+
+
 Running "it's electric"
 =======================
 
@@ -12,7 +21,7 @@ according to the Google Visualizations API.  The command is:
 
 The (required!) database-directory is the directory in your filesystem 
 where the database will be stored.  Note: the database gets big, on 
-the order of 1GB/month.
+the order of 1GB/month.  (More precisely, around 250MB/month/MTU.)
 
 You also may need to specify the -m option to tell "it's electric" how 
 many MTUs you have (if you have more than one), and the -g option to 
@@ -31,7 +40,8 @@ You can also pass options to java (before the -jar option).  I use
 to have "it's electric" dump trace output.
 
 If you have memory issues, consider giving java more memory using
-an option like -Xmx128M .
+an option like -server or -Xmx128M .  In fact consider that in any case;
+I particularly recommend java -server for this.
 
 
 (2) Next you'll need to set up the "it's electric" web files
@@ -82,7 +92,6 @@ http://groups.google.com/group/its-electric-software
 and share your experiences, feature requests, bug reports, etc.!
 
 
-
 The Source
 ==========
 
@@ -90,8 +99,9 @@ The full source of "it's electric" is included in the
 its-electric-{version}.jar file.  If you unzip it, you'll have a copy
 of the Eclipse project that I used to develop it, and an Ant build file
 to recreate it.  Please tell me about your modifications, I'm quite
-likely to include them in future versions!
-
+likely to include them in future versions!  We also have a Google Code
+project at 
+http://code.google.com/p/its-electric/
 
 
 The Fine Print

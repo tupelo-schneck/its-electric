@@ -9,7 +9,7 @@ fi
 mkdir -p build
 sed -e '/CHANGE URL HERE/ s/localhost:8081/tupelo-schneck.org:8081/' \
     -e '/<!--INSERT PERSONAL TEXT HERE-->/ rlocalweb/local.html' \
-    -e '/>v1.2</ s/v1.2/<a href="NEWS.txt">v1.2<\/a>/' \
+    -e '/>v1.3</ s/v1.3/<a href="NEWS.txt">v1.3<\/a>/' \
     web/its-electric.html \
     > build/its-electric.html
 cp web/* /Library/WebServer/Documents/$where
