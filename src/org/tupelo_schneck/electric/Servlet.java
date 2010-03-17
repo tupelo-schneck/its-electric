@@ -17,7 +17,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 
 package org.tupelo_schneck.electric;
 
@@ -53,11 +53,11 @@ public class Servlet extends DataSourceServlet {
     private Log log = LogFactory.getLog(Servlet.class);
 
     Main main;
-    
+
     public Servlet(Main main) {
         this.main = main;
     }
-    
+
     public TimeSeriesDatabase databaseForRange(int start, int end) {
         int range = end - start;
         for (int i = 0; i < Main.durations.length - 1; i++) {
@@ -68,7 +68,7 @@ public class Servlet extends DataSourceServlet {
         }
         return main.databases[Main.durations.length-1];
     }
-    
+
     public TimeSeriesDatabase databaseForResAndRange(int res, int start, int end) {
         if(res<=0) return databaseForRange(start,end);
         log.debug("Looking for resolution: " + res);
@@ -88,12 +88,12 @@ public class Servlet extends DataSourceServlet {
         log.debug("Using fallback.");
         return fallback;
     }
-    
+
     private static TimeZone GMT = TimeZone.getTimeZone("GMT");
-    
+
     public static final String TIME_ZONE_OFFSET = "timeZoneOffset";
     public static final String RESOLUTION_STRING = "resolutionString";
-    
+
     private int addRowsFromIterator(DataTable data, ReadIterator iter, GregorianCalendar cal) throws TypeMismatchException {
         try {
             int lastTime = 0;
@@ -134,26 +134,35 @@ public class Servlet extends DataSourceServlet {
             iter.close();
         }
     }
-    
+
     @Override
     public DataTable generateDataTable(Query query, HttpServletRequest req) throws TypeMismatchException {
         int max = main.maximum;
         String startString = req.getParameter("start");
         int start = main.minimum;
         if(startString!=null && startString.length()>0) {
-            start = Integer.parseInt(startString);
+            try {
+                start = Integer.parseInt(startString);
+            }
+            catch(NumberFormatException e) { log.error("Error parsing start",e); }
         }
         String endString = req.getParameter("end");
         int end = max;
         if(endString!=null && endString.length()>0) {
-            end = Integer.parseInt(endString);
+            try {
+                end = Integer.parseInt(endString);
+            }
+            catch(NumberFormatException e) { log.error("Error parsing end",e); }
         }
         String resString = req.getParameter("resolution");
         int res = -1;
         if(resString!=null && resString.length()>0) {
-            res = Integer.parseInt(resString);
+            try {
+                res = Integer.parseInt(resString);
+            }
+            catch(NumberFormatException e) { log.error("Error parsing resolution",e); }
         }        
-        
+
         // Create a data table,
         DataTable data = new DataTable();
         ArrayList<ColumnDescription> cd = new ArrayList<ColumnDescription>();
@@ -204,7 +213,7 @@ public class Servlet extends DataSourceServlet {
 
     @Override
     protected boolean isRestrictedAccessMode() {
-      return false;
+        return false;
     }
 
     public static void startServlet(Main main) throws Exception {
@@ -225,10 +234,10 @@ public class Servlet extends DataSourceServlet {
             requestLogHandler.setRequestLog(requestLog);
             handlers.addHandler(requestLogHandler);
         }
-            
+
         ServletContextHandler root = new ServletContextHandler(handlers, "/", ServletContextHandler.NO_SESSIONS|ServletContextHandler.NO_SECURITY);
         root.addServlet(new ServletHolder(new Servlet(main)), "/*");
-        
+
         Server server = new Server(main.options.port);
         server.setHandler(handlers);
         server.start();
