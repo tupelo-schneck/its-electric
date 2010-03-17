@@ -100,7 +100,12 @@ public class Main {
             configuration.setLocking(false);
             configuration.setTransactional(false);
             // this seems to help with memory issues
-            configuration.setCachePercent(40); 
+            configuration.setCachePercent(40);
+            long maxMem = Runtime.getRuntime().maxMemory();
+            if(maxMem/100*(100-configuration.getCachePercent()) < 48 * 1024 * 1024) {
+                configuration.setCacheSize(maxMem - 48 * 1024 * 1024);
+                log.info("Cache size set to: " + (maxMem - 48 * 1024 * 1024));
+            }
             configuration.setAllowCreate(true);
             environment = new Environment(envHome, configuration);
             log.info("Environment opened.");
