@@ -53,10 +53,11 @@ public class ImportIterator implements Iterator<Triple> {
         }
         URLConnection urlConnection = url.openConnection();
         urlConnection.setConnectTimeout(60000);
-        urlConnection.setReadTimeout(500);
+        urlConnection.setReadTimeout(60000);
         urlConnection.connect();
         urlStream = urlConnection.getInputStream();
         reader = new PushbackReader(new BufferedReader(new InputStreamReader(urlStream)),10);
+        urlConnection.setReadTimeout(500);
         skipAhead();
     }
 
