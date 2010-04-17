@@ -78,29 +78,29 @@ public class TimeSeriesDatabase {
 
     public static int intOfBytes(byte[] buf, int offset) {
         int res = 0;	
-        res |= (((int)buf[offset+0] & 0xFF) << 24); 
-        res |= (((int)buf[offset+1] & 0xFF) << 16); 
-        res |= (((int)buf[offset+2] & 0xFF) << 8); 
-        res |= (((int)buf[offset+3] & 0xFF));
+        res |= ((buf[offset+0] & 0xFF) << 24); 
+        res |= ((buf[offset+1] & 0xFF) << 16); 
+        res |= ((buf[offset+2] & 0xFF) << 8); 
+        res |= ((buf[offset+3] & 0xFF));
         return res;
     }
 
     public static int intOfVariableBytes(byte[] buf) {
         if(buf.length==0) return 0;
         int res = 0;
-        res |= (((int)buf[0] & 0xFF) << 24);
+        res |= ((buf[0] & 0xFF) << 24);
         if(buf.length==1) {
             return res >> 24;
         }
-        res |= (((int)buf[1] & 0xFF) << 16); 
+        res |= ((buf[1] & 0xFF) << 16); 
         if(buf.length==2) {
             return res >> 16;
         }
-        res |= (((int)buf[2] & 0xFF) << 8); 
+        res |= ((buf[2] & 0xFF) << 8); 
         if(buf.length==3) {
             return res >> 8;
         }
-        res |= (((int)buf[3] & 0xFF));
+        res |= ((buf[3] & 0xFF));
         return res;
 
     }
@@ -235,12 +235,12 @@ public class TimeSeriesDatabase {
         return res;
     }
     
-    public ReadIterator read(int start, int end) throws DatabaseException {
-        return new ReadIterator(start,end);
+    public ReadIterator read(int startDate, int endDate) throws DatabaseException {
+        return new ReadIterator(startDate,endDate);
     }
 
-    public ReadIterator read(int start) throws DatabaseException {
-        return new ReadIterator(start,-1);
+    public ReadIterator read(int startDate) throws DatabaseException {
+        return new ReadIterator(startDate,-1);
     }
 
     public class ReadIterator implements Iterator<Triple> {

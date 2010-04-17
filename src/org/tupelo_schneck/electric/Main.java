@@ -52,7 +52,7 @@ public class Main {
 
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
     public static String dateString(int seconds) {
-        return dateFormat.format(1000L * seconds);
+        return dateFormat.format(Long.valueOf(1000L * seconds));
     }
     
     private Environment environment;
