@@ -63,8 +63,8 @@ public class ImportIterator implements Iterator<Triple> {
 
     public void close() {
         closed = true;
-        if(urlStream!=null) try { urlStream.close(); } catch (Throwable t) { t.printStackTrace(); }
-        if(reader!=null) try { reader.close(); } catch (Throwable t) { t.printStackTrace(); }
+        if(urlStream!=null) try { urlStream.close(); } catch (Exception e) { e.printStackTrace(); }
+        if(reader!=null) try { reader.close(); } catch (Exception e) { e.printStackTrace(); }
     }
 
     boolean eof() throws IOException {
