@@ -24,10 +24,16 @@ package org.tupelo_schneck.electric;
 import java.util.Comparator;
 
 public class Triple {
-    public int timestamp;
-    public byte mtu;
-    public int power;
+    public final int timestamp;
+    public final byte mtu;
+    public final int power;
     
+    public Triple(int timestamp, byte mtu, int power) {
+        this.timestamp = timestamp;
+        this.mtu = mtu;
+        this.power = power;
+    }
+
     public static final Comparator<Triple> COMPARATOR = new Comparator<Triple>() {
         @Override
         public int compare(Triple o1, Triple o2) {

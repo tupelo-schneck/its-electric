@@ -45,7 +45,6 @@ public class TimeSeriesDatabase {
 
     public int resolution;
     public String resolutionString;
-    
 
     // start[mtu] is the next entry that the database will get;
     // sum[mtu] and count[mtu] are accumulated to find the average.
@@ -199,7 +198,7 @@ public class TimeSeriesDatabase {
         return true;
     }
 
-    public int maxStoredTimestampForMTU(byte mtu) throws DatabaseException {
+    private int maxStoredTimestampForMTU(byte mtu) throws DatabaseException {
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
         Cursor cursor = null;
@@ -221,7 +220,7 @@ public class TimeSeriesDatabase {
     }
 
     public int minimum() throws DatabaseException {
-        ReadIterator iter = new  ReadIterator(0,-1);
+        ReadIterator iter = read(0);
         if(!iter.hasNext()) return 0;
         int res = iter.next().timestamp;
         iter.close();
@@ -285,12 +284,12 @@ public class TimeSeriesDatabase {
         }
 
         public Triple next() {
-            Triple res = new Triple();
             byte[] buf = key.getData();
-            res.timestamp = intOfBytes(buf,0);
-            res.mtu = buf[4];
+            int timestamp = intOfBytes(buf,0);
+            byte mtu = buf[4];
             buf = data.getData();
-            res.power = intOfVariableBytes(buf);
+            int power = intOfVariableBytes(buf);
+            Triple res = new Triple(timestamp,mtu,power);
             try {
                 status = readCursor.getNext(key, data, LockMode.READ_UNCOMMITTED);
                 closeIfNeeded();

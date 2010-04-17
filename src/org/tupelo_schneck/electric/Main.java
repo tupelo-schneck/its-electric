@@ -198,7 +198,6 @@ public class Main {
         }
         catch(Exception e) {
             e.printStackTrace();
-            return null;
         }
         finally {
             if(iter!=null) try { iter.close(); } catch (Exception e) { e.printStackTrace(); }
@@ -252,10 +251,7 @@ public class Main {
                 // also take the smallest new maximum
                 if(newMax==0 || minAndMax.max < newMax) newMax = minAndMax.max;
                 newMaxForMTU[mtu] = minAndMax.max;
-                Triple theChange = new Triple();
-                theChange.timestamp = minAndMax.min;
-                theChange.mtu = mtu;
-                changes.add(theChange);
+                changes.add(new Triple(minAndMax.min,mtu,0));
             }
 
             reset(changes);

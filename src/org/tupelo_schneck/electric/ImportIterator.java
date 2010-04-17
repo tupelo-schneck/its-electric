@@ -155,19 +155,17 @@ public class ImportIterator implements Iterator<Triple> {
     public Triple next() {
         if(closed) return null;
         try {
-            Triple res = new Triple();
             skipAhead();
             String dateString = nextString();
             skipAhead();
-            res.power = Integer.parseInt(nextString());
-            res.mtu = mtu;
-            res.timestamp = (int)(ImportIterator.tedDateFormat.parse(dateString).getTime()/1000);
+            int power = Integer.parseInt(nextString());
+            int timestamp = (int)(ImportIterator.tedDateFormat.parse(dateString).getTime()/1000);
 //            long diff = (System.currentTimeMillis() - 1000L * res.timestamp) / 1000;
 //            // skip ridiculous values
 //            if(Math.abs(diff) > 86400 || Math.abs(res.power) > 240 * 800) {
 //                return next();
 //            }
-            return res;
+            return new Triple(power,mtu,timestamp);
         }
         catch(SocketTimeoutException e) {
             close();
