@@ -399,6 +399,14 @@ public class Main {
 
     public static final void main(String[] args) {
         final Main main = new Main();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(){
+            @Override
+            public void run() {
+                main.shutdown();
+            }
+        });
+
         try {
             if(!main.options.parseOptions(args)) return;
             File dbFile = new File(main.options.dbFilename);
@@ -407,23 +415,13 @@ public class Main {
             main.openDatabases();
 
             Servlet.startServlet(main);
+            main.longImportFuture = main.repeatedlyImport(3600, true, main.options.longImportInterval);
+            main.shortImportFuture = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
+            main.catchUpFuture = Executors.newSingleThreadExecutor().submit(main.new CatchUp());
         }
         catch(Throwable e) {
             e.printStackTrace();
-            main.close();
             System.exit(1);
-            return;
         }
-        
-        main.longImportFuture = main.repeatedlyImport(3600, true, main.options.longImportInterval);
-        main.shortImportFuture = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
-        main.catchUpFuture = Executors.newSingleThreadExecutor().submit(main.new CatchUp());
-
-        Runtime.getRuntime().addShutdownHook(new Thread(){
-            @Override
-            public void run() {
-                main.shutdown();
-            }
-        });
     }
 }
