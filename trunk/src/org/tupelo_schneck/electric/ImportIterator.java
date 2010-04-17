@@ -159,7 +159,7 @@ public class ImportIterator implements Iterator<Triple> {
             skipAhead();
             String dateString = nextString();
             skipAhead();
-            res.power = Integer.valueOf(nextString());
+            res.power = Integer.parseInt(nextString());
             res.mtu = mtu;
             res.timestamp = (int)(ImportIterator.tedDateFormat.parse(dateString).getTime()/1000);
 //            long diff = (System.currentTimeMillis() - 1000L * res.timestamp) / 1000;
