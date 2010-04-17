@@ -400,19 +400,19 @@ public class Main {
     public static final void main(String[] args) {
         final Main main = new Main();
 
-        Runtime.getRuntime().addShutdownHook(new Thread(){
-            @Override
-            public void run() {
-                main.shutdown();
-            }
-        });
-
         try {
             if(!main.options.parseOptions(args)) return;
             File dbFile = new File(main.options.dbFilename);
             dbFile.mkdirs();
             main.openEnvironment(dbFile);
             main.openDatabases();
+
+            Runtime.getRuntime().addShutdownHook(new Thread(){
+                @Override
+                public void run() {
+                    main.shutdown();
+                }
+            });
 
             Servlet.startServlet(main);
             main.longImportFuture = main.repeatedlyImport(3600, true, main.options.longImportInterval);
