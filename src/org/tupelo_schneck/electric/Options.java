@@ -56,8 +56,9 @@ public class Options extends org.apache.commons.cli.Options {
     public String password = null;
     public String serverLogFilename;
     public byte mtus = 1;
-    public int importOverlap = 30;
-    public int importInterval = 15; // seconds
+    public int importOverlap = 4;
+    public int importInterval = 4; // seconds
+    public int longImportInterval = 5*60;
     public int numDataPoints = 1000;
     public int maxDataPoints = 5000;
     public int port = 8081;
@@ -70,8 +71,9 @@ public class Options extends org.apache.commons.cli.Options {
         this.addOption("n","num-points",true,"target number of data points returned over the zoom region (default 1000)");
         this.addOption("x","max-points",true,"number of data points beyond which server will not go (default 5000)");
         this.addOption("l","server-log",true,"server request log filename; include string \"yyyy_mm_dd\" for automatic rollover; or use \"stderr\" (default no log)");
-        this.addOption("i","import-interval",true,"seconds between imports of data (default 15)");
-        this.addOption("o","import-overlap",true,"extra seconds imported each time for good measure (default 30)");        
+        this.addOption("i","import-interval",true,"seconds between imports of data (default 4)");
+        this.addOption("o","import-overlap",true,"extra seconds imported each time for good measure (default 4)");        
+        this.addOption("e","long-import-interval",true,"seconds between imports of whole hours (default 300)");
         this.addOption("h","help",false,"print this help text");
     }
 
@@ -146,6 +148,15 @@ public class Options extends org.apache.commons.cli.Options {
             try {
                 importOverlap = Integer.parseInt(cmd.getOptionValue("o"));
                 if(importOverlap<0) showUsageAndExit = true;
+            }
+            catch(NumberFormatException e) {
+                showUsageAndExit = true;
+            }            
+        }
+        if(cmd!=null && cmd.hasOption("e")) {
+            try {
+                longImportInterval = Integer.parseInt(cmd.getOptionValue("i"));
+                if(longImportInterval<=0) showUsageAndExit = true;
             }
             catch(NumberFormatException e) {
                 showUsageAndExit = true;
