@@ -57,7 +57,7 @@ public class Main {
     
     private Environment environment;
     public TimeSeriesDatabase[] databases = new TimeSeriesDatabase[numDurations];
-    public TimeSeriesDatabase secondsDb;
+    private TimeSeriesDatabase secondsDb;
     
     public Options options = new Options();
     
@@ -65,7 +65,16 @@ public class Main {
     public volatile int maximum;
     // volatility is correct; we change the reference on update
     private volatile int[] maxSecondForMTU;
-    public Object minMaxLock = new Object();
+    private Object minMaxLock = new Object();
+        
+    private volatile boolean isRunning = true;
+        
+    private int[] resetTimestamp;
+    private volatile boolean reset;
+    private Object resetLock = new Object();
+    
+    private volatile boolean newData;
+    private Object newDataLock = new Object();
     
     public void openEnvironment(File envHome) throws DatabaseException {
         EnvironmentConfig configuration = new EnvironmentConfig();
@@ -105,23 +114,49 @@ public class Main {
         }
         if(environment!=null) try { environment.close(); } catch (Exception e) { e.printStackTrace(); }
     }
-    
-    private volatile boolean isRunning = true;
-    
-    private Future<?> longImportFuture;
-    private Future<?> shortImportFuture;
-    private Future<?> catchUpFuture;    
-    
-    public void shutdown() {
-        log.info("Exiting.");
-        isRunning = false;
-        try { longImportFuture.cancel(true); } catch (Exception e) {}
-        try { shortImportFuture.cancel(true); } catch (Exception e) {}
-        try { catchUpFuture.cancel(true); } catch (Exception e) {}
-        try { longImportFuture.get(); } catch (Exception e) {}
-        try { shortImportFuture.get(); } catch (Exception e) {}
-        try { catchUpFuture.get(); } catch (Exception e) {}
-        close();
+
+    private void reset(List<Triple> changes) {
+        if(!isRunning || changes==null || changes.isEmpty()) return;
+        boolean setReset = false;
+        boolean setNewData = false;
+        synchronized(resetLock) {
+            if(resetTimestamp==null) {
+                resetTimestamp = new int[options.mtus];
+                Arrays.fill(resetTimestamp,0);
+            }
+
+            for(Triple change : changes) {
+                int timestamp = change.timestamp;
+                byte mtu = change.mtu;
+                
+                boolean needed = false;
+                if(timestamp < resetTimestamp[mtu]) needed = true;
+                else {
+                    for(int i = 1; i < numDurations; i++) {
+                        if(timestamp <= databases[i].maxForMTU[mtu]) {
+                            needed = true;
+                            break;
+                        }
+                    }
+                }
+
+                if(needed) {
+                    log.trace("Reset needed at " + dateString(timestamp) + " for MTU " + mtu);
+                    resetTimestamp[mtu] = timestamp;
+                    setReset = true;
+                }
+                else {
+                    setNewData = true;
+                }
+            }
+
+            if(setReset) reset = true;
+            if(setNewData) newData = true;
+            
+            synchronized(newDataLock) {
+                newDataLock.notify();
+            }
+        }
     }
 
     public class MinAndMax {
@@ -200,7 +235,7 @@ public class Main {
             }
         }
         
-        public void runReal() {
+        private void runReal() {
             int newMin = Integer.MAX_VALUE;
             int newMax = 0;
             int[] newMaxForMTU = new int[options.mtus];
@@ -242,60 +277,9 @@ public class Main {
         return Executors.newSingleThreadScheduledExecutor()
                         .scheduleAtFixedRate(new MultiImporter(count, oldOnly), 0, interval, TimeUnit.SECONDS);
     }
-    
-    int[] resetTimestamp;
-    volatile boolean reset;
-    Object resetLatch = new Object();
-    
-    volatile boolean newData;
-    Object newDataLatch = new Object();
-    
-    public void reset(List<Triple> changes) {
-        if(!isRunning || changes==null || changes.isEmpty()) return;
-        boolean setReset = false;
-        boolean setNewData = false;
-        synchronized(resetLatch) {
-            if(resetTimestamp==null) {
-                resetTimestamp = new int[options.mtus];
-                Arrays.fill(resetTimestamp,0);
-            }
-
-            for(Triple change : changes) {
-                int timestamp = change.timestamp;
-                byte mtu = change.mtu;
-                
-                boolean needed = false;
-                if(timestamp < resetTimestamp[mtu]) needed = true;
-                else {
-                    for(int i = 1; i < numDurations; i++) {
-                        if(timestamp <= databases[i].maxForMTU[mtu]) {
-                            needed = true;
-                            break;
-                        }
-                    }
-                }
-
-                if(needed) {
-                    log.trace("Reset needed at " + dateString(timestamp) + " for MTU " + mtu);
-                    resetTimestamp[mtu] = timestamp;
-                    setReset = true;
-                }
-                else {
-                    setNewData = true;
-                }
-            }
-
-            if(setReset) reset = true;
-            if(setNewData) newData = true;
-            
-            synchronized(newDataLatch) {
-                newDataLatch.notify();
-            }
-        }
-    }
 
     public class CatchUp implements Runnable {
-        int[] caughtUpTo = new int[options.mtus];
+        private int[] caughtUpTo = new int[options.mtus];
 
         @Override
         public void run() {
@@ -308,7 +292,7 @@ public class Main {
             }
         }
         
-        public void runReal() {    
+        private void runReal() {    
             while(isRunning) {
                 // at start or following a reset, figure out where we are caught up to
                 Arrays.fill(caughtUpTo, Integer.MAX_VALUE);
@@ -327,7 +311,7 @@ public class Main {
                 if(!isRunning) return;
                 
                 // perform the reset
-                synchronized(resetLatch) {
+                synchronized(resetLock) {
                     reset = false;
                     for(byte mtu = 0; mtu < options.mtus; mtu++) {
                         if(resetTimestamp[mtu]!=0) {
@@ -341,7 +325,7 @@ public class Main {
             }
         }
         
-        public void catchUpNewData() {
+        private void catchUpNewData() {
             // find starting place
             int catchupStart = Integer.MAX_VALUE;
             for(byte mtu = 0; mtu < options.mtus; mtu++) {
@@ -363,7 +347,7 @@ public class Main {
                     while(iter.hasNext() && !reset && isRunning) {
                         Triple triple = iter.next();
                         if(triple.timestamp > caughtUpTo[triple.mtu]){ 
-                            synchronized(resetLatch) {
+                            synchronized(resetLock) {
                                 for(int i = 1; i < numDurations; i++) {
                                     databases[i].accumulateForAverages(cursors[i],triple.timestamp,triple.mtu,triple.power);
                                 }
@@ -384,10 +368,10 @@ public class Main {
             
             // wait for new data (or a reset)
             if(!newData && !reset && isRunning) {
-                synchronized(newDataLatch) { 
+                synchronized(newDataLock) { 
                     while(!newData && !reset && isRunning) {
                         try {
-                            newDataLatch.wait();
+                            newDataLock.wait();
                         }
                         catch(InterruptedException e) {
                         }
@@ -397,6 +381,22 @@ public class Main {
         }
     }
     
+    private Future<?> longImportFuture;
+    private Future<?> shortImportFuture;
+    private Future<?> catchUpFuture;    
+    
+    public void shutdown() {
+        log.info("Exiting.");
+        isRunning = false;
+        try { longImportFuture.cancel(true); } catch (Exception e) {}
+        try { shortImportFuture.cancel(true); } catch (Exception e) {}
+        try { catchUpFuture.cancel(true); } catch (Exception e) {}
+        try { longImportFuture.get(); } catch (Exception e) {}
+        try { shortImportFuture.get(); } catch (Exception e) {}
+        try { catchUpFuture.get(); } catch (Exception e) {}
+        close();
+    }
+
     public static final void main(String[] args) {
         final Main main = new Main();
         try {
@@ -414,7 +414,7 @@ public class Main {
             System.exit(1);
             return;
         }
-
+        
         main.longImportFuture = main.repeatedlyImport(3600, true, main.options.longImportInterval);
         main.shortImportFuture = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
         main.catchUpFuture = Executors.newSingleThreadExecutor().submit(main.new CatchUp());
