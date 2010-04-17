@@ -101,18 +101,9 @@ public class Main {
 
     public void close() {
         for(TimeSeriesDatabase db : databases) {
-            if(db!=null) {
-                db.close();
-            }
+            if(db!=null) db.close();
         }
-        if(environment!=null) {
-            try {
-                environment.close();
-            }
-            catch(Throwable e) {
-                e.printStackTrace();
-            }
-        }
+        if(environment!=null) try { environment.close(); } catch (Exception e) { e.printStackTrace(); }
     }
     
     private volatile boolean isRunning = true;
@@ -175,8 +166,8 @@ public class Main {
             return null;
         }
         finally {
-            if(iter!=null) try { iter.close(); } catch (Throwable e) {}
-            if(cursor!=null) try { cursor.close(); } catch (Throwable e) {}
+            if(iter!=null) try { iter.close(); } catch (Exception e) { e.printStackTrace(); }
+            if(cursor!=null) try { cursor.close(); } catch (Exception e) { e.printStackTrace(); }
         }
 
         if(changed) {
@@ -200,6 +191,16 @@ public class Main {
 
         @Override
         public void run() {
+            try {
+                runReal();
+            }
+            catch(Throwable e) {
+                e.printStackTrace();
+                System.exit(1);
+            }
+        }
+        
+        public void runReal() {
             int newMin = Integer.MAX_VALUE;
             int newMax = 0;
             int[] newMaxForMTU = new int[options.mtus];
@@ -294,10 +295,20 @@ public class Main {
     }
 
     public class CatchUp implements Runnable {
+        int[] caughtUpTo = new int[options.mtus];
+
         @Override
         public void run() {
-            int[] caughtUpTo = new int[options.mtus];
-
+            try {
+                runReal();
+            }
+            catch(Throwable e) {
+                e.printStackTrace();
+                System.exit(1);
+            }
+        }
+        
+        public void runReal() {    
             while(isRunning) {
                 // at start or following a reset, figure out where we are caught up to
                 Arrays.fill(caughtUpTo, Integer.MAX_VALUE);
@@ -310,58 +321,7 @@ public class Main {
                 }
                 
                 while(!reset && isRunning) {
-                    // find starting place
-                    int catchupStart = Integer.MAX_VALUE;
-                    for(byte mtu = 0; mtu < options.mtus; mtu++) {
-                        if(caughtUpTo[mtu] + 1 < catchupStart) {
-                            catchupStart = caughtUpTo[mtu] + 1;
-                        }
-                    }
-                    // read the values
-                    log.info("Catching up from " + dateString(catchupStart));
-                    try {
-                        ReadIterator iter = null;
-                        Cursor[] cursors = new Cursor[numDurations];
-                        try {
-                            newData = false;
-                            iter = secondsDb.read(catchupStart);
-                            for(int i = 0; i < numDurations; i++) {
-                                cursors[i] = databases[i].openCursor();
-                            }
-                            while(iter.hasNext() && !reset && isRunning) {
-                                Triple triple = iter.next();
-                                if(triple.timestamp > caughtUpTo[triple.mtu]){ 
-                                    synchronized(resetLatch) {
-                                        for(int i = 1; i < numDurations; i++) {
-                                            databases[i].accumulateForAverages(cursors[i],triple.timestamp,triple.mtu,triple.power);
-                                        }
-                                    }
-                                    caughtUpTo[triple.mtu] = triple.timestamp;
-                                }
-                            }
-                        }
-                        finally {
-                            for(Cursor cursor : cursors) { if(cursor!=null) try { cursor.close(); } catch (Throwable e) {} }
-                            if(iter!=null) try { iter.close(); } catch (Throwable e) {}
-                        }
-                        log.info("Catch-up done.");
-                    }
-                    catch(DatabaseException e) {
-                        e.printStackTrace();
-                    }
-                    
-                    // wait for new data (or a reset)
-                    if(!newData && !reset && isRunning) {
-                        synchronized(newDataLatch) { 
-                            while(!newData && !reset && isRunning) {
-                                try {
-                                    newDataLatch.wait();
-                                }
-                                catch(InterruptedException e) {
-                                }
-                            }
-                        }
-                    }
+                    catchUpNewData();
                 }
                 
                 if(!isRunning) return;
@@ -380,6 +340,61 @@ public class Main {
                 }
             }
         }
+        
+        public void catchUpNewData() {
+            // find starting place
+            int catchupStart = Integer.MAX_VALUE;
+            for(byte mtu = 0; mtu < options.mtus; mtu++) {
+                if(caughtUpTo[mtu] + 1 < catchupStart) {
+                    catchupStart = caughtUpTo[mtu] + 1;
+                }
+            }
+            // read the values
+            log.info("Catching up from " + dateString(catchupStart));
+            try {
+                ReadIterator iter = null;
+                Cursor[] cursors = new Cursor[numDurations];
+                try {
+                    newData = false;
+                    iter = secondsDb.read(catchupStart);
+                    for(int i = 0; i < numDurations; i++) {
+                        cursors[i] = databases[i].openCursor();
+                    }
+                    while(iter.hasNext() && !reset && isRunning) {
+                        Triple triple = iter.next();
+                        if(triple.timestamp > caughtUpTo[triple.mtu]){ 
+                            synchronized(resetLatch) {
+                                for(int i = 1; i < numDurations; i++) {
+                                    databases[i].accumulateForAverages(cursors[i],triple.timestamp,triple.mtu,triple.power);
+                                }
+                            }
+                            caughtUpTo[triple.mtu] = triple.timestamp;
+                        }
+                    }
+                }
+                finally {
+                    for(Cursor cursor : cursors) { if(cursor!=null) try { cursor.close(); } catch (Exception e) { e.printStackTrace(); } }
+                    if(iter!=null) try { iter.close(); } catch (Exception e) { e.printStackTrace(); }
+                }
+                log.info("Catch-up done.");
+            }
+            catch(DatabaseException e) {
+                e.printStackTrace();
+            }
+            
+            // wait for new data (or a reset)
+            if(!newData && !reset && isRunning) {
+                synchronized(newDataLatch) { 
+                    while(!newData && !reset && isRunning) {
+                        try {
+                            newDataLatch.wait();
+                        }
+                        catch(InterruptedException e) {
+                        }
+                    }
+                }
+            }
+        }
     }
     
     public static final void main(String[] args) {
@@ -393,9 +408,10 @@ public class Main {
 
             Servlet.startServlet(main);
         }
-        catch(Exception e) {
+        catch(Throwable e) {
             e.printStackTrace();
             main.close();
+            System.exit(1);
             return;
         }
 

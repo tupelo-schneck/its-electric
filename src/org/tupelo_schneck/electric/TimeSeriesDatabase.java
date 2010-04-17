@@ -160,14 +160,7 @@ public class TimeSeriesDatabase {
     }
 
     public void close() {
-        if(database!=null) {
-            try {
-                database.close();
-            }
-            catch(Throwable e) {
-                e.printStackTrace();
-            }
-        }
+        if(database!=null) try { database.close(); } catch(Exception e) { e.printStackTrace(); }
     }
 
     public void put(Cursor cursor,int timestamp, byte mtu, int power) throws DatabaseException {
@@ -279,7 +272,7 @@ public class TimeSeriesDatabase {
         }
         
         public void close() {
-            if(!closed) try { readCursor.close(); } catch (Throwable e) { e.printStackTrace(); }
+            if(!closed) try { readCursor.close(); } catch (Exception e) { e.printStackTrace(); }
             closed = true;
         }
 
