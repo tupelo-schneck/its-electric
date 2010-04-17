@@ -60,13 +60,13 @@ public class Servlet extends DataSourceServlet {
 
     public TimeSeriesDatabase databaseForRange(int start, int end) {
         int range = end - start;
-        for (int i = 0; i < Main.durations.length - 1; i++) {
+        for (int i = 0; i < Main.numDurations - 1; i++) {
             if(Main.durations[i] * main.options.numDataPoints > range) {
                 log.debug("Using duration: " + Main.durations[i]); 
                 return main.databases[i];
             }
         }
-        return main.databases[Main.durations.length-1];
+        return main.databases[Main.numDurations-1];
     }
 
     public TimeSeriesDatabase databaseForResAndRange(int res, int start, int end) {
@@ -74,7 +74,7 @@ public class Servlet extends DataSourceServlet {
         log.debug("Looking for resolution: " + res);
         int range = end - start;
         TimeSeriesDatabase fallback = null;
-        for (int i = 0; i < Main.durations.length; i++) {
+        for (int i = 0; i < Main.numDurations; i++) {
             if(Main.durations[i]>=res && Main.durations[i] * main.options.maxDataPoints > range) {
                 log.debug("Using duration: " + Main.durations[i]); 
                 return main.databases[i];
@@ -84,7 +84,7 @@ public class Servlet extends DataSourceServlet {
                 fallback =  main.databases[i];
             }
         }
-        if(fallback==null) fallback = main.databases[Main.durations.length-1];
+        if(fallback==null) fallback = main.databases[Main.numDurations-1];
         log.debug("Using fallback.");
         return fallback;
     }
@@ -184,15 +184,20 @@ public class Servlet extends DataSourceServlet {
             else if(res<smallDb.resolution) resolutionString += " (capped)";
             data.setCustomProperty(RESOLUTION_STRING, resolutionString);
             int range = end - start;
+            log.trace("Reading " + Main.dateString(main.minimum) + " to " + Main.dateString(start-range-1) + " at " + bigDb.resolutionString);
             int lastTime = addRowsFromIterator(data, bigDb.read(main.minimum,start-range-1),cal);
+            log.trace("Reading " + Main.dateString(start-range) + " to " + Main.dateString(end+range) + " at " + smallDb.resolutionString);
             int nextTime = addRowsFromIterator(data, smallDb.read(start-range,end+range),cal);
             if(nextTime > 0) lastTime = nextTime;
+            log.trace("Reading " + Main.dateString(end+range+1) + " to " + Main.dateString(max-2*range-1) + " at " + bigDb.resolutionString);
             nextTime = addRowsFromIterator(data, bigDb.read(end+range+1,max-2*range-1),cal);
             if(nextTime > 0) lastTime = nextTime;
+            log.trace("Reading " + Main.dateString(max-2*range) + " to " + Main.dateString(max) + " at " + smallDb.resolutionString);
             nextTime = addRowsFromIterator(data, smallDb.read(max-2*range,max),cal);
             if(nextTime > 0) lastTime = nextTime;
-            for(int i = Main.durations.length - 1; i >= 0; i--) {
+            for(int i = Main.numDurations - 1; i >= 0; i--) {
                 if(lastTime>=max) break;
+                log.trace("Reading " + Main.dateString(lastTime+1) + " to " + Main.dateString(max) + " at " + main.databases[i].resolutionString);
                 nextTime = addRowsFromIterator(data,main.databases[i].read(lastTime+1,max),cal);
                 if(nextTime > 0) lastTime = nextTime;
             }

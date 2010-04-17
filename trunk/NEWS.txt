@@ -1,6 +1,11 @@
 "it's electric" news
 http://tupelo-schneck.org/its-electric
 
+Version 1.4
+=============
+Print human-readable times in log file.
+Pause before accessing the Gateway again immediately after a network problem.
+
 Version 1.3.1 2010-03-26
 ========================
 More forgiving timeout values when reading from the Gateway.

@@ -162,6 +162,11 @@ public class ImportIterator implements Iterator<Triple> {
             res.power = Integer.valueOf(nextString());
             res.mtu = mtu;
             res.timestamp = (int)(ImportIterator.tedDateFormat.parse(dateString).getTime()/1000);
+//            long diff = (System.currentTimeMillis() - 1000L * res.timestamp) / 1000;
+//            // skip ridiculous values
+//            if(Math.abs(diff) > 86400 || Math.abs(res.power) > 240 * 800) {
+//                return next();
+//            }
             return res;
         }
         catch(SocketTimeoutException e) {
@@ -169,6 +174,7 @@ public class ImportIterator implements Iterator<Triple> {
             return null;
         }
         catch(Exception e) {
+            close();
             throw new RuntimeException(e);
         }
     }

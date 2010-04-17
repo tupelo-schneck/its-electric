@@ -21,7 +21,11 @@ If not, see <http://www.gnu.org/licenses/>.
 
 package org.tupelo_schneck.electric;
 
+import java.util.Arrays;
 import java.util.Iterator;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.sleepycat.je.Cursor;
 import com.sleepycat.je.CursorConfig;
@@ -34,16 +38,29 @@ import com.sleepycat.je.LockMode;
 import com.sleepycat.je.OperationStatus;
 
 public class TimeSeriesDatabase {
-    Database database;
-    int resolution;
-    String resolutionString;
+    Log log = LogFactory.getLog(TimeSeriesDatabase.class);
 
-    public static final DatabaseConfig DEFERRED_WRITE_CONFIG;
+    private Main main;
+    private Database database;
+
+    public int resolution;
+    public String resolutionString;
+    
+
+    // start[mtu] is the next entry that the database will get;
+    // sum[mtu] and count[mtu] are accumulated to find the average.
+    // maxForMTU[mtu] is max processed timestamp for MTU.  Always between maxStoredTimestamp and start
+    // These are not relevant for resolution=1 (except secondsDb.maxForMTU used in Main.openDatabases)
+    public int[] start;
+    public int[] sum;
+    public int[] count;
+    public int[] maxForMTU;
+
+    public static final DatabaseConfig ALLOW_CREATE_CONFIG;
     static {
         DatabaseConfig config = new DatabaseConfig();
-        config.setDeferredWrite(true);
         config.setAllowCreate(true);
-        DEFERRED_WRITE_CONFIG = config;
+        ALLOW_CREATE_CONFIG = config;
     }
 
     //	public static long longOfBytes(byte[] buf, int offset) {
@@ -113,21 +130,33 @@ public class TimeSeriesDatabase {
         return new DatabaseEntry(buf,4-size,size);
     }
 
-    public TimeSeriesDatabase(Environment environment, String name, byte mtus, int resolution, String resolutionString) {
+    public TimeSeriesDatabase(Main main, Environment environment, String name, byte mtus, int resolution, String resolutionString) {
         try {
+            this.main = main;
             this.resolution = resolution;
             this.resolutionString = resolutionString;
-            database = environment.openDatabase(null, name, DEFERRED_WRITE_CONFIG);
+            database = environment.openDatabase(null, name, ALLOW_CREATE_CONFIG);
+            
+            maxForMTU = new int[mtus];
+            start = new int[mtus];
+            sum = new int[mtus];
+            count = new int[mtus];
+
+            Arrays.fill(sum, 0);
+            Arrays.fill(count, 0);
+            
+            for(byte mtu = 0; mtu < mtus; mtu++) {
+                start[mtu] = maxStoredTimestampForMTU(mtu) + resolution;
+                maxForMTU[mtu] = start[mtu] - 1;
+                log.info("   starting at " + Main.dateString(start[mtu]) + " for MTU " + mtu);
+            }
+
         }
         catch(Throwable e) {
             e.printStackTrace();
             close();
             System.exit(1);
         }
-    }
-
-    public void sync() throws DatabaseException {
-        database.sync();
     }
 
     public void close() {
@@ -141,15 +170,43 @@ public class TimeSeriesDatabase {
         }
     }
 
-    public void put(int timestamp, byte mtu, int power) throws DatabaseException {
+    public void put(Cursor cursor,int timestamp, byte mtu, int power) throws DatabaseException {
         OperationStatus status;
-        status = database.put(null,keyEntry(timestamp, mtu), dataEntry(power));
+        status = cursor.put(keyEntry(timestamp, mtu), dataEntry(power));
         if(status!=OperationStatus.SUCCESS) {
             throw new DatabaseException("Unexpected status " + status);
         }
     }
+    
+    public Cursor openCursor() throws DatabaseException {
+        return database.openCursor(null, CursorConfig.READ_UNCOMMITTED);
+    }
+    
+    public boolean putIfChanged(Cursor cursor, int timestamp, byte mtu, int power) throws DatabaseException {
+        OperationStatus status;
+        DatabaseEntry key = keyEntry(timestamp,mtu);
+        DatabaseEntry data = dataEntry(power);
+        status = cursor.putNoOverwrite(key, data);
+        if(status==OperationStatus.SUCCESS) return true;
+        if(status!=OperationStatus.KEYEXIST) {
+            throw new DatabaseException("Unexpected status " + status);
+        }
 
-    public int maxForMTU(byte mtu) throws DatabaseException {
+        DatabaseEntry readDataEntry = new DatabaseEntry();
+        status = cursor.getSearchKey(key,readDataEntry,LockMode.READ_UNCOMMITTED);
+        if(status!=OperationStatus.SUCCESS) {
+            throw new DatabaseException("Unexpected status " + status);
+        }
+        if(power==intOfVariableBytes(readDataEntry.getData())) return false;
+
+        status = cursor.put(key, data);
+        if(status!=OperationStatus.SUCCESS) {
+            throw new DatabaseException("Unexpected status " + status);
+        }
+        return true;
+    }
+
+    public int maxStoredTimestampForMTU(byte mtu) throws DatabaseException {
         DatabaseEntry key = new DatabaseEntry();
         DatabaseEntry data = new DatabaseEntry();
         Cursor cursor = null;
@@ -250,6 +307,36 @@ public class TimeSeriesDatabase {
                 status = null;
             }
             return res;
+        }
+    }
+    
+    // not relevant for resolution=1
+    public void accumulateForAverages(Cursor cursor,int timestamp, byte mtu, int power) throws DatabaseException {
+        if(timestamp > maxForMTU[mtu]) {
+            maxForMTU[mtu] = timestamp;
+            if(timestamp >= start[mtu] + resolution) {
+                if(count[mtu]>0) {
+                    int avg = sum[mtu]/count[mtu];
+                    put(cursor,start[mtu], mtu, avg);
+                }
+                sum[mtu] = 0;
+                count[mtu] = 0;
+                // start at day boundaries, but not dealing with daylight savings time...
+                start[mtu] = ((timestamp+main.options.timeZoneRawOffset)/resolution)*resolution - main.options.timeZoneRawOffset;
+            }
+            sum[mtu] += power;
+            count[mtu]++;
+        }
+    }
+    
+    
+    // not relevant for resolution=1
+    public void resetForNewData(int timestamp, byte mtu) {
+        if(maxForMTU[mtu] >= timestamp) {
+            start[mtu] = ((timestamp+main.options.timeZoneRawOffset)/resolution)*resolution - main.options.timeZoneRawOffset;
+            maxForMTU[mtu] = start[mtu] - 1;
+            sum[mtu] = 0;
+            count[mtu] = 0;
         }
     }
 }
