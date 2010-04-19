@@ -154,7 +154,7 @@ public class TimeSeriesDatabase {
         catch(Throwable e) {
             e.printStackTrace();
             close();
-            System.exit(1);
+            main.shutdown();
         }
     }
 

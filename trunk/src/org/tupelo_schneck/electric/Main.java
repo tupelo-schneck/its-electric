@@ -32,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.jetty.server.Server;
 import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
 
 import com.sleepycat.je.Cursor;
@@ -230,7 +231,7 @@ public class Main {
             }
             catch(Throwable e) {
                 e.printStackTrace();
-                System.exit(1);
+                shutdown();
             }
         }
         
@@ -284,7 +285,7 @@ public class Main {
             }
             catch(Throwable e) {
                 e.printStackTrace();
-                System.exit(1);
+                shutdown();
             }
         }
         
@@ -377,6 +378,7 @@ public class Main {
         }
     }
     
+    private Server server;
     private Future<?> longImportFuture;
     private Future<?> shortImportFuture;
     private Future<?> catchUpFuture;    
@@ -384,6 +386,7 @@ public class Main {
     public void shutdown() {
         log.info("Exiting.");
         isRunning = false;
+        try { server.stop(); } catch (Exception e) {}
         try { longImportFuture.cancel(true); } catch (Exception e) {}
         try { shortImportFuture.cancel(true); } catch (Exception e) {}
         try { catchUpFuture.cancel(true); } catch (Exception e) {}
@@ -410,14 +413,14 @@ public class Main {
                 }
             });
 
-            Servlet.startServlet(main);
+            main.server = Servlet.startServlet(main);
             main.longImportFuture = main.repeatedlyImport(3600, true, main.options.longImportInterval);
             main.shortImportFuture = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
             main.catchUpFuture = Executors.newSingleThreadExecutor().submit(main.new CatchUp());
         }
         catch(Throwable e) {
             e.printStackTrace();
-            System.exit(1);
+            main.shutdown();
         }
     }
 }
