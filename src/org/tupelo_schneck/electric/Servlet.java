@@ -94,112 +94,150 @@ public class Servlet extends DataSourceServlet {
     public static final String TIME_ZONE_OFFSET = "timeZoneOffset";
     public static final String RESOLUTION_STRING = "resolutionString";
 
-    private int addRowsFromIterator(DataTable data, ReadIterator iter, GregorianCalendar cal) throws TypeMismatchException {
-        try {
-            int lastTime = 0;
-            int lastMTU = 0;
-            TableRow row = null;
-            while(iter.hasNext()) {
-                Triple triple = iter.next();
-                if (triple.timestamp > lastTime || row==null) {
-                    if(row!=null) {
-                        for(int mtu = lastMTU + 1; mtu < main.options.mtus; mtu++) {
-                            row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
-                        }
-                        data.addRow(row);
-                    }
-                    row = new TableRow();
-                    lastTime = triple.timestamp;
-                    // note have to add in the time zone offset
-                    // this because we want it to show our local time.
-                    cal.setTimeInMillis((long)triple.timestamp * 1000 + main.options.timeZone.getOffset((long)triple.timestamp*1000));
-                    row.addCell(new DateTimeValue(cal));
-                    lastMTU = -1;
-                }
-                for(int mtu = lastMTU + 1; mtu < triple.mtu; mtu++) {
-                    row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
-                }
-                row.addCell(triple.power);
-                lastMTU = triple.mtu;
+    private class DataTableBuilder {
+        private DataTable data;
+        private int lastTime;
+        private TableRow row;
+        private int lastMTU;
+        private GregorianCalendar cal;
+        
+        private DataTableBuilder() {
+            data = new DataTable();
+            ArrayList<ColumnDescription> cd = new ArrayList<ColumnDescription>();
+            cd.add(new ColumnDescription("Date", ValueType.DATETIME, "Date"));
+            for(int mtu = 0; mtu < main.options.mtus; mtu++) {
+                String label = "MTU" + (mtu+1);
+                cd.add(new ColumnDescription(label, ValueType.NUMBER, label));        
             }
+            data.addColumns(cd);
+            
+            cal = new GregorianCalendar(GMT);
+        }
+        
+        private void addNullsTo(int nextMTU) {
+            for(int mtu = lastMTU + 1; mtu < nextMTU; mtu++) {
+                row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
+            }
+        }
+        
+        private void addRow() {
+            try { data.addRow(row); } catch (TypeMismatchException e) { throw new RuntimeException(e); }
+        }
+        
+        private void finishRow() {
             if(row!=null) {
-                for(int mtu = lastMTU + 1; mtu < main.options.mtus; mtu++) {
-                    row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
-                }
-                data.addRow(row);
+                addNullsTo(main.options.mtus);
+                addRow();
             }
+        }
+        
+        private void addTriple(Triple triple) {
+            if (triple.timestamp < lastTime) return;
+            if (triple.timestamp > lastTime || row==null) {
+                finishRow();
+                row = new TableRow();
+                lastTime = triple.timestamp;
+                // note have to add in the time zone offset
+                // this because we want it to show our local time.
+                cal.setTimeInMillis((long)triple.timestamp * 1000 + main.options.timeZone.getOffset((long)triple.timestamp*1000));
+                row.addCell(new DateTimeValue(cal));
+                lastMTU = -1;
+            }
+            addNullsTo(triple.mtu);
+            for(int mtu = lastMTU + 1; mtu < triple.mtu; mtu++) {
+                row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
+            }
+            row.addCell(triple.power);
+            lastMTU = triple.mtu;
+        }
+        
+        public void addRowsFromIterator(ReadIterator iter) {
+            try {
+                while(iter.hasNext()) {
+                    addTriple(iter.next());
+                }
+            }
+            finally {
+                iter.close();
+            }
+        }
+        
+        public int lastTime() {
             return lastTime;
         }
-        finally {
-            iter.close();
+        
+        public void setCustomProperty(String key, String value) {
+            data.setCustomProperty(key, value);
+        }
+        
+        public DataTable dataTable() {
+            finishRow();
+            return dataTable();
         }
     }
+    
+    private class QueryParameters {
+        public int start = main.maximum;
+        public int end = main.minimum;
+        public int resolution = -1;
+        
+        private HttpServletRequest req;
 
+        private int getIntParameter(String name,int def) {
+            int res = def;
+            String param = req.getParameter(name);
+            if(param!=null && param.length()>0) {
+                try {
+                    res = Integer.parseInt(param);
+                }
+                catch(NumberFormatException e) { log.error("Error parsing " + name,e); }
+            }
+            return res;
+        }
+        
+        public QueryParameters(HttpServletRequest req) {
+            this.req = req;
+
+            start = getIntParameter("start",main.minimum);
+            end = getIntParameter("end",main.maximum);
+            resolution = getIntParameter("resolution",-1);
+        }
+    }
+    
     @Override
-    public DataTable generateDataTable(Query query, HttpServletRequest req) throws TypeMismatchException {
+    public DataTable generateDataTable(Query query, HttpServletRequest req) {
         int max = main.maximum;
-        String startString = req.getParameter("start");
-        int start = main.minimum;
-        if(startString!=null && startString.length()>0) {
-            try {
-                start = Integer.parseInt(startString);
-            }
-            catch(NumberFormatException e) { log.error("Error parsing start",e); }
-        }
-        String endString = req.getParameter("end");
-        int end = max;
-        if(endString!=null && endString.length()>0) {
-            try {
-                end = Integer.parseInt(endString);
-            }
-            catch(NumberFormatException e) { log.error("Error parsing end",e); }
-        }
-        String resString = req.getParameter("resolution");
-        int res = -1;
-        if(resString!=null && resString.length()>0) {
-            try {
-                res = Integer.parseInt(resString);
-            }
-            catch(NumberFormatException e) { log.error("Error parsing resolution",e); }
-        }        
+
+        QueryParameters params = new QueryParameters(req);
 
         // Create a data table,
-        DataTable data = new DataTable();
-        ArrayList<ColumnDescription> cd = new ArrayList<ColumnDescription>();
-        cd.add(new ColumnDescription("Date", ValueType.DATETIME, "Date"));
-        for(int mtu = 0; mtu < main.options.mtus; mtu++) {
-            String label = "MTU" + (mtu+1);
-            cd.add(new ColumnDescription(label, ValueType.NUMBER, label));        
-        }
-        data.addColumns(cd);
+        DataTableBuilder builder = new DataTableBuilder();
 
         // Fill the data table.
         try {
-            GregorianCalendar cal = new GregorianCalendar();
-            cal.setTimeZone(GMT);
             TimeSeriesDatabase bigDb = databaseForRange(main.minimum, max);
-            TimeSeriesDatabase smallDb = databaseForResAndRange(res,start,end);
+            TimeSeriesDatabase smallDb = databaseForResAndRange(params.resolution,params.start,params.end);
+            
             String resolutionString = smallDb.resolutionString;
-            if(res<0) resolutionString += " (auto)";
-            else if(res<smallDb.resolution) resolutionString += " (capped)";
-            data.setCustomProperty(RESOLUTION_STRING, resolutionString);
-            int range = end - start;
-            log.trace("Reading " + Main.dateString(main.minimum) + " to " + Main.dateString(start-range-1) + " at " + bigDb.resolutionString);
-            int lastTime = addRowsFromIterator(data, bigDb.read(main.minimum,start-range-1),cal);
-            log.trace("Reading " + Main.dateString(start-range) + " to " + Main.dateString(end+range) + " at " + smallDb.resolutionString);
-            int nextTime = addRowsFromIterator(data, smallDb.read(start-range,end+range),cal);
-            if(nextTime > 0) lastTime = nextTime;
-            log.trace("Reading " + Main.dateString(end+range+1) + " to " + Main.dateString(max-2*range-1) + " at " + bigDb.resolutionString);
-            nextTime = addRowsFromIterator(data, bigDb.read(end+range+1,max-2*range-1),cal);
-            if(nextTime > 0) lastTime = nextTime;
+            if(params.resolution<0) resolutionString += " (auto)";
+            else if(params.resolution<smallDb.resolution) resolutionString += " (capped)";
+            builder.setCustomProperty(RESOLUTION_STRING, resolutionString);
+            
+            int range = params.end - params.start;
+            
+            log.trace("Reading " + Main.dateString(main.minimum) + " to " + Main.dateString(params.start-range-1) + " at " + bigDb.resolutionString);
+            builder.addRowsFromIterator(bigDb.read(main.minimum,params.start-range-1));
+            log.trace("Reading " + Main.dateString(params.start-range) + " to " + Main.dateString(params.end+range) + " at " + smallDb.resolutionString);
+            builder.addRowsFromIterator(smallDb.read(params.start-range,params.end+range));
+            log.trace("Reading " + Main.dateString(params.end+range+1) + " to " + Main.dateString(max-2*range-1) + " at " + bigDb.resolutionString);
+            builder.addRowsFromIterator(bigDb.read(params.end+range+1,max-2*range-1));
             log.trace("Reading " + Main.dateString(max-2*range) + " to " + Main.dateString(max) + " at " + smallDb.resolutionString);
-            nextTime = addRowsFromIterator(data, smallDb.read(max-2*range,max),cal);
-            if(nextTime > 0) lastTime = nextTime;
+            builder.addRowsFromIterator(smallDb.read(max-2*range,max));
             for(int i = Main.numDurations - 1; i >= 0; i--) {
+                int lastTime = builder.lastTime();
                 if(lastTime>=max) break;
                 log.trace("Reading " + Main.dateString(lastTime+1) + " to " + Main.dateString(max) + " at " + main.databases[i].resolutionString);
-                nextTime = addRowsFromIterator(data,main.databases[i].read(lastTime+1,max),cal);
-                if(nextTime > 0) lastTime = nextTime;
+                builder.addRowsFromIterator(main.databases[i].read(lastTime+1,max));
             }
         }
         catch(DatabaseException e) {
@@ -212,8 +250,8 @@ public class Servlet extends DataSourceServlet {
         // the bug is about the client's time zone.
         // We'll still send this in case it's useful.  Whether it says standard or daylight time
         // is determined by the highest date in the visible range.
-        data.setCustomProperty(TIME_ZONE_OFFSET, String.valueOf(main.options.timeZone.getOffset((long)end*1000) / 1000));
-        return data;
+        builder.setCustomProperty(TIME_ZONE_OFFSET, String.valueOf(main.options.timeZone.getOffset(1000L*params.end) / 1000));
+        return builder.dataTable();
     }
 
     @Override
