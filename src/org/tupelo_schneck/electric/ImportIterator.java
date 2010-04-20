@@ -165,7 +165,7 @@ public class ImportIterator implements Iterator<Triple> {
 //            if(Math.abs(diff) > 86400 || Math.abs(res.power) > 240 * 800) {
 //                return next();
 //            }
-            return new Triple(power,mtu,timestamp);
+            return new Triple(timestamp,mtu,power);
         }
         catch(SocketTimeoutException e) {
             close();
