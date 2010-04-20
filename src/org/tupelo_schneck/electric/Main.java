@@ -26,8 +26,10 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
@@ -109,11 +111,15 @@ public class Main {
         log.info("Maximum is " + dateString(maximum));
     }
 
-    public void close() {
+    private boolean closed;
+    
+    public synchronized void close() {
+        if(closed) return;
         for(TimeSeriesDatabase db : databases) {
             if(db!=null) db.close();
         }
         if(environment!=null) try { environment.close(); } catch (Exception e) { e.printStackTrace(); }
+        closed = true;
     }
 
     private void reset(List<Triple> changes) {
@@ -269,9 +275,26 @@ public class Main {
         }
     }
     
-    public Future<?> repeatedlyImport(int count,boolean oldOnly,int interval) {
-        return Executors.newSingleThreadScheduledExecutor()
-                        .scheduleAtFixedRate(new MultiImporter(count, oldOnly), 0, interval, TimeUnit.SECONDS);
+    private static class Task {
+        private final ExecutorService execServ;
+        private final Future<?> future;
+        
+        public Task(ExecutorService execServ, Future<?> future) {
+            this.execServ = execServ;
+            this.future = future;
+        }
+        
+        public void stop() {
+            try { this.future.cancel(true); } catch (Exception e) {}
+            try { this.future.get(); } catch (Exception e) {}
+            try { this.execServ.shutdown(); } catch (Exception e) {}
+        }
+    }
+    
+    public Task repeatedlyImport(int count,boolean oldOnly,int interval) {
+        ScheduledExecutorService execServ = Executors.newSingleThreadScheduledExecutor();
+        Future<?> future = execServ.scheduleAtFixedRate(new MultiImporter(count, oldOnly), 0, interval, TimeUnit.SECONDS);
+        return new Task(execServ,future);
     }
 
     public class CatchUp implements Runnable {
@@ -378,20 +401,17 @@ public class Main {
     }
     
     private Server server;
-    private Future<?> longImportFuture;
-    private Future<?> shortImportFuture;
-    private Future<?> catchUpFuture;    
+    private Task longImportTask;
+    private Task shortImportTask;
+    private Task catchUpTask;    
     
     public void shutdown() {
         log.info("Exiting.");
         isRunning = false;
         try { server.stop(); } catch (Exception e) {}
-        try { longImportFuture.cancel(true); } catch (Exception e) {}
-        try { shortImportFuture.cancel(true); } catch (Exception e) {}
-        try { catchUpFuture.cancel(true); } catch (Exception e) {}
-        try { longImportFuture.get(); } catch (Exception e) {}
-        try { shortImportFuture.get(); } catch (Exception e) {}
-        try { catchUpFuture.get(); } catch (Exception e) {}
+        longImportTask.stop();
+        shortImportTask.stop();
+        catchUpTask.stop();
         close();
     }
 
@@ -413,9 +433,10 @@ public class Main {
             });
 
             main.server = Servlet.startServlet(main);
-            main.longImportFuture = main.repeatedlyImport(3600, true, main.options.longImportInterval);
-            main.shortImportFuture = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
-            main.catchUpFuture = Executors.newSingleThreadExecutor().submit(main.new CatchUp());
+            main.longImportTask = main.repeatedlyImport(3600, true, main.options.longImportInterval);
+            main.shortImportTask = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
+            ExecutorService execServ = Executors.newSingleThreadExecutor();
+            main.catchUpTask = new Task(execServ,execServ.submit(main.new CatchUp()));
         }
         catch(Throwable e) {
             e.printStackTrace();
