@@ -144,9 +144,6 @@ public class Servlet extends DataSourceServlet {
                 lastMTU = -1;
             }
             addNullsTo(triple.mtu);
-            for(int mtu = lastMTU + 1; mtu < triple.mtu; mtu++) {
-                row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
-            }
             row.addCell(triple.power);
             lastMTU = triple.mtu;
         }
@@ -172,7 +169,7 @@ public class Servlet extends DataSourceServlet {
         
         public DataTable dataTable() {
             finishRow();
-            return dataTable();
+            return data;
         }
     }
     
@@ -229,15 +226,20 @@ public class Servlet extends DataSourceServlet {
             builder.addRowsFromIterator(bigDb.read(main.minimum,params.start-range-1));
             log.trace("Reading " + Main.dateString(params.start-range) + " to " + Main.dateString(params.end+range) + " at " + smallDb.resolutionString);
             builder.addRowsFromIterator(smallDb.read(params.start-range,params.end+range));
+            int nextTime = builder.lastTime() + smallDb.resolution;
             log.trace("Reading " + Main.dateString(params.end+range+1) + " to " + Main.dateString(max-2*range-1) + " at " + bigDb.resolutionString);
             builder.addRowsFromIterator(bigDb.read(params.end+range+1,max-2*range-1));
-            log.trace("Reading " + Main.dateString(max-2*range) + " to " + Main.dateString(max) + " at " + smallDb.resolutionString);
-            builder.addRowsFromIterator(smallDb.read(max-2*range,max));
-            for(int i = Main.numDurations - 1; i >= 0; i--) {
-                int lastTime = builder.lastTime();
-                if(lastTime>=max) break;
-                log.trace("Reading " + Main.dateString(lastTime+1) + " to " + Main.dateString(max) + " at " + main.databases[i].resolutionString);
-                builder.addRowsFromIterator(main.databases[i].read(lastTime+1,max));
+            nextTime = Math.max(nextTime, builder.lastTime() + 1);
+            for(int i = Main.numDurations - 1; i >= 1; i--) {
+                if(nextTime>max) break;
+                if(main.databases[i].resolution > smallDb.resolution) continue;
+                log.trace("Reading " + Main.dateString(nextTime) + " to " + Main.dateString(max) + " at " + main.databases[i].resolutionString);
+                builder.addRowsFromIterator(main.databases[i].read(nextTime,max));
+                nextTime = builder.lastTime() + main.databases[i].resolution - main.databases[i-1].resolution + 1;
+            }
+            if(builder.lastTime() < max) {
+                nextTime = Math.min(nextTime, max);
+                builder.addRowsFromIterator(main.databases[0].read(nextTime,max));
             }
         }
         catch(DatabaseException e) {
