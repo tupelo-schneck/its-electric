@@ -101,9 +101,9 @@ public class Main {
         minimum = secondsDb.minimum();
         maxSecondForMTU = secondsDb.maxForMTU.clone();
         log.info("Minimum is " + dateString(minimum));
-        int newMax = Integer.MAX_VALUE;
+        int newMax = 0;
         for(byte mtu = 0; mtu < options.mtus; mtu++) {
-            if(maxSecondForMTU[mtu] < newMax) newMax = maxSecondForMTU[mtu];
+            if(maxSecondForMTU[mtu] > newMax) newMax = maxSecondForMTU[mtu];
         }
         maximum = newMax;
         log.info("Maximum is " + dateString(maximum));
@@ -249,8 +249,7 @@ public class Main {
                 if(minAndMax==null) continue;
                 
                 if(minAndMax.min < newMin) newMin = minAndMax.min;
-                // also take the smallest new maximum
-                if(newMax==0 || minAndMax.max < newMax) newMax = minAndMax.max;
+                if(newMax < minAndMax.max) newMax = minAndMax.max;
                 newMaxForMTU[mtu] = minAndMax.max;
                 changes.add(new Triple(minAndMax.min,mtu,0));
             }
