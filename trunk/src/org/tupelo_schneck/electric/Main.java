@@ -393,6 +393,7 @@ public class Main {
                             newDataLock.wait();
                         }
                         catch(InterruptedException e) {
+                            Thread.currentThread().interrupt();
                         }
                     }
                 }
