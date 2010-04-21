@@ -90,13 +90,23 @@ public class ImportIterator implements Iterator<Triple> {
         return !closed;
     }
 
+    /** The opposite of TimeSeriesDatabase.intOfBytes */
+    public static int intOfBytes(byte[] buf, int offset) {
+        int res = 0;    
+        res |= ((buf[offset+3] & 0xFF) << 24); 
+        res |= ((buf[offset+2] & 0xFF) << 16); 
+        res |= ((buf[offset+1] & 0xFF) << 8); 
+        res |= ((buf[offset+0] & 0xFF));
+        return res;
+    }
+
     @Override
     public Triple next() {
         if(closed) return null;
         byte[] decoded = base64.decode(line);
         if(decoded==null || decoded.length<10) return null;
         cal.set(2000+(0x00FF & decoded[0]), decoded[1]-1, decoded[2], decoded[3], decoded[4], decoded[5]);
-        int power = TimeSeriesDatabase.intOfBytes(decoded,6);
+        int power = intOfBytes(decoded,6);
         Triple res = new Triple((int)(cal.getTimeInMillis() / 1000),mtu,power);
         getNextLine();
         return res;
