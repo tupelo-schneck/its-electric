@@ -2,7 +2,10 @@
 http://tupelo-schneck.org/its-electric
 
 Version 1.4
-=============
+===========
+Use raw rather than xml output from Gateway (suggestion of Stuart Rothrock / lugnut).
+Periodically retrieve whole hour's worth of back data from Gateway (suggestion of Stuart Rothrock / lugnut).
+Modify servlet code to accept more general parameters.
 Print human-readable times in log file.
 Pause before accessing the Gateway again immediately after a network problem.
 

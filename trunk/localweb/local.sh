@@ -3,13 +3,13 @@
 export where=test
 
 if false
-then export where=.; rm -rf dist main build
+then export where=.; rm -rf main/* build/*
 fi
 
 mkdir -p build
 sed -e '/CHANGE URL HERE/ s/localhost:8081/tupelo-schneck.org:8081/' \
     -e '/<!--INSERT PERSONAL TEXT HERE-->/ rlocalweb/local.html' \
-    -e '/>v1.3.1</ s/v1.3.1/<a href="NEWS.txt">v1.3.1<\/a>/' \
+    -e '/>v1.4</ s/v1.4/<a href="NEWS.txt">v1.4<\/a>/' \
     web/its-electric.html \
     > build/its-electric.html
 cp web/* /Library/WebServer/Documents/$where
