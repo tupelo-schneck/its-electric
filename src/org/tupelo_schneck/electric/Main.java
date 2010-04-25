@@ -60,7 +60,7 @@ public class Main {
     
     private Environment environment;
     public TimeSeriesDatabase[] databases = new TimeSeriesDatabase[numDurations];
-    private TimeSeriesDatabase secondsDb;
+    public TimeSeriesDatabase secondsDb;
     
     public Options options = new Options();
     
