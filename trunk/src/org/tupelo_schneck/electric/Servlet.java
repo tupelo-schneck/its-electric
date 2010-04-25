@@ -22,6 +22,8 @@ If not, see <http://www.gnu.org/licenses/>.
 package org.tupelo_schneck.electric;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.PriorityQueue;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -50,58 +52,109 @@ import com.ibm.icu.util.TimeZone;
 import com.sleepycat.je.DatabaseException;
 
 public class Servlet extends DataSourceServlet {
+    private static final TimeZone GMT = TimeZone.getTimeZone("GMT");
+
+    public static final String TIME_ZONE_OFFSET = "timeZoneOffset";
+    public static final String RESOLUTION_STRING = "resolutionString";
+
     private Log log = LogFactory.getLog(Servlet.class);
 
-    Main main;
+    private Main main;
 
     public Servlet(Main main) {
         this.main = main;
     }
 
-    public TimeSeriesDatabase databaseForRange(int start, int end) {
-        int range = end - start;
-        for (int i = 0; i < Main.numDurations - 1; i++) {
-            if(Main.durations[i] * main.options.numDataPoints > range) {
-                log.debug("Using duration: " + Main.durations[i]); 
-                return main.databases[i];
+    public TimeSeriesDatabase databaseForResolution(int res,boolean less) {
+        TimeSeriesDatabase lastDb = main.secondsDb;
+        for(TimeSeriesDatabase db : main.databases) {
+            if(db.resolution==res) return db;
+            else if(db.resolution>res) {
+                return less ? lastDb : db;
             }
+            lastDb = db;
         }
         return main.databases[Main.numDurations-1];
     }
 
-    public TimeSeriesDatabase databaseForResAndRange(int res, int start, int end) {
-        if(res<=0) return databaseForRange(start,end);
-        log.debug("Looking for resolution: " + res);
-        int range = end - start;
-        TimeSeriesDatabase fallback = null;
-        for (int i = 0; i < Main.numDurations; i++) {
-            if(Main.durations[i]>=res && Main.durations[i] * main.options.maxDataPoints > range) {
-                log.debug("Using duration: " + Main.durations[i]); 
-                return main.databases[i];
-            }
-            if(fallback==null && Main.durations[i] * main.options.numDataPoints > range) {
-                log.debug("Fallback duration: " + Main.durations[i]); 
-                fallback =  main.databases[i];
-            }
+    public TimeSeriesDatabase rangeDb(QueryParameters params) {
+        int range = params.rangeEnd - params.rangeStart;
+        TimeSeriesDatabase db;
+        if(params.minPoints > 0) {
+            db = databaseForResolution(range / params.minPoints, true);
         }
-        if(fallback==null) fallback = main.databases[Main.numDurations-1];
-        log.debug("Using fallback.");
-        return fallback;
+        else {
+            db = databaseForResolution(range / params.maxPoints, false);
+        }
+        if(60*60 > db.resolution) {
+            db = databaseForResolution(60*60, false);
+        }
+
+        return db;
     }
 
-    private static TimeZone GMT = TimeZone.getTimeZone("GMT");
+    public TimeSeriesDatabase zoomDb(QueryParameters params) {
+        int range = params.end - params.start;
+        int res = params.resolution;
+        TimeSeriesDatabase db = null;
+        if(res < 0) {
+            if(params.minPoints > 0) {
+                db = databaseForResolution(range / params.minPoints, true);
+            }
+            else {
+                db = databaseForResolution(range / params.maxPoints, false);
+            }
+            res = db.resolution;
+        }
+        if(range / main.options.maxDataPoints > res) {
+            db = databaseForResolution(range / main.options.maxDataPoints, false);
+        }
+        if(db==null) {
+            db = databaseForResolution(res,false);
+        }
 
-    public static final String TIME_ZONE_OFFSET = "timeZoneOffset";
-    public static final String RESOLUTION_STRING = "resolutionString";
+        return db;
+    }
 
+    private TimeSeriesDatabase _dayDb;
+    private TimeSeriesDatabase _weekDb;
+    private TimeSeriesDatabase _monthDb;
+    public TimeSeriesDatabase dayDb() {
+        if(_dayDb==null) _dayDb = databaseForResolution(15*60,false);
+        return _dayDb;
+    }
+    public TimeSeriesDatabase weekDb() {
+        if(_weekDb==null) _weekDb = databaseForResolution(60*60,false);
+        return _weekDb;
+    }
+    public TimeSeriesDatabase monthDb() {
+        if(_monthDb==null) _monthDb = databaseForResolution(8*60*60,false);
+        return _monthDb;
+    }
+    
+    public static final Comparator<TableRow> TABLE_ROW_COMPARATOR = new Comparator<TableRow>() {
+        @Override
+        public int compare(TableRow o1, TableRow o2) {
+            return o1.getCell(0).getValue().compareTo(o2.getCell(0).getValue());
+        }
+    };
+    
     private class DataTableBuilder {
+        private PriorityQueue<TableRow> rows;
+        private int min = Integer.MAX_VALUE;
+        private int max = 0;
+
         private DataTable data;
-        private int lastTime;
+        
         private TableRow row;
+        private int lastTime;
         private int lastMTU;
         private GregorianCalendar cal;
         
-        private DataTableBuilder() {
+        public DataTableBuilder() {
+            rows = new PriorityQueue<TableRow>(100,TABLE_ROW_COMPARATOR);
+            cal = new GregorianCalendar(GMT);
+            
             data = new DataTable();
             ArrayList<ColumnDescription> cd = new ArrayList<ColumnDescription>();
             cd.add(new ColumnDescription("Date", ValueType.DATETIME, "Date"));
@@ -110,8 +163,6 @@ public class Servlet extends DataSourceServlet {
                 cd.add(new ColumnDescription(label, ValueType.NUMBER, label));        
             }
             data.addColumns(cd);
-            
-            cal = new GregorianCalendar(GMT);
         }
         
         private void addNullsTo(int nextMTU) {
@@ -121,13 +172,16 @@ public class Servlet extends DataSourceServlet {
         }
         
         private void addRow() {
-            try { data.addRow(row); } catch (TypeMismatchException e) { throw new RuntimeException(e); }
+            rows.add(row);
         }
         
         private void finishRow() {
             if(row!=null) {
                 addNullsTo(main.options.mtus);
                 addRow();
+                row = null;
+                lastTime = 0;
+                lastMTU = 0;
             }
         }
         
@@ -137,6 +191,10 @@ public class Servlet extends DataSourceServlet {
                 finishRow();
                 row = new TableRow();
                 lastTime = triple.timestamp;
+                
+                if(triple.timestamp < min) min = triple.timestamp;
+                if(triple.timestamp > max) max = triple.timestamp;
+                
                 // note have to add in the time zone offset
                 // this because we want it to show our local time.
                 cal.setTimeInMillis((long)triple.timestamp * 1000 + main.options.timeZone.getOffset((long)triple.timestamp*1000));
@@ -149,18 +207,44 @@ public class Servlet extends DataSourceServlet {
         }
         
         public void addRowsFromIterator(ReadIterator iter) {
+            int priorMin = min;
+            int priorMax = max;
             try {
                 while(iter.hasNext()) {
+                    Triple triple = iter.next();
+                    if(triple.timestamp >= priorMin && triple.timestamp <= priorMax) continue;
+                    addTriple(triple);
+                }
+            }
+            finally {
+                iter.close();
+            }
+            finishRow();
+        }
+        
+        public void addOneRowFromIterator(ReadIterator iter) {
+            int priorMin = min;
+            int priorMax = max;
+            int time = 0;
+            try {
+                while(iter.hasNext()) {
+                    Triple triple = iter.next();
+                    if(time == 0) {
+                        time = triple.timestamp;
+                    }
+                    else if (triple.timestamp!=time) break;
+                    if(triple.timestamp >= priorMin && triple.timestamp <= priorMax) break;
                     addTriple(iter.next());
                 }
             }
             finally {
                 iter.close();
             }
+            finishRow();
         }
         
-        public int lastTime() {
-            return lastTime;
+        public int max() {
+            return max;
         }
         
         public void setCustomProperty(String key, String value) {
@@ -168,15 +252,28 @@ public class Servlet extends DataSourceServlet {
         }
         
         public DataTable dataTable() {
-            finishRow();
+            try {
+                TableRow nextRow;
+                while((nextRow = rows.poll()) != null) {
+                    data.addRow(nextRow);
+                }
+            }
+            catch(TypeMismatchException e) {
+                throw new RuntimeException(e);
+            }
             return data;
         }
     }
     
     private class QueryParameters {
-        public int start = main.maximum;
-        public int end = main.minimum;
-        public int resolution = -1;
+        public int rangeStart;
+        public int rangeEnd;
+        public int start;
+        public int end;
+        public int resolution;
+        public int minPoints;
+        public int maxPoints;
+        public boolean extraPoints;
         
         private HttpServletRequest req;
 
@@ -192,54 +289,120 @@ public class Servlet extends DataSourceServlet {
             return res;
         }
         
-        public QueryParameters(HttpServletRequest req) {
+        public QueryParameters(HttpServletRequest req,int max) {
             this.req = req;
+            
+            rangeStart = getIntParameter("rangeStart",main.minimum);
+            rangeEnd = getIntParameter("rangeEnd",max);
+            start = getIntParameter("start",rangeStart);
+            end = getIntParameter("end",rangeEnd);
 
-            start = getIntParameter("start",main.minimum);
-            end = getIntParameter("end",main.maximum);
+            boolean realTimeAdjust = req.getParameter("realTimeAdjust") != null;
+            if(realTimeAdjust) {
+                int range = rangeEnd - rangeStart;
+                rangeEnd = max;
+                rangeStart = rangeEnd - range;
+                int zoomedRange = end - start;
+                end = max;
+                start = end - zoomedRange;
+            }
+
             resolution = getIntParameter("resolution",-1);
+            minPoints = getIntParameter("minPoints",-1);
+            maxPoints = getIntParameter("maxPoints",-1);
+            if(minPoints<=0 && maxPoints<=0) maxPoints = main.options.numDataPoints;
+            
+            String extraPointsParam = req.getParameter("extraPoints");
+            if(extraPointsParam!=null) extraPointsParam = extraPointsParam.toLowerCase();
+            extraPoints = !"no".equals(extraPointsParam) && !"false".equals(extraPointsParam);
         }
     }
     
     @Override
     public DataTable generateDataTable(Query query, HttpServletRequest req) {
         int max = main.maximum;
-
-        QueryParameters params = new QueryParameters(req);
+        QueryParameters params = new QueryParameters(req,max);
 
         // Create a data table,
         DataTableBuilder builder = new DataTableBuilder();
 
         // Fill the data table.
         try {
-            TimeSeriesDatabase bigDb = databaseForRange(main.minimum, max);
-            TimeSeriesDatabase smallDb = databaseForResAndRange(params.resolution,params.start,params.end);
-            
-            String resolutionString = smallDb.resolutionString;
+            TimeSeriesDatabase zoomDb = zoomDb(params);
+            TimeSeriesDatabase rangeDb = rangeDb(params);
+            if(rangeDb.resolution < zoomDb.resolution) rangeDb = zoomDb; 
+
+            String resolutionString = zoomDb.resolutionString;
             if(params.resolution<0) resolutionString += " (auto)";
-            else if(params.resolution<smallDb.resolution) resolutionString += " (capped)";
+            else if(params.resolution<zoomDb.resolution) resolutionString += " (capped)";
             builder.setCustomProperty(RESOLUTION_STRING, resolutionString);
             
             int range = params.end - params.start;
+            int start = params.extraPoints ? Math.max(params.rangeStart, params.start - range) : params.start;
+            int end = params.extraPoints ? Math.min(params.rangeEnd, params.end + range) : params.end;
+            builder.addRowsFromIterator(zoomDb.read(start,end));
             
-            log.trace("Reading " + Main.dateString(main.minimum) + " to " + Main.dateString(params.start-range-1) + " at " + bigDb.resolutionString);
-            builder.addRowsFromIterator(bigDb.read(main.minimum,params.start-range-1));
-            log.trace("Reading " + Main.dateString(params.start-range) + " to " + Main.dateString(params.end+range) + " at " + smallDb.resolutionString);
-            builder.addRowsFromIterator(smallDb.read(params.start-range,params.end+range));
-            int nextTime = builder.lastTime() + smallDb.resolution;
-            log.trace("Reading " + Main.dateString(params.end+range+1) + " to " + Main.dateString(max-2*range-1) + " at " + bigDb.resolutionString);
-            builder.addRowsFromIterator(bigDb.read(params.end+range+1,max-2*range-1));
-            nextTime = Math.max(nextTime, builder.lastTime() + 1);
-            for(int i = Main.numDurations - 1; i >= 1; i--) {
-                if(nextTime>max) break;
-                if(main.databases[i].resolution > smallDb.resolution) continue;
-                log.trace("Reading " + Main.dateString(nextTime) + " to " + Main.dateString(max) + " at " + main.databases[i].resolutionString);
-                builder.addRowsFromIterator(main.databases[i].read(nextTime,max));
-                nextTime = builder.lastTime() + main.databases[i].resolution - main.databases[i-1].resolution + 1;
+            int origEnd = end;
+            
+            int rangeEnd = params.rangeEnd;
+            if(params.extraPoints) {
+                if(end < params.rangeEnd) {
+                    rangeEnd = Math.max(end, params.rangeEnd - 2 * range) - 1;
+                }
+                if(start > params.rangeStart) {
+                    TimeSeriesDatabase dayDb = dayDb();
+                    if(dayDb.resolution < zoomDb.resolution) dayDb = zoomDb;
+                    if(dayDb.resolution > rangeDb.resolution) dayDb = rangeDb; 
+                    end = start;
+                    start = Math.max(params.rangeStart, params.end - 86400); 
+                    builder.addRowsFromIterator(dayDb.read(start,end));
+                }
+                if(start > params.rangeStart) {
+                    TimeSeriesDatabase weekDb = weekDb();
+                    if(weekDb.resolution < zoomDb.resolution) weekDb = zoomDb;
+                    if(weekDb.resolution > rangeDb.resolution) weekDb = rangeDb; 
+                    end = start;
+                    start = Math.max(params.rangeStart, params.end - 86400 * 7); 
+                    builder.addRowsFromIterator(weekDb.read(start,end));
+                }
+                if(start > params.rangeStart) {
+                    TimeSeriesDatabase monthDb = monthDb();
+                    if(monthDb.resolution < zoomDb.resolution) monthDb = zoomDb;
+                    if(monthDb.resolution > rangeDb.resolution) monthDb = rangeDb; 
+                    end = start;
+                    start = Math.max(params.rangeStart, params.end - 86400 * 32); 
+                    builder.addRowsFromIterator(monthDb.read(start,end));
+                }
             }
-            if(builder.lastTime() < max) {
-                nextTime = Math.min(nextTime, max);
-                builder.addRowsFromIterator(main.databases[0].read(nextTime,max));
+            
+            if(start > params.rangeStart) {
+                builder.addRowsFromIterator(rangeDb.read(params.rangeStart,start));
+            }
+            if(origEnd < rangeEnd) {
+                builder.addRowsFromIterator(rangeDb.read(origEnd,rangeEnd));
+            }
+
+            if(params.extraPoints && rangeEnd < params.rangeEnd) {
+                builder.addRowsFromIterator(zoomDb.read(rangeEnd+1,params.rangeEnd));
+            }
+            
+            builder.addOneRowFromIterator(main.secondsDb.read(params.start));
+            
+            if(params.end == max) {
+                int nextTime = builder.max() + 1;
+                for(int i = Main.numDurations - 1; i >= 1; i--) {
+                    if(nextTime>=max) break;
+                    if(main.databases[i].resolution >= zoomDb.resolution) continue;
+                    builder.addRowsFromIterator(main.databases[i].read(nextTime,max));
+                    nextTime = builder.max() + main.databases[i].resolution - main.databases[i-1].resolution + 1;
+                }
+                if(builder.max() < max) {
+                    nextTime = Math.min(nextTime, max);
+                    builder.addRowsFromIterator(main.databases[0].read(nextTime,max));
+                }
+            }
+            else {
+                builder.addOneRowFromIterator(main.secondsDb.read(params.end));
             }
         }
         catch(DatabaseException e) {
