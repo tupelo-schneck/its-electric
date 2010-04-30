@@ -85,10 +85,9 @@ ItsElectric.prototype.init = function() {
     this.requery();
 };
 
-ItsElectric.prototype.requery = function() {
-    var query;
-    var queryURL = this.url;
-    var extendChar = '?';
+ItsElectric.prototype.queryURL = function() {
+    var queryURL = this.url + '?extraPoints=yes';
+    var extendChar = '&';
     if(this.ready) {
         if(this.range && (this.range.start.getTime() != this.minimum || this.range.end.getTime() != this.maximum)) {
             queryURL = queryURL + extendChar +
@@ -102,7 +101,11 @@ ItsElectric.prototype.requery = function() {
                    'resolution=' + this.resolution;
         extendChar = '&';
     }
-    query = new google.visualization.Query(queryURL);
+    return queryURL;
+}
+
+ItsElectric.prototype.requery = function() {
+    var query = new google.visualization.Query(this.queryURL());
     if(this.busyId) document.getElementById(this.busyId).style.display="";
     var self = this;
     query.send(function(response) {self.handleQueryResponse(response);});

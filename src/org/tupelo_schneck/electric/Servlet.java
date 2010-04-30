@@ -118,7 +118,6 @@ public class Servlet extends DataSourceServlet {
 
     private TimeSeriesDatabase _dayDb;
     private TimeSeriesDatabase _weekDb;
-    private TimeSeriesDatabase _monthDb;
     public TimeSeriesDatabase dayDb() {
         if(_dayDb==null) _dayDb = databaseForResolution(15*60,false);
         return _dayDb;
@@ -126,10 +125,6 @@ public class Servlet extends DataSourceServlet {
     public TimeSeriesDatabase weekDb() {
         if(_weekDb==null) _weekDb = databaseForResolution(60*60,false);
         return _weekDb;
-    }
-    public TimeSeriesDatabase monthDb() {
-        if(_monthDb==null) _monthDb = databaseForResolution(8*60*60,false);
-        return _monthDb;
     }
     
     public static final Comparator<TableRow> TABLE_ROW_COMPARATOR = new Comparator<TableRow>() {
@@ -243,6 +238,10 @@ public class Servlet extends DataSourceServlet {
             finishRow();
         }
         
+        public int min() {
+            return min;
+        }
+        
         public int max() {
             return max;
         }
@@ -314,7 +313,7 @@ public class Servlet extends DataSourceServlet {
             
             String extraPointsParam = req.getParameter("extraPoints");
             if(extraPointsParam!=null) extraPointsParam = extraPointsParam.toLowerCase();
-            extraPoints = !"no".equals(extraPointsParam) && !"false".equals(extraPointsParam);
+            extraPoints = "yes".equals(extraPointsParam) || "true".equals(extraPointsParam);
         }
     }
     
@@ -347,7 +346,7 @@ public class Servlet extends DataSourceServlet {
             int rangeEnd = params.rangeEnd;
             if(params.extraPoints) {
                 if(end < params.rangeEnd) {
-                    rangeEnd = Math.max(end, params.rangeEnd - 2 * range) - 1;
+                    rangeEnd = Math.max(end, params.rangeEnd - range - 1);
                 }
                 if(start > params.rangeStart) {
                     TimeSeriesDatabase dayDb = dayDb();
@@ -355,38 +354,38 @@ public class Servlet extends DataSourceServlet {
                     if(dayDb.resolution > rangeDb.resolution) dayDb = rangeDb; 
                     end = start;
                     start = Math.max(params.rangeStart, params.end - 86400); 
-                    builder.addRowsFromIterator(dayDb.read(start,end));
+                    builder.addRowsFromIterator(dayDb.read(start,end - 1));
                 }
                 if(start > params.rangeStart) {
                     TimeSeriesDatabase weekDb = weekDb();
                     if(weekDb.resolution < zoomDb.resolution) weekDb = zoomDb;
                     if(weekDb.resolution > rangeDb.resolution) weekDb = rangeDb; 
                     end = start;
-                    start = Math.max(params.rangeStart, params.end - 86400 * 7); 
-                    builder.addRowsFromIterator(weekDb.read(start,end));
+                    start = Math.max(params.rangeStart, params.end - 86400 * 8); 
+                    builder.addRowsFromIterator(weekDb.read(start,end - 1));
                 }
-                if(start > params.rangeStart) {
-                    TimeSeriesDatabase monthDb = monthDb();
-                    if(monthDb.resolution < zoomDb.resolution) monthDb = zoomDb;
-                    if(monthDb.resolution > rangeDb.resolution) monthDb = rangeDb; 
-                    end = start;
-                    start = Math.max(params.rangeStart, params.end - 86400 * 32); 
-                    builder.addRowsFromIterator(monthDb.read(start,end));
-                }
+//                if(start > params.rangeStart) {
+//                    TimeSeriesDatabase monthDb = monthDb();
+//                    if(monthDb.resolution < zoomDb.resolution) monthDb = zoomDb;
+//                    if(monthDb.resolution > rangeDb.resolution) monthDb = rangeDb; 
+//                    end = start;
+//                    start = Math.max(params.rangeStart, params.end - 86400 * 32); 
+//                    builder.addRowsFromIterator(monthDb.read(start,end - 1));
+//                }
             }
             
             if(start > params.rangeStart) {
-                builder.addRowsFromIterator(rangeDb.read(params.rangeStart,start));
+                builder.addRowsFromIterator(rangeDb.read(params.rangeStart,start - 1));
             }
             if(origEnd < rangeEnd) {
-                builder.addRowsFromIterator(rangeDb.read(origEnd,rangeEnd));
+                builder.addRowsFromIterator(rangeDb.read(origEnd + 1,rangeEnd));
             }
 
             if(params.extraPoints && rangeEnd < params.rangeEnd) {
                 builder.addRowsFromIterator(zoomDb.read(rangeEnd+1,params.rangeEnd));
             }
             
-            builder.addOneRowFromIterator(main.secondsDb.read(params.start));
+            if(builder.min() > params.start) builder.addOneRowFromIterator(main.secondsDb.read(params.start));
             
             if(params.end == max) {
                 int nextTime = builder.max() + 1;
@@ -401,7 +400,7 @@ public class Servlet extends DataSourceServlet {
                     builder.addRowsFromIterator(main.databases[0].read(nextTime,max));
                 }
             }
-            else {
+            else if(builder.max() < params.end) {
                 builder.addOneRowFromIterator(main.secondsDb.read(params.end));
             }
         }

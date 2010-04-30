@@ -410,9 +410,9 @@ public class Main {
         log.info("Exiting.");
         isRunning = false;
         try { server.stop(); } catch (Exception e) {}
-        longImportTask.stop();
-        shortImportTask.stop();
-        catchUpTask.stop();
+        try { longImportTask.stop(); } catch (Exception e) {}
+        try { shortImportTask.stop(); } catch (Exception e) {}
+        try { catchUpTask.stop(); } catch (Exception e) {}
         close();
     }
 
