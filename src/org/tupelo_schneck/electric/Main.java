@@ -353,7 +353,7 @@ public class Main {
                 }
             }
             // read the values
-            log.info("Catching up from " + dateString(catchupStart));
+            log.trace("Catching up from " + dateString(catchupStart));
             try {
                 ReadIterator iter = null;
                 Cursor[] cursors = new Cursor[numDurations];
@@ -379,7 +379,7 @@ public class Main {
                     for(Cursor cursor : cursors) { if(cursor!=null) try { cursor.close(); } catch (Exception e) { e.printStackTrace(); } }
                     if(iter!=null) try { iter.close(); } catch (Exception e) { e.printStackTrace(); }
                 }
-                log.info("Catch-up done.");
+                log.trace("Catch-up done.");
             }
             catch(DatabaseException e) {
                 e.printStackTrace();
@@ -409,7 +409,7 @@ public class Main {
     public void shutdown() {
         log.info("Exiting.");
         isRunning = false;
-        try { server.stop(); } catch (Exception e) {}
+        try { if(server.isRunning()) server.stop(); } catch (Exception e) {}
         try { longImportTask.stop(); } catch (Exception e) {}
         try { shortImportTask.stop(); } catch (Exception e) {}
         try { catchUpTask.stop(); } catch (Exception e) {}
