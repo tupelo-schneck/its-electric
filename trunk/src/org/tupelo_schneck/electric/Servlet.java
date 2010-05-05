@@ -201,7 +201,9 @@ public class Servlet extends DataSourceServlet {
             lastMTU = triple.mtu;
         }
         
-        public void addRowsFromIterator(ReadIterator iter) {
+        /* returns whether any rows were in fact added */
+        public boolean addRowsFromIterator(ReadIterator iter) {
+            boolean res = false;
             int priorMin = min;
             int priorMax = max;
             try {
@@ -209,12 +211,14 @@ public class Servlet extends DataSourceServlet {
                     Triple triple = iter.next();
                     if(triple.timestamp >= priorMin && triple.timestamp <= priorMax) continue;
                     addTriple(triple);
+                    res = true;
                 }
             }
             finally {
                 iter.close();
             }
             finishRow();
+            return res;
         }
         
         public void addOneRowFromIterator(ReadIterator iter) {
@@ -397,9 +401,10 @@ public class Servlet extends DataSourceServlet {
                     log.debug("After resolution " + main.databases[zoomDbIndex].resolution + " max = " + Main.dateString(builder.max()) + " nextTime = " + Main.dateString(nextTime));
                     for(int i = zoomDbIndex - 1; i >= 1; i--) {
                         if(nextTime>=max) break;
-                        builder.addRowsFromIterator(main.databases[i].read(nextTime,max));
-                        nextTime = builder.max() + main.databases[i].resolution - main.databases[i-1].resolution + 1;
-                        log.debug("After resolution " + main.databases[i].resolution + " max = " + Main.dateString(builder.max()) + " nextTime = " + Main.dateString(nextTime));
+                        if (builder.addRowsFromIterator(main.databases[i].read(nextTime,max))) {
+                            nextTime = builder.max() + main.databases[i].resolution - main.databases[i-1].resolution + 1;
+                            log.debug("After resolution " + main.databases[i].resolution + " max = " + Main.dateString(builder.max()) + " nextTime = " + Main.dateString(nextTime));
+                        }
                     }
                     if(builder.max() < max) {
                         nextTime = Math.min(nextTime, max);
