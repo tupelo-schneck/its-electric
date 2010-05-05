@@ -388,16 +388,23 @@ public class Servlet extends DataSourceServlet {
             if(builder.min() > params.start) builder.addOneRowFromIterator(main.secondsDb.read(params.start));
             
             if(params.end == max) {
-                int nextTime = builder.max() + 1;
-                for(int i = Main.numDurations - 1; i >= 1; i--) {
-                    if(nextTime>=max) break;
-                    if(main.databases[i].resolution >= zoomDb.resolution) continue;
-                    builder.addRowsFromIterator(main.databases[i].read(nextTime,max));
-                    nextTime = builder.max() + main.databases[i].resolution - main.databases[i-1].resolution + 1;
+                int zoomDbIndex;
+                for(zoomDbIndex = Main.numDurations - 1; zoomDbIndex >= 0; zoomDbIndex--) {
+                    if(main.databases[zoomDbIndex].resolution == zoomDb.resolution) break;
                 }
-                if(builder.max() < max) {
-                    nextTime = Math.min(nextTime, max);
-                    builder.addRowsFromIterator(main.databases[0].read(nextTime,max));
+                if(zoomDbIndex > 0) {
+                    int nextTime = builder.max() + main.databases[zoomDbIndex].resolution - main.databases[zoomDbIndex-1].resolution + 1;
+                    log.debug("After resolution " + main.databases[zoomDbIndex].resolution + " max = " + Main.dateString(builder.max()) + " nextTime = " + Main.dateString(nextTime));
+                    for(int i = zoomDbIndex - 1; i >= 1; i--) {
+                        if(nextTime>=max) break;
+                        builder.addRowsFromIterator(main.databases[i].read(nextTime,max));
+                        nextTime = builder.max() + main.databases[i].resolution - main.databases[i-1].resolution + 1;
+                        log.debug("After resolution " + main.databases[i].resolution + " max = " + Main.dateString(builder.max()) + " nextTime = " + Main.dateString(nextTime));
+                    }
+                    if(builder.max() < max) {
+                        nextTime = Math.min(nextTime, max);
+                        builder.addRowsFromIterator(main.databases[0].read(nextTime,max));
+                    }
                 }
             }
             else if(builder.max() < params.end) {
