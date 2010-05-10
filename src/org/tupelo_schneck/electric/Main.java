@@ -407,13 +407,13 @@ public class Main {
     private Task catchUpTask;    
     
     public void shutdown() {
-        log.info("Exiting.");
+        try { log.info("Exiting."); } catch (Exception e) {}
         isRunning = false;
         try { if(server.isRunning()) server.stop(); } catch (Exception e) {}
         try { longImportTask.stop(); } catch (Exception e) {}
         try { shortImportTask.stop(); } catch (Exception e) {}
         try { catchUpTask.stop(); } catch (Exception e) {}
-        close();
+        try { close(); } catch (Exception e) {}
     }
 
     public static final void main(String[] args) {
