@@ -87,9 +87,16 @@ ItsElectric.prototype.init = function() {
 
 ItsElectric.prototype.queryURL = function() {
     var realTimeNeedsAdjust = this.realTime && this.range && this.range.end.getTime() == this.maximum;
-    var queryURL = this.url + '?extraPoints=yes';
-    if(realTimeNeedsAdjust) queryURL = queryURL + '&realTimeAdjust=yes';
-    var extendChar = '&';
+    var queryURL = this.url;
+    var extendChar = '?';
+    if(true) { 
+        queryURL = queryURL + extendChar + 'extraPoints=2';
+        extendChar = '&';
+    }
+    if(realTimeNeedsAdjust) {
+        queryURL = queryURL + extendChar + 'realTimeAdjust=yes';
+        extendChar = '&';
+    }
     if(this.ready) {
         if(this.range && (this.range.start.getTime() != this.minimum || this.range.end.getTime() != this.maximum)) {
             queryURL = queryURL + extendChar +
