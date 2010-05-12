@@ -40,4 +40,9 @@ public class Triple {
             return o1.timestamp - o2.timestamp;
         }
     };
+
+    @Override
+    public String toString() {
+        return Main.dateString(timestamp) + ", MTU" + mtu + ", " + power + "W";
+    }
 }

@@ -35,6 +35,7 @@ import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.eclipse.jetty.server.handler.RequestLogHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.thread.ShutdownThread;
 import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
 
 import com.google.visualization.datasource.DataSourceServlet;
@@ -456,6 +457,8 @@ public class Servlet extends DataSourceServlet {
 
         ServletContextHandler root = new ServletContextHandler(handlers, "/", ServletContextHandler.NO_SESSIONS|ServletContextHandler.NO_SECURITY);
         root.addServlet(new ServletHolder(new Servlet(main)), "/*");
+
+        ShutdownThread.getInstance(); // work around a jetty bug that causes problems at shutdown
 
         Server server = new Server(main.options.port);
         server.setHandler(handlers);
