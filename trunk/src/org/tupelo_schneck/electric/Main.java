@@ -118,7 +118,10 @@ public class Main {
         for(TimeSeriesDatabase db : databases) {
             if(db!=null) db.close();
         }
-        if(environment!=null) try { environment.close(); } catch (Exception e) { e.printStackTrace(); }
+        if(environment!=null) try { 
+            environment.close(); 
+            log.info("Environment closed.");
+        } catch (Exception e) { e.printStackTrace(); }
         closed = true;
     }
 
@@ -223,11 +226,11 @@ public class Main {
 
     public class MultiImporter implements Runnable {
         private int count;
-        private boolean oldOnly;
+        private boolean longImport;
         
-        public MultiImporter(int count, boolean oldOnly) {
+        public MultiImporter(int count, boolean longImport) {
             this.count = count;
-            this.oldOnly = oldOnly;
+            this.longImport = longImport;
         }
 
         @Override
@@ -250,7 +253,7 @@ public class Main {
             for(byte mtu = 0; mtu < options.mtus; mtu++) {
                 if(!isRunning) return;
                 
-                MinAndMax minAndMax = changesFromImport(count,mtu,oldOnly);
+                MinAndMax minAndMax = changesFromImport(count,mtu,longImport);
 
                 if(minAndMax==null) continue;
                 
@@ -272,6 +275,13 @@ public class Main {
                 }
                 maxSecondForMTU = newMaxForMTU;
             }
+            
+            try {
+                if(longImport) environment.sync();
+            }
+            catch(DatabaseException e) {
+                log.debug("Exception syncing environment: " + e);
+            }
         }
     }
     
@@ -291,9 +301,9 @@ public class Main {
         }
     }
     
-    public Task repeatedlyImport(int count,boolean oldOnly,int interval) {
+    public Task repeatedlyImport(int count,boolean longImport,int interval) {
         ScheduledExecutorService execServ = Executors.newSingleThreadScheduledExecutor();
-        Future<?> future = execServ.scheduleAtFixedRate(new MultiImporter(count, oldOnly), 0, interval, TimeUnit.SECONDS);
+        Future<?> future = execServ.scheduleAtFixedRate(new MultiImporter(count, longImport), 0, interval, TimeUnit.SECONDS);
         return new Task(execServ,future);
     }
 
@@ -407,13 +417,15 @@ public class Main {
     private Task catchUpTask;    
     
     public void shutdown() {
-        try { log.info("Exiting."); } catch (Exception e) {}
-        isRunning = false;
-        try { if(server.isRunning()) server.stop(); } catch (Exception e) {}
-        try { longImportTask.stop(); } catch (Exception e) {}
-        try { shortImportTask.stop(); } catch (Exception e) {}
-        try { catchUpTask.stop(); } catch (Exception e) {}
-        try { close(); } catch (Exception e) {}
+        if(isRunning) {
+            try { log.info("Exiting."); } catch (Throwable e) {}
+            isRunning = false;
+            try { longImportTask.stop(); } catch (Throwable e) {}
+            try { shortImportTask.stop(); } catch (Throwable e) {}
+            try { catchUpTask.stop(); } catch (Throwable e) {}
+            try { server.stop(); } catch (Throwable e) {}
+            try { close(); } catch (Throwable e) {}
+        }
     }
 
     public static final void main(String[] args) {

@@ -105,6 +105,12 @@ public class ImportIterator implements Iterator<Triple> {
         if(closed) return null;
         byte[] decoded = base64.decode(line);
         if(decoded==null || decoded.length<10) return null;
+        if((0x00FF & decoded[0]) < 9) {
+            // TED5000 uses sentinel value 2005-05-05 05:05:05.  
+            // Here we skip anything before 2009.
+            getNextLine();
+            return next();
+        }
         cal.set(2000+(0x00FF & decoded[0]), decoded[1]-1, decoded[2], decoded[3], decoded[4], decoded[5]);
         int power = intOfBytes(decoded,6);
         Triple res = new Triple((int)(cal.getTimeInMillis() / 1000),mtu,power);

@@ -150,6 +150,26 @@ public class TimeSeriesDatabase {
                 log.info("   starting at " + Main.dateString(start[mtu]) + " for MTU " + mtu);
             }
 
+            // Delete everything before 2009; got some due to bug in 1.4
+            Cursor cursor = openCursor();
+            try {
+                DatabaseEntry key = new DatabaseEntry();
+                DatabaseEntry readDataEntry = new DatabaseEntry();
+                while(true) {
+                    key = keyEntry(0,(byte)0);
+                    cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
+                    byte[] buf = key.getData();
+                    int timestamp = intOfBytes(buf,0);
+                    if(timestamp<1230000000) {
+                        log.info("Deleting " + Main.dateString(timestamp));
+                        database.delete(null,key);
+                    }
+                    else break;
+                }
+            }
+            finally {
+                cursor.close();
+            }
         }
         catch(Throwable e) {
             e.printStackTrace();
