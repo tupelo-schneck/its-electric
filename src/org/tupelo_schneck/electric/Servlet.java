@@ -277,7 +277,7 @@ public class Servlet extends DataSourceServlet {
         public int resolution;
         public int minPoints;
         public int maxPoints;
-        public boolean extraPoints;
+        public int extraPoints;
         
         private HttpServletRequest req;
 
@@ -316,9 +316,7 @@ public class Servlet extends DataSourceServlet {
             maxPoints = getIntParameter("maxPoints",-1);
             if(minPoints<=0 && maxPoints<=0) maxPoints = main.options.numDataPoints;
             
-            String extraPointsParam = req.getParameter("extraPoints");
-            if(extraPointsParam!=null) extraPointsParam = extraPointsParam.toLowerCase();
-            extraPoints = "yes".equals(extraPointsParam) || "true".equals(extraPointsParam);
+            extraPoints = getIntParameter("extraPoints",0);
         }
     }
     
@@ -342,14 +340,14 @@ public class Servlet extends DataSourceServlet {
             builder.setCustomProperty(RESOLUTION_STRING, resolutionString);
             
             int range = params.end - params.start;
-            int start = params.extraPoints ? Math.max(params.rangeStart, params.start - range) : params.start;
-            int end = params.extraPoints ? Math.min(params.rangeEnd, params.end + range) : params.end;
+            int start = params.extraPoints > 1 ? Math.max(params.rangeStart, params.start - range) : params.start;
+            int end = params.extraPoints > 1 ? Math.min(params.rangeEnd, params.end + range) : params.end;
             builder.addRowsFromIterator(zoomDb.read(start,end));
             
             int origEnd = end;
             
             int rangeEnd = params.rangeEnd;
-            if(params.extraPoints) {
+            if(params.extraPoints > 1) {
                 if(end < params.rangeEnd) {
                     rangeEnd = Math.max(end, params.rangeEnd - range - 1);
                 }
@@ -386,35 +384,37 @@ public class Servlet extends DataSourceServlet {
                 builder.addRowsFromIterator(rangeDb.read(origEnd + 1,rangeEnd));
             }
 
-            if(params.extraPoints && rangeEnd < params.rangeEnd) {
+            if(params.extraPoints > 1 && rangeEnd < params.rangeEnd) {
                 builder.addRowsFromIterator(zoomDb.read(rangeEnd+1,params.rangeEnd));
             }
             
-            if(builder.min() > params.start) builder.addOneRowFromIterator(main.secondsDb.read(params.start));
-            
-            if(params.end == max) {
-                int zoomDbIndex;
-                for(zoomDbIndex = Main.numDurations - 1; zoomDbIndex >= 0; zoomDbIndex--) {
-                    if(main.databases[zoomDbIndex].resolution == zoomDb.resolution) break;
-                }
-                if(zoomDbIndex > 0) {
-                    int nextTime = builder.max() + main.databases[zoomDbIndex].resolution - main.databases[zoomDbIndex-1].resolution + 1;
-                    log.debug("After resolution " + main.databases[zoomDbIndex].resolution + " max = " + Main.dateString(builder.max()) + " nextTime = " + Main.dateString(nextTime));
-                    for(int i = zoomDbIndex - 1; i >= 1; i--) {
-                        if(nextTime>=max) break;
-                        if (builder.addRowsFromIterator(main.databases[i].read(nextTime,max))) {
-                            nextTime = builder.max() + main.databases[i].resolution - main.databases[i-1].resolution + 1;
-                            log.debug("After resolution " + main.databases[i].resolution + " max = " + Main.dateString(builder.max()) + " nextTime = " + Main.dateString(nextTime));
+            if(params.extraPoints > 0) {
+                if(builder.min() > params.start) builder.addOneRowFromIterator(main.secondsDb.read(params.start));
+
+                if(params.end == max) {
+                    int zoomDbIndex;
+                    for(zoomDbIndex = Main.numDurations - 1; zoomDbIndex >= 0; zoomDbIndex--) {
+                        if(main.databases[zoomDbIndex].resolution == zoomDb.resolution) break;
+                    }
+                    if(zoomDbIndex > 0) {
+                        int nextTime = builder.max() + main.databases[zoomDbIndex].resolution - main.databases[zoomDbIndex-1].resolution + 1;
+                        log.debug("After resolution " + main.databases[zoomDbIndex].resolution + " max = " + Main.dateString(builder.max()) + " nextTime = " + Main.dateString(nextTime));
+                        for(int i = zoomDbIndex - 1; i >= 1; i--) {
+                            if(nextTime>=max) break;
+                            if (builder.addRowsFromIterator(main.databases[i].read(nextTime,max))) {
+                                nextTime = builder.max() + main.databases[i].resolution - main.databases[i-1].resolution + 1;
+                                log.debug("After resolution " + main.databases[i].resolution + " max = " + Main.dateString(builder.max()) + " nextTime = " + Main.dateString(nextTime));
+                            }
+                        }
+                        if(builder.max() < max) {
+                            nextTime = Math.min(nextTime, max);
+                            builder.addRowsFromIterator(main.databases[0].read(nextTime,max));
                         }
                     }
-                    if(builder.max() < max) {
-                        nextTime = Math.min(nextTime, max);
-                        builder.addRowsFromIterator(main.databases[0].read(nextTime,max));
-                    }
                 }
-            }
-            else if(builder.max() < params.end) {
-                builder.addOneRowFromIterator(main.secondsDb.read(params.end));
+                else if(builder.max() < params.end) {
+                    builder.addOneRowFromIterator(main.secondsDb.read(params.end));
+                }
             }
         }
         catch(DatabaseException e) {
