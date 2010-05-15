@@ -150,7 +150,7 @@ public class TimeSeriesDatabase {
                 log.info("   starting at " + Main.dateString(start[mtu]) + " for MTU " + mtu);
             }
 
-            // Delete everything before 2009; got some due to bug in 1.4
+            // Delete everything before 2009; got some due to bug in its-electric 1.4
             Cursor cursor = openCursor();
             try {
                 DatabaseEntry key = new DatabaseEntry();
