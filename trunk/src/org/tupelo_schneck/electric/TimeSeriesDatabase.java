@@ -147,7 +147,7 @@ public class TimeSeriesDatabase {
             for(byte mtu = 0; mtu < mtus; mtu++) {
                 start[mtu] = maxStoredTimestampForMTU(mtu) + resolution;
                 maxForMTU[mtu] = start[mtu] - 1;
-                log.info("   starting at " + Main.dateString(start[mtu]) + " for MTU " + mtu);
+                log.trace("   starting at " + Main.dateString(start[mtu]) + " for MTU " + mtu);
             }
 
             // Delete everything before 2009; got some due to bug in its-electric 1.4
