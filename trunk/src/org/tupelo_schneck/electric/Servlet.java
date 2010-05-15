@@ -316,7 +316,9 @@ public class Servlet extends DataSourceServlet {
             maxPoints = getIntParameter("maxPoints",-1);
             if(minPoints<=0 && maxPoints<=0) maxPoints = main.options.numDataPoints;
             
-            extraPoints = getIntParameter("extraPoints",0);
+            String extraPointsString = req.getParameter("extraPoints");
+            if("yes".equals(extraPointsString)) extraPoints = 2;
+            else extraPoints = getIntParameter("extraPoints",0);
         }
     }
     

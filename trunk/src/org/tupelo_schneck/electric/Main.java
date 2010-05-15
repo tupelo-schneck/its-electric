@@ -278,6 +278,7 @@ public class Main {
             
             try {
                 if(longImport) environment.sync();
+                log.trace("Environment synced.");
             }
             catch(DatabaseException e) {
                 log.debug("Exception syncing environment: " + e);
