@@ -97,18 +97,18 @@ public class Main {
     public void openDatabases() throws DatabaseException {
         for(int i = 0; i < numDurations; i++) {
             databases[i] = new TimeSeriesDatabase(this, environment, String.valueOf(durations[i]), options.mtus, durations[i], durationStrings[i]);
-            log.info("Database " + i + " opened");
+            log.trace("Database " + i + " opened");
         }
         secondsDb = databases[0];
         minimum = secondsDb.minimum();
         maxSecondForMTU = secondsDb.maxForMTU.clone();
-        log.info("Minimum is " + dateString(minimum));
+        log.trace("Minimum is " + dateString(minimum));
         int newMax = 0;
         for(byte mtu = 0; mtu < options.mtus; mtu++) {
             if(maxSecondForMTU[mtu] > newMax) newMax = maxSecondForMTU[mtu];
         }
         maximum = newMax;
-        log.info("Maximum is " + dateString(maximum));
+        log.trace("Maximum is " + dateString(maximum));
     }
 
     private boolean closed;

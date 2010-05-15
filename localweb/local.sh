@@ -2,7 +2,7 @@
 
 export where=test
 
-if false
+if true
 then export where=.; rm -rf main/* build/*
 fi
 
