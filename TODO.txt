@@ -1,3 +1,5 @@
+Fix up "daily-history.html" and include in package
+
 Trim data
 Voltage
 MTU math
