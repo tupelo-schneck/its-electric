@@ -157,7 +157,8 @@ public class TimeSeriesDatabase {
                 DatabaseEntry readDataEntry = new DatabaseEntry();
                 while(true) {
                     key = keyEntry(0,(byte)0);
-                    cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
+                    OperationStatus status = cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
+                    if(status!=OperationStatus.SUCCESS) break;
                     byte[] buf = key.getData();
                     int timestamp = intOfBytes(buf,0);
                     if(timestamp<1230000000) {
