@@ -55,12 +55,7 @@ public class TimeSeriesDatabase {
     public int[] count;
     public int[] maxForMTU;
 
-    public static final DatabaseConfig ALLOW_CREATE_CONFIG;
-    static {
-        DatabaseConfig config = new DatabaseConfig();
-        config.setAllowCreate(true);
-        ALLOW_CREATE_CONFIG = config;
-    }
+    public static DatabaseConfig ALLOW_CREATE_CONFIG = null;
 
     //	public static long longOfBytes(byte[] buf, int offset) {
     //		long res = 0;
@@ -134,6 +129,14 @@ public class TimeSeriesDatabase {
             this.main = main;
             this.resolution = resolution;
             this.resolutionString = resolutionString;
+            synchronized(TimeSeriesDatabase.class) {
+                if(ALLOW_CREATE_CONFIG==null) {
+                    DatabaseConfig config = new DatabaseConfig();
+                    config.setAllowCreate(true);
+                    config.setReadOnly(main.readOnly);
+                    ALLOW_CREATE_CONFIG = config;
+                }
+            }
             database = environment.openDatabase(null, name, ALLOW_CREATE_CONFIG);
             
             maxForMTU = new int[mtus];
