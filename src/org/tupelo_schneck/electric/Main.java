@@ -45,6 +45,8 @@ import com.sleepycat.je.EnvironmentConfig;
 public class Main {
     Log log = LogFactory.getLog(Main.class);
     
+    boolean readOnly = false; // I set this true when running tests from a different main method
+    
     public static final int[] durations = new int[] { 
         1, 4, 15, 60, 60*4, 60*15, 60*60, 60*60*3, 60*60*8, 60*60*24
     };
@@ -55,7 +57,9 @@ public class Main {
 
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
     public static String dateString(int seconds) {
-        return dateFormat.format(Long.valueOf(1000L * seconds));
+        synchronized(dateFormat) {
+            return dateFormat.format(Long.valueOf(1000L * seconds));
+        }
     }
     
     private Environment environment;
@@ -90,6 +94,7 @@ public class Main {
             log.info("Cache size set to: " + (maxMem - 60L * 1024 * 1024));
         }
         configuration.setAllowCreate(true);
+        configuration.setReadOnly(readOnly);
         environment = new Environment(envHome, configuration);
         log.info("Environment opened.");
     }
@@ -430,6 +435,7 @@ public class Main {
             try { close(); } catch (Throwable e) {}
         }
     }
+    
 
     public static final void main(String[] args) {
         final Main main = new Main();
