@@ -1,0 +1,85 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!--
+This file is part of
+"it's electric": software for storing and viewing home energy monitoring data
+Copyright (C) 2009-2010 Robert R. Tupelo-Schneck <schneck@gmail.com>
+http://tupelo-schneck.org/its-electric
+
+"it's electric" is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+"it's electric" is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with "it's electric", as legal/COPYING-agpl.txt.
+If not, see <http://www.gnu.org/licenses/>.
+-->
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <script type="text/javascript" src="its-electric.js"></script>
+    <script type="text/javascript">
+    
+        // CHANGE URL BELOW to the URL of your "it's electric" data server
+    
+        var itsElectric = new ItsElectric('http://localhost:8081', // CHANGE URL HERE
+                                          'timeline','busy',
+                                          null,
+                                          null,4*60*60,10000);
+        itsElectric.options.wmode = 'transparent';
+        itsElectric.options.dateFormat = 'yyyy-MM-dd HH:mm:ss';
+        itsElectric.options.displayZoomButtons = false;
+        itsElectric.options.legendPosition = 'newRow';
+        //itsElectric.noFlashEvents = true; // not recommended, see README.txt
+    </script>
+    <title>it's electric</title>
+    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+        google.load('visualization', '1', {'packages':['annotatedtimeline']});
+        google.setOnLoadCallback(function() { itsElectric.init(); });
+    </script>
+    <script type="text/javascript">
+        function show(id) {
+            var e = document.getElementById(id);
+            e.style.display = '';
+        }
+        function hide(id) {
+            var e = document.getElementById(id);
+            e.style.display = 'none';
+        }
+    </script>
+    <style type="text/css">
+        .its-electric {
+            font-family: monospace;
+            font-size: 40px;
+            font-weight: bold;
+            letter-spacing: 5px;
+            text-shadow: gray 2px 2px 2px;
+        }
+        .monospace {
+            font-family: monospace;
+        }
+        html, body {
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+  </head>
+  <body>
+    <div style="width:100%;height:100%;overflow:hidden">
+        <div style="position:relative;margin:4px;z-index:20">
+            <span class="its-electric">i<span style="letter-spacing:-5px">t</span><span style="letter-spacing:-3px">'s</span> electric</span>
+            &nbsp;&nbsp;
+            <span id="busy" style="display:none"><img style="position:absolute;top:0px;right:130px" src="wait20trans.gif" alt="[busy]"/></span>
+        </div>
+        <div id="timeline" style="position:absolute;top:0px;width:100%;height:100%;z-index:10;overflow:hidden">
+        </div>
+    </div>        
+  </body>
+</html>

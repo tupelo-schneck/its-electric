@@ -1,5 +1,10 @@
+Should have watts min as well as watts max
+
 Fix up "daily-history.html" and include in package
 
 Trim data
-Voltage
+Voltage!!!
 MTU math
+
+serve web pages
+servlet should consider what's on the path
