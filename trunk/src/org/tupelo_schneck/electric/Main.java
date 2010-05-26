@@ -378,7 +378,7 @@ public class Main {
                 try {
                     newData = false;
                     iter = secondsDb.read(catchupStart);
-                    for(int i = 0; i < numDurations; i++) {
+                    for(int i = 1; i < numDurations; i++) {
                         cursors[i] = databases[i].openCursor();
                     }
                     while(iter.hasNext() && !reset && isRunning) {
