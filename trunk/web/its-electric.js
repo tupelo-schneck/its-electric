@@ -19,12 +19,13 @@ along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
 */
 
-function ItsElectric(url,timelineId,busyId,getWMax,resolutionId,initialZoom,realTimeUpdateInterval) {
+function ItsElectric(url,timelineId,busyId,getWMax,getWMin,resolutionId,initialZoom,realTimeUpdateInterval) {
     this.url = url;
     this.timelineId = timelineId;
     this.initialZoom = initialZoom;
     this.busyId = busyId;
     this.getWMax = getWMax;
+    this.getWMin = getWMin;
     this.resolutionId = resolutionId;
 
     this.div1 = null;
@@ -57,11 +58,13 @@ ItsElectric.prototype.init = function() {
     this.div1.style.width = '100%';
     this.div1.style.height = '100%';
     this.div1.style.zIndex = '1';
+    this.div1.style.visibility = 'visible';
     this.div2 = document.createElement('div');
     this.div2.style.position = 'absolute';
     this.div2.style.width = '100%';
     this.div2.style.height = '100%';
     this.div2.style.zIndex = '0';
+    this.div2.style.visibility = 'hidden';
     document.getElementById(this.timelineId).appendChild(div0);
     div0.appendChild(this.div1);
     div0.appendChild(this.div2);
@@ -120,8 +123,10 @@ ItsElectric.prototype.requery = function() {
     query.send(function(response) {self.handleQueryResponse(response);});
 };
 
-ItsElectric.prototype.options = {displayAnnotations: false, displayExactValues: true,
-                   allValuesSuffix: 'W'};
+ItsElectric.prototype.options = {displayAnnotations: false, 
+                                 displayExactValues: true,
+                                 allValuesSuffix: 'W',
+                                 dateFormat: 'yyyy-MM-dd HH:mm:ss'};
 
 ItsElectric.prototype.handleQueryResponse = function(response) {
     if (response.isError()) {
@@ -130,16 +135,29 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
         return;
     }
 
+    this.data = response.getDataTable();
+    this.redraw();
+};
+
+ItsElectric.prototype.redraw = function() {
+    if(this.data==null) return;
+    if(this.busyId) document.getElementById(this.busyId).style.display="";
+    var data = this.data;
+    
     var realTimeNeedsAdjust = this.realTime && this.range && this.range.end.getTime() == this.maximum;
 
-    var data = response.getDataTable();
     this.minimum = data.getValue(0,0).getTime();
     this.maximum = data.getValue(data.getNumberOfRows()-1,0).getTime();
     this.timeZoneOffset = parseInt(data.getTableProperty('timeZoneOffset'));
+    
     var wmax = null;
+    var wmin = null;
     if(this.getWMax) wmax = this.getWMax();
+    if(this.getWMin) wmin = this.getWMin();
+
     var options = {};
     for(p in this.options) options[p] = this.options[p];
+
     var startDate = new Date();
     var endDate = new Date();
     var start;
@@ -164,9 +182,14 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     setDateAdjusted(endDate,end);
     options.zoomStartTime = startDate;
     options.zoomEndTime = endDate;
+
     if(wmax && wmax!='') {
         options.max = wmax;
     }
+    if(wmin && wmin!='') {
+        options.min = wmin;
+    }
+
     this.annotatedtimeline2.draw(data, options);
     this.resolutionString = data.getTableProperty('resolutionString');
 
@@ -189,14 +212,17 @@ ItsElectric.prototype.readyHandler = function(e) {
         obj.appendChild(document.createTextNode(this.resolutionString));
     }
 
-    this.ready = true;
     var temp = this.annotatedtimeline2;
     this.annotatedtimeline2 = this.annotatedtimeline;
     this.annotatedtimeline = temp;
     temp = this.div1.style.zIndex;
     this.div1.style.zIndex = this.div2.style.zIndex;
     this.div2.style.zIndex = temp;
+    temp = this.div1.style.visibility;
+    this.div1.style.visibility = this.div2.style.visibility;
+    this.div2.style.visibility = temp;
 
+    this.ready = true;
     if(this.firstTime && !this.noFlashEvents) {
         this.firstTime = false;
         this.zoom(this.initialZoom);
@@ -221,11 +247,19 @@ ItsElectric.prototype.zoom = function(t) {
     this.range = this.annotatedtimeline.getVisibleChartRange();
     this.resolution = null;
     var newStart = new Date();
-    newStart.setTime(this.range.end.getTime() - t*1000);
-    this.range.start.setTime(this.range.end.getTime() - t*1000);
-    if(newStart.getTime()<this.minimum) newStart.setTime(this.minimum);
     var newEnd = new Date();
-    newEnd.setTime(this.range.end.getTime());
+    if(t==null) {
+        newStart.setTime(this.minimum);
+        this.range.start.setTime(this.minimum);
+        newEnd.setTime(this.maximum);
+        this.range.end.setTime(this.maximum);        
+    }
+    else {
+        newStart.setTime(this.range.end.getTime() - t*1000);
+        if(newStart.getTime()<this.minimum) newStart.setTime(this.minimum);
+        this.range.start.setTime(newStart.getTime());
+        newEnd.setTime(this.range.end.getTime());
+    }
     this.annotatedtimeline.setVisibleChartRange(newStart,newEnd);
     var self = this;
     setTimeout(function(){self.requery();},500);
