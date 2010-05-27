@@ -29,12 +29,13 @@ If not, see <http://www.gnu.org/licenses/>.
     
         var itsElectric = new ItsElectric('http://localhost:8081', // CHANGE URL HERE
                                           'timeline','busy',
-                                          null,
-                                          null,4*60*60,10000);
+                                          function(){return document.forms['topform'].wmax.value;},
+                                          function(){return document.forms['topform'].wmin.value;},
+                                          'resolutionId',4*60*60,10000);
         itsElectric.options.wmode = 'transparent';
-        itsElectric.options.dateFormat = 'yyyy-MM-dd HH:mm:ss';
         itsElectric.options.displayZoomButtons = false;
         itsElectric.options.legendPosition = 'newRow';
+        itsElectric.options.displayRangeSelector = false;
         //itsElectric.noFlashEvents = true; // not recommended, see README.txt
     </script>
     <title>it's electric</title>
@@ -52,6 +53,14 @@ If not, see <http://www.gnu.org/licenses/>.
             var e = document.getElementById(id);
             e.style.display = 'none';
         }
+        var resizeTimeout = null;
+        window.onresize = function(){
+           if(resizeTimeout != null) clearTimeout(resizeTimeout);
+           resizeTimeout = setTimeout(function() {
+                   if(itsElectric.ready) itsElectric.redraw();
+               }, 
+               200);
+        };
     </script>
     <style type="text/css">
         .its-electric {
@@ -64,6 +73,10 @@ If not, see <http://www.gnu.org/licenses/>.
         .monospace {
             font-family: monospace;
         }
+        .blocky {
+            font-size:11px;
+            font-family:sans-serif;
+        }
         html, body {
             height: 100%;
             padding: 0;
@@ -73,10 +86,89 @@ If not, see <http://www.gnu.org/licenses/>.
   </head>
   <body>
     <div style="width:100%;height:100%;overflow:hidden">
-        <div style="position:relative;margin:4px;z-index:20">
+        <div style="position:relative;margin:4px;z-index:20;">
             <span class="its-electric">i<span style="letter-spacing:-5px">t</span><span style="letter-spacing:-3px">'s</span> electric</span>
             &nbsp;&nbsp;
-            <span id="busy" style="display:none"><img style="position:absolute;top:0px;right:130px" src="wait20trans.gif" alt="[busy]"/></span>
+            <a class="blocky" href="#">Show menu</a>
+            &nbsp;&nbsp;
+            <span id="busy" style="display:none"><img style="position:relative;top:5px;" src="wait20trans.gif" alt="[busy]"/></span>
+        </div>
+        <div style="position:relative;top:-7px;z-index:20;width:445px;border:solid 1px;padding:4px;margin-left:1px;background-color:white">
+            <form id="topform" action="#" onsubmit="return false;">
+                <p style="margin:0;padding:0;line-height:200%;" class="blocky">
+                    <b>Zoom:</b>
+                    <span> 
+                        <a href="#" onclick="itsElectric.zoom(1*60);return false;">1'</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(5*60);return false;">5'</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(15*60);return false;">15'</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(30*60);return false;">30'</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(60*60);return false;">1h</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(2*60*60);return false;">2h</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(4*60*60);return false;">4h</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(8*60*60);return false;">8h</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(12*60*60);return false;">12h</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(24*60*60);return false;">1d</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(5*24*60*60);return false;">5d</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(31*24*60*60);return false;">1m</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(92*24*60*60);return false;">3m</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(183*24*60*60);return false;">6m</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(366*24*60*60);return false;">1y</a>&nbsp;
+                        <a href="#" onclick="itsElectric.zoom(null);return false;">Max</a>&nbsp;
+                    </span>
+                    &nbsp; &nbsp;
+                    <a href="#" onclick="itsElectric.scrollToPresent();return false;">Scroll to present</a>
+                    <br/>
+                    
+                    <b>Watts min:</b>
+                    <input type="text" name="wmin" value="" style="width:4em;text-align:right;" onchange="itsElectric.redraw();"/>W
+                    &nbsp;
+                    <b>max:</b>
+                    <input type="text" name="wmax" value="10000" style="width:4em;text-align:right;" onchange="itsElectric.redraw();"/>W
+                    &nbsp;
+                    <a href="#" onclick="itsElectric.requery();return false;">Refresh</a>
+                    <br/>
+                    
+                    <b>Resolution:</b>
+                    <span>
+                        <a href="#" onclick="itsElectric.setResolution(1);return false;">1"</a>&nbsp;
+                        <a href="#" onclick="itsElectric.setResolution(4);return false;">4"</a>&nbsp;
+                        <a href="#" onclick="itsElectric.setResolution(15);return false;">15"</a>&nbsp;
+                        <a href="#" onclick="itsElectric.setResolution(60);return false;">1'</a>&nbsp;
+                        <a href="#" onclick="itsElectric.setResolution(4*60);return false;">4'</a>&nbsp;
+                        <a href="#" onclick="itsElectric.setResolution(15*60);return false;">15'</a>&nbsp;
+                        <a href="#" onclick="itsElectric.setResolution(60*60);return false;">1h</a>&nbsp;
+                        <a href="#" onclick="itsElectric.setResolution(3*60*60);return false;">3h</a>&nbsp;
+                        <a href="#" onclick="itsElectric.setResolution(8*60*60);return false;">8h</a>&nbsp;
+                        <a href="#" onclick="itsElectric.setResolution(24*60*60);return false;">1d</a>&nbsp;
+                        <a href="#" onclick="itsElectric.setResolution(null);return false;">Auto</a>&nbsp;
+                    </span>
+                    &nbsp;
+                    <i>Currently: <span id="resolutionId"></span></i>
+                </p>
+            </form>
+            <p style="font-size:small;margin-bottom:4px;padding-bottom:0">
+                <a href="http://tupelo-schneck.org/its-electric"><span class="monospace">it's electric</span></a>: software for storing and viewing home energy monitoring data
+                <br/>
+                Copyright &copy; 2009-2010 <a href="http://tupelo-schneck.org/robert">Robert R. Tupelo-Schneck</a>
+                &lt;<a href="mailto:schneck@gmail.com">schneck@gmail.com</a>&gt;
+                <br/>
+                <a href="#" onclick="show('copying');window.scrollBy(0,1000);return false;">free software / no warranty</a> -
+                <a href="its-electric-1.4.2.zip">download including source</a>
+                <span id="copying" style="display:none; color:gray; font-size:small">
+                    <br/><br/>
+        <span class="monospace">it's electric</span> is free software: you can redistribute it and/or modify
+        it under the terms of the <a href="http://www.fsf.org/licensing/licenses/agpl.html">GNU Affero General Public License</a> as
+        published by the Free Software Foundation, either version 3 of the
+        License, or (at your option) any later version.
+                    <br/><br/>
+        <span class="monospace">it's electric</span> is distributed in the hope that it will be useful,
+        but WITHOUT ANY WARRANTY; without even the implied warranty of
+        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+        <a href="http://www.fsf.org/licensing/licenses/agpl.html">GNU Affero General Public License</a> for more details.
+        &nbsp; <a href="#" onclick="hide('copying');return false;">hide</a>
+                </span>
+            </p>
+                    
         </div>
         <div id="timeline" style="position:absolute;top:0px;width:100%;height:100%;z-index:10;overflow:hidden">
         </div>

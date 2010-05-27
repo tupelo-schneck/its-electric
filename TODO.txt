@@ -1,6 +1,7 @@
 Should have watts min as well as watts max
 
-Fix up "daily-history.html" and include in package
+There is potential loss of data if its-electric crashes abruptly during a catchup---
+not loss of seconds data, but bad averaging.
 
 Trim data
 Voltage!!!
@@ -8,3 +9,5 @@ MTU math
 
 serve web pages
 servlet should consider what's on the path
+
+Fix up "daily-history.html" and include in package
