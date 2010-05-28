@@ -198,10 +198,10 @@ public class TimeSeriesDatabase {
         return database.openCursor(null, CursorConfig.READ_UNCOMMITTED);
     }
     
-    public boolean putIfChanged(Cursor cursor, int timestamp, byte mtu, int power) throws DatabaseException {
+    public boolean putIfChanged(Cursor cursor, Triple triple) throws DatabaseException {
         OperationStatus status;
-        DatabaseEntry key = keyEntry(timestamp,mtu);
-        DatabaseEntry data = dataEntry(power);
+        DatabaseEntry key = keyEntry(triple.timestamp,triple.mtu);
+        DatabaseEntry data = dataEntry(triple.power);
         status = cursor.putNoOverwrite(key, data);
         if(status==OperationStatus.SUCCESS) return true;
         if(status!=OperationStatus.KEYEXIST) {
@@ -213,7 +213,7 @@ public class TimeSeriesDatabase {
         if(status!=OperationStatus.SUCCESS) {
             throw new DatabaseException("Unexpected status " + status);
         }
-        if(power==intOfVariableBytes(readDataEntry.getData())) return false;
+        if(triple.power==intOfVariableBytes(readDataEntry.getData())) return false;
 
         status = cursor.put(key, data);
         if(status!=OperationStatus.SUCCESS) {
@@ -327,7 +327,9 @@ public class TimeSeriesDatabase {
     }
     
     // not relevant for resolution=1
-    public void accumulateForAverages(Cursor cursor,int timestamp, byte mtu, int power) throws DatabaseException {
+    public void accumulateForAverages(Cursor cursor,Triple triple) throws DatabaseException {
+        int timestamp = triple.timestamp;
+        byte mtu = triple.mtu;
         if(timestamp > maxForMTU[mtu]) {
             maxForMTU[mtu] = timestamp;
             if(timestamp >= start[mtu] + resolution) {
@@ -340,7 +342,7 @@ public class TimeSeriesDatabase {
                 // start at day boundaries, but not dealing with daylight savings time...
                 start[mtu] = ((timestamp+main.options.timeZoneRawOffset)/resolution)*resolution - main.options.timeZoneRawOffset;
             }
-            sum[mtu] += power;
+            sum[mtu] += triple.power;
             count[mtu]++;
         }
     }
