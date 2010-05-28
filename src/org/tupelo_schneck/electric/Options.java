@@ -62,8 +62,10 @@ public class Options extends org.apache.commons.cli.Options {
     public int numDataPoints = 1000;
     public int maxDataPoints = 5000;
     public int port = 8081;
+    public boolean voltage = false;
 
     public Options() {
+        this.addOption("d","database-directory",true,"database directory (required)");
         this.addOption("p","port",true,"port served by datasource server (default 8081)");
         this.addOption("m","mtus",true,"number of MTUs (default 1)");
         this.addOption("g","gateway-url",true,"URL of TED 5000 gateway (default http://TED5000)");
@@ -74,6 +76,7 @@ public class Options extends org.apache.commons.cli.Options {
         this.addOption("i","import-interval",true,"seconds between imports of data (default 4)");
         this.addOption("o","import-overlap",true,"extra seconds imported each time for good measure (default 4)");        
         this.addOption("e","long-import-interval",true,"seconds between imports of whole hours (default 300)");
+        this.addOption("v","voltage",true,"whether ('yes' or 'no') to include voltage data (default no)");
         this.addOption("h","help",false,"print this help text");
     }
 
@@ -93,95 +96,112 @@ public class Options extends org.apache.commons.cli.Options {
             showUsageAndExit = true;
         }
 
-        if(cmd!=null && cmd.hasOption("m")) {
-            try {
-                mtus = Byte.parseByte(cmd.getOptionValue("m"));
-                if(mtus<=0 || mtus >4) showUsageAndExit = true;
-            }
-            catch(NumberFormatException e) {
-                showUsageAndExit = true;
-            }
-        }
-        if(cmd!=null && cmd.hasOption("p")) {
-            try {
-                port = Integer.parseInt(cmd.getOptionValue("p"));
-                if(port<=0) showUsageAndExit = true;
-            }
-            catch(NumberFormatException e) {
-                showUsageAndExit = true;
-            }            
-        }
-        if(cmd!=null && cmd.hasOption("g")) {
-            gatewayURL = cmd.getOptionValue("g");
-        }
-        if(cmd!=null && cmd.hasOption("u")) {
-            username = cmd.getOptionValue("u");
-        }
-        if(cmd!=null && cmd.hasOption("n")) {
-            try {
-                numDataPoints = Integer.parseInt(cmd.getOptionValue("n"));
-                if(numDataPoints<=0) showUsageAndExit = true;
-            }
-            catch(NumberFormatException e) {
-                showUsageAndExit = true;
-            }            
-        }
-        if(cmd!=null && cmd.hasOption("x")) {
-            try {
-                maxDataPoints = Integer.parseInt(cmd.getOptionValue("x"));
-                if(maxDataPoints<=0) showUsageAndExit = true;
-            }
-            catch(NumberFormatException e) {
-                showUsageAndExit = true;
-            }            
-        }
-        if(cmd!=null && cmd.hasOption("i")) {
-            try {
-                importInterval = Integer.parseInt(cmd.getOptionValue("i"));
-                if(importInterval<=0) showUsageAndExit = true;
-            }
-            catch(NumberFormatException e) {
-                showUsageAndExit = true;
-            }            
-        }
-        if(cmd!=null && cmd.hasOption("o")) {
-            try {
-                importOverlap = Integer.parseInt(cmd.getOptionValue("o"));
-                if(importOverlap<0) showUsageAndExit = true;
-            }
-            catch(NumberFormatException e) {
-                showUsageAndExit = true;
-            }            
-        }
-        if(cmd!=null && cmd.hasOption("e")) {
-            try {
-                longImportInterval = Integer.parseInt(cmd.getOptionValue("i"));
-                if(longImportInterval<=0) showUsageAndExit = true;
-            }
-            catch(NumberFormatException e) {
-                showUsageAndExit = true;
-            }            
-        }
-        if(cmd!=null && cmd.hasOption("l")) {
-            serverLogFilename = cmd.getOptionValue("l");
-        }
-        if(cmd!=null && cmd.hasOption("h")) {
+        if(cmd==null) {
             showUsageAndExit = true;
-        }
-        
-        if(cmd!=null && cmd.getArgs().length==1) {
-            dbFilename = cmd.getArgs()[0];
         }
         else {
-            showUsageAndExit = true;
+            if(cmd.hasOption("m")) {
+                try {
+                    mtus = Byte.parseByte(cmd.getOptionValue("m"));
+                    if(mtus<=0 || mtus >4) showUsageAndExit = true;
+                }
+                catch(NumberFormatException e) {
+                    showUsageAndExit = true;
+                }
+            }
+            if(cmd.hasOption("p")) {
+                try {
+                    port = Integer.parseInt(cmd.getOptionValue("p"));
+                    if(port<=0) showUsageAndExit = true;
+                }
+                catch(NumberFormatException e) {
+                    showUsageAndExit = true;
+                }            
+            }
+            if(cmd.hasOption("g")) {
+                gatewayURL = cmd.getOptionValue("g");
+            }
+            if(cmd.hasOption("u")) {
+                username = cmd.getOptionValue("u");
+            }
+            if(cmd.hasOption("n")) {
+                try {
+                    numDataPoints = Integer.parseInt(cmd.getOptionValue("n"));
+                    if(numDataPoints<=0) showUsageAndExit = true;
+                }
+                catch(NumberFormatException e) {
+                    showUsageAndExit = true;
+                }            
+            }
+            if(cmd.hasOption("x")) {
+                try {
+                    maxDataPoints = Integer.parseInt(cmd.getOptionValue("x"));
+                    if(maxDataPoints<=0) showUsageAndExit = true;
+                }
+                catch(NumberFormatException e) {
+                    showUsageAndExit = true;
+                }            
+            }
+            if(cmd.hasOption("i")) {
+                try {
+                    importInterval = Integer.parseInt(cmd.getOptionValue("i"));
+                    if(importInterval<=0) showUsageAndExit = true;
+                }
+                catch(NumberFormatException e) {
+                    showUsageAndExit = true;
+                }            
+            }
+            if(cmd.hasOption("o")) {
+                try {
+                    importOverlap = Integer.parseInt(cmd.getOptionValue("o"));
+                    if(importOverlap<0) showUsageAndExit = true;
+                }
+                catch(NumberFormatException e) {
+                    showUsageAndExit = true;
+                }            
+            }
+            if(cmd.hasOption("e")) {
+                try {
+                    longImportInterval = Integer.parseInt(cmd.getOptionValue("i"));
+                    if(longImportInterval<=0) showUsageAndExit = true;
+                }
+                catch(NumberFormatException e) {
+                    showUsageAndExit = true;
+                }            
+            }
+            if(cmd.hasOption("l")) {
+                serverLogFilename = cmd.getOptionValue("l");
+            }
+            if(cmd.hasOption("v")) {
+                String val = cmd.getOptionValue("v").toLowerCase();
+                if("yes".equals(val) || "true".equals(val)) {
+                    voltage = true;
+                }
+                if("no".equals(val) || "false".equals(val)) {
+                    voltage = false;
+                }
+            }
+            if(cmd.hasOption("h")) {
+                showUsageAndExit = true;
+            }
+            
+            if(cmd.hasOption("d")) {
+                dbFilename = cmd.getOptionValue("d");
+            }
+            else if(cmd.getArgs().length==1) {
+                dbFilename = cmd.getArgs()[0];
+            }
+            else {
+                showUsageAndExit = true;
+            }
         }
-        
+            
         if(showUsageAndExit) {
             HelpFormatter help = new HelpFormatter();
-            help.printHelp("java -jar its-electric-*.jar [options] database-directory", 
-                    "\noptions (most important are -g, -m, -p):",
+            help.printHelp("java -jar its-electric-*.jar [options]", 
+                    "\noptions (-d is REQUIRED; other important options are -g, -m, -p):",
                     this,
-                    "\nThe specified database-directory (REQUIRED) is the location of the database.");
+                    "");
             return false;
         }
         else {

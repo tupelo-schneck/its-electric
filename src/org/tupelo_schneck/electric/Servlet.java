@@ -156,7 +156,13 @@ public class Servlet extends DataSourceServlet {
             cd.add(new ColumnDescription("Date", ValueType.DATETIME, "Date"));
             for(int mtu = 0; mtu < main.options.mtus; mtu++) {
                 String label = "MTU" + (mtu+1);
-                cd.add(new ColumnDescription(label, ValueType.NUMBER, label));        
+                cd.add(new ColumnDescription(label, ValueType.NUMBER, label));
+                if(main.options.voltage) {
+                    label = "VOLTS" + (mtu+1);
+                    ColumnDescription col = new ColumnDescription(label, ValueType.NUMBER, label);
+                    col.setCustomProperty("voltage","yes");
+                    cd.add(col);
+                }
             }
             data.addColumns(cd);
         }
@@ -164,6 +170,9 @@ public class Servlet extends DataSourceServlet {
         private void addNullsTo(int nextMTU) {
             for(int mtu = lastMTU + 1; mtu < nextMTU; mtu++) {
                 row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
+                if(main.options.voltage) {
+                    row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
+                }
             }
         }
         
@@ -199,6 +208,7 @@ public class Servlet extends DataSourceServlet {
             }
             addNullsTo(triple.mtu);
             row.addCell(triple.power);
+            if(main.options.voltage) row.addCell(triple.voltage);
             lastMTU = triple.mtu;
         }
         
