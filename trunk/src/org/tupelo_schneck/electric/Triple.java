@@ -23,15 +23,18 @@ package org.tupelo_schneck.electric;
 
 import java.util.Comparator;
 
+// The name is historical.
 public class Triple {
     public final int timestamp;
     public final byte mtu;
     public final int power;
+    public final int voltage;
     
-    public Triple(int timestamp, byte mtu, int power) {
+    public Triple(int timestamp, byte mtu, int power, int voltage) {
         this.timestamp = timestamp;
         this.mtu = mtu;
         this.power = power;
+        this.voltage = voltage;
     }
 
     public static final Comparator<Triple> COMPARATOR = new Comparator<Triple>() {
@@ -43,6 +46,6 @@ public class Triple {
 
     @Override
     public String toString() {
-        return Main.dateString(timestamp) + ", MTU" + mtu + ", " + power + "W"; // + ", " + voltage + "dV";
+        return Main.dateString(timestamp) + ", MTU" + mtu + ", " + power + "W" + ", " + voltage + "dV";
     }
 }

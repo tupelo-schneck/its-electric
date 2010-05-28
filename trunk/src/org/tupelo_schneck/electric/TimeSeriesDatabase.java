@@ -50,9 +50,11 @@ public class TimeSeriesDatabase {
     // sum[mtu] and count[mtu] are accumulated to find the average.
     // maxForMTU[mtu] is max processed timestamp for MTU.  Always between maxStoredTimestamp and start
     // These are not relevant for resolution=1 (except secondsDb.maxForMTU used in Main.openDatabases)
-    public int[] start;
-    public int[] sum;
-    public int[] count;
+    private int[] start;
+    private int[] sum;
+    private int[] sumVolts;
+    private int[] count;
+    private int[] countVolts;
     public int[] maxForMTU;
 
     public static DatabaseConfig ALLOW_CREATE_CONFIG = null;
@@ -79,26 +81,37 @@ public class TimeSeriesDatabase {
         return res;
     }
 
-    public static int intOfVariableBytes(byte[] buf) {
-        if(buf.length==0) return 0;
+    public static int intOfVariableBytes(byte[] buf, int offset, int len) {
+        int size = len - offset;
+        if(size<=0) return 0;
         int res = 0;
-        res |= ((buf[0] & 0xFF) << 24);
-        if(buf.length==1) {
+        res |= ((buf[offset+0] & 0xFF) << 24);
+        if(size==1) {
             return res >> 24;
         }
-        res |= ((buf[1] & 0xFF) << 16); 
-        if(buf.length==2) {
+        res |= ((buf[offset+1] & 0xFF) << 16); 
+        if(size==2) {
             return res >> 16;
         }
-        res |= ((buf[2] & 0xFF) << 8); 
-        if(buf.length==3) {
+        res |= ((buf[offset+2] & 0xFF) << 8); 
+        if(size==3) {
             return res >> 8;
         }
-        res |= ((buf[3] & 0xFF));
+        res |= ((buf[offset+3] & 0xFF));
         return res;
+    }
 
+    public static int powerOfData(byte[] buf) {
+        if(buf.length<=4) return intOfVariableBytes(buf,0,buf.length);
+        else return intOfVariableBytes(buf,0,buf.length-2);
     }
     
+    public static int voltageOfData(byte[] buf) {
+        if(buf.length<=4) return -1;
+        else return ((buf[0]&0xFF)<<8) | (buf[1]&0xFF);
+    }
+
+    // 4-byte timestamp, 1-byte mtu
     private DatabaseEntry keyEntry(int timestamp, byte mtu) {
         byte[] buf = new byte[5];
         buf[0] = (byte) ((timestamp >> 24) & 0xFF);
@@ -109,19 +122,25 @@ public class TimeSeriesDatabase {
         return new DatabaseEntry(buf);
     }
     
-    private DatabaseEntry dataEntry(int power) {
-        int size;
-        if(power==0) size = 0;
-        else if(power<=127 && power>=-128) size = 1;
-        else if(power<=32767 && power>=-32768) size = 2;
-        else if(power<=8388607 && power>=-8388608) size = 3;
-        else size = 4;
-        byte[] buf = new byte[4];
+    // if size<=4, all is power
+    // otherwise last 2 bytes are voltage, preceding bytes are power
+    private DatabaseEntry dataEntry(int power,int voltage) {
+        int sizeOfPower;
+        if(voltage<0 && power==0) sizeOfPower = 0;
+        else if(voltage<0 && power<=127 && power>=-128) sizeOfPower = 1;
+        else if(voltage<0 && power<=32767 && power>=-32768) sizeOfPower = 2;
+        else if(power<=8388607 && power>=-8388608) sizeOfPower = 3;
+        else sizeOfPower = 4;
+
+        int sizeWithVolts = voltage<0 ? sizeOfPower : sizeOfPower+2;
+        byte[] buf = new byte[6];
         buf[0] = (byte) ((power >> 24) & 0xFF);
         buf[1] = (byte) ((power >> 16) & 0xFF);
         buf[2] = (byte) ((power >> 8) & 0xFF);
         buf[3] = (byte) (power & 0xFF);
-        return new DatabaseEntry(buf,4-size,size);
+        buf[4] = (byte) ((voltage >> 8) & 0xFF);
+        buf[5] = (byte) (voltage & 0xFF);
+        return new DatabaseEntry(buf,4-sizeOfPower,sizeWithVolts);
     }
 
     public TimeSeriesDatabase(Main main, Environment environment, String name, byte mtus, int resolution, String resolutionString) {
@@ -142,10 +161,14 @@ public class TimeSeriesDatabase {
             maxForMTU = new int[mtus];
             start = new int[mtus];
             sum = new int[mtus];
+            sumVolts = new int[mtus];
             count = new int[mtus];
+            countVolts = new int[mtus];
 
             Arrays.fill(sum, 0);
+            Arrays.fill(sumVolts, 0);
             Arrays.fill(count, 0);
+            Arrays.fill(countVolts, 0);
             
             for(byte mtu = 0; mtu < mtus; mtu++) {
                 start[mtu] = maxStoredTimestampForMTU(mtu) + resolution;
@@ -186,9 +209,9 @@ public class TimeSeriesDatabase {
         if(database!=null) try { database.close(); } catch(Exception e) { e.printStackTrace(); }
     }
 
-    public void put(Cursor cursor,int timestamp, byte mtu, int power) throws DatabaseException {
+    public void put(Cursor cursor,int timestamp, byte mtu, int power, int voltage) throws DatabaseException {
         OperationStatus status;
-        status = cursor.put(keyEntry(timestamp, mtu), dataEntry(power));
+        status = cursor.put(keyEntry(timestamp, mtu), dataEntry(power,voltage));
         if(status!=OperationStatus.SUCCESS) {
             throw new DatabaseException("Unexpected status " + status);
         }
@@ -201,7 +224,7 @@ public class TimeSeriesDatabase {
     public boolean putIfChanged(Cursor cursor, Triple triple) throws DatabaseException {
         OperationStatus status;
         DatabaseEntry key = keyEntry(triple.timestamp,triple.mtu);
-        DatabaseEntry data = dataEntry(triple.power);
+        DatabaseEntry data = dataEntry(triple.power,triple.voltage);
         status = cursor.putNoOverwrite(key, data);
         if(status==OperationStatus.SUCCESS) return true;
         if(status!=OperationStatus.KEYEXIST) {
@@ -213,7 +236,8 @@ public class TimeSeriesDatabase {
         if(status!=OperationStatus.SUCCESS) {
             throw new DatabaseException("Unexpected status " + status);
         }
-        if(triple.power==intOfVariableBytes(readDataEntry.getData())) return false;
+        byte[] buf = readDataEntry.getData();
+        if(triple.power==powerOfData(buf) && triple.voltage==voltageOfData(buf)) return false;
 
         status = cursor.put(key, data);
         if(status!=OperationStatus.SUCCESS) {
@@ -312,8 +336,9 @@ public class TimeSeriesDatabase {
             int timestamp = intOfBytes(buf,0);
             byte mtu = buf[4];
             buf = data.getData();
-            int power = intOfVariableBytes(buf);
-            Triple res = new Triple(timestamp,mtu,power);
+            int power = powerOfData(buf);
+            int voltage = voltageOfData(buf);
+            Triple res = new Triple(timestamp,mtu,power,voltage);
             try {
                 status = readCursor.getNext(key, data, LockMode.READ_UNCOMMITTED);
                 closeIfNeeded();
@@ -335,15 +360,28 @@ public class TimeSeriesDatabase {
             if(timestamp >= start[mtu] + resolution) {
                 if(count[mtu]>0) {
                     int avg = sum[mtu]/count[mtu];
-                    put(cursor,start[mtu], mtu, avg);
+                    int avgVolts;
+                    if(countVolts[mtu]>0) {
+                        avgVolts = sumVolts[mtu]/countVolts[mtu];
+                    }
+                    else {
+                        avgVolts = -1;
+                    }
+                    put(cursor,start[mtu], mtu, avg, avgVolts);
                 }
                 sum[mtu] = 0;
                 count[mtu] = 0;
+                sumVolts[mtu] = 0;
+                countVolts[mtu] = 0;
                 // start at day boundaries, but not dealing with daylight savings time...
                 start[mtu] = ((timestamp+main.options.timeZoneRawOffset)/resolution)*resolution - main.options.timeZoneRawOffset;
             }
             sum[mtu] += triple.power;
             count[mtu]++;
+            if(triple.voltage > 0) {
+                sumVolts[mtu] += triple.voltage;
+                countVolts[mtu]++;
+            }
         }
     }
     
@@ -355,6 +393,8 @@ public class TimeSeriesDatabase {
             maxForMTU[mtu] = start[mtu] - 1;
             sum[mtu] = 0;
             count[mtu] = 0;
+            sumVolts[mtu] = 0;
+            countVolts[mtu] = 0;
         }
     }
 }
