@@ -130,7 +130,25 @@ public class Main {
         closed = true;
     }
 
-    private void reset(List<Triple> changes) {
+    private static class MinAndMax {
+        final int min;
+        final int max;
+        MinAndMax(int min, int max) {
+            this.min = min;
+            this.max = max;
+        }
+    }
+    
+    private static class Pair {
+        final int timestamp;
+        final byte mtu;
+        Pair(int timestamp, byte mtu) {
+            this.timestamp = timestamp;
+            this.mtu = mtu;
+        }
+    }
+
+    private void reset(List<Pair> changes) {
         if(!isRunning || changes==null || changes.isEmpty()) return;
         boolean setReset = false;
         boolean setNewData = false;
@@ -140,7 +158,7 @@ public class Main {
                 Arrays.fill(resetTimestamp,0);
             }
 
-            for(Triple change : changes) {
+            for(Pair change : changes) {
                 int timestamp = change.timestamp;
                 byte mtu = change.mtu;
                 
@@ -174,16 +192,6 @@ public class Main {
         }
     }
 
-    public class MinAndMax {
-        public final int min;
-        public final int max;
-
-        public MinAndMax(int min, int max) {
-            this.min = min;
-            this.max = max;
-        }
-    }
-    
     public MinAndMax changesFromImport(int count, byte mtu, boolean oldOnly) {
         if(!isRunning) return null;
 
@@ -204,7 +212,7 @@ public class Main {
                 if(triple==null) break;
                 int max = maxSecondForMTU[triple.mtu];
                 if(oldOnly && max > 0 && triple.timestamp > max) continue;
-                if (secondsDb.putIfChanged(cursor, triple.timestamp, triple.mtu, triple.power)) {
+                if (secondsDb.putIfChanged(cursor, triple)) {
                     changed = true;
                     if(triple.timestamp < minChange) minChange = triple.timestamp;
                     if(triple.timestamp > maxChange) maxChange = triple.timestamp;
@@ -253,7 +261,7 @@ public class Main {
             int newMin = Integer.MAX_VALUE;
             int newMax = 0;
             int[] newMaxForMTU = new int[options.mtus];
-            List<Triple> changes = new LinkedList<Triple>();
+            List<Pair> changes = new LinkedList<Pair>();
 
             for(byte mtu = 0; mtu < options.mtus; mtu++) {
                 if(!isRunning) return;
@@ -265,7 +273,7 @@ public class Main {
                 if(minAndMax.min < newMin) newMin = minAndMax.min;
                 if(newMax < minAndMax.max) newMax = minAndMax.max;
                 newMaxForMTU[mtu] = minAndMax.max;
-                changes.add(new Triple(minAndMax.min,mtu,0));
+                changes.add(new Pair(minAndMax.min,mtu));
             }
 
             reset(changes);
@@ -397,7 +405,7 @@ public class Main {
                         if(triple.timestamp > caughtUpTo[triple.mtu]){ 
                             synchronized(resetLock) {
                                 for(int i = 1; i < numDurations; i++) {
-                                    databases[i].accumulateForAverages(cursors[i],triple.timestamp,triple.mtu,triple.power);
+                                    databases[i].accumulateForAverages(cursors[i],triple);
                                 }
                             }
                             caughtUpTo[triple.mtu] = triple.timestamp;
