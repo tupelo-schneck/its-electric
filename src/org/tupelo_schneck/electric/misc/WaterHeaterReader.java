@@ -1,0 +1,108 @@
+package org.tupelo_schneck.electric.misc;
+
+import java.io.File;
+import java.io.PrintStream;
+
+import org.tupelo_schneck.electric.Main;
+import org.tupelo_schneck.electric.Triple;
+import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
+
+import com.ibm.icu.util.GregorianCalendar;
+
+/**
+ * I wrote this utility for when I had 2 MTUs hooked up to 2 water heaters.
+ * It measures the total use, and attempts to measure standby loss in two ways:
+ * first, by measuring the total use over various half-hours at night, and second,
+ * by creating a histogram of how much energy is used in each cycle (presumably 
+ * a standby-loss-only cycle is the lowest commonly observed cycle).
+ * 
+ * This is an example of writing a separate program to use the its-electric database.
+ */
+public class WaterHeaterReader {
+
+    public static void main(String[] args) {
+        final Main main = new Main();
+        main.readOnly = true;
+        
+        try {
+            if(!main.options.parseOptions(args)) return;
+            File dbFile = new File(main.options.dbFilename);
+            dbFile.mkdirs();
+            main.openEnvironment(dbFile);
+            main.openDatabases();
+
+            Runtime.getRuntime().addShutdownHook(new Thread(){
+                @Override
+                public void run() {
+                    main.shutdown();
+                }
+            });
+
+            System.out.println("Doing it:");
+            
+            double[] total = new double[2];
+            double[] count = new double[2];
+            double[][] totalByHalfHour = new double[2][48]; // all 0
+            double[][] countByHalfHour = new double[2][48]; // all 0
+            int max = 0;
+            
+            boolean[] on = new boolean[2];
+            double[] usedSinceLastOff = new double[2];
+            double[] countSinceLastOff = new double[2];
+            int[][] histo = new int[2][20];
+            
+            ReadIterator iter = main.secondsDb.read((int)(new GregorianCalendar(2010,3,8,0,0,0).getTimeInMillis()/1000));
+            try {
+                while(iter.hasNext()) {
+                    Triple t = iter.next();
+                    if(t.timestamp % 86400 == 0) System.out.println(Main.dateString(t.timestamp));
+                    total[t.mtu]+=t.power;
+                    count[t.mtu]++;
+                    totalByHalfHour[t.mtu][(t.timestamp % 86400) / 1800] += t.power;
+                    countByHalfHour[t.mtu][(t.timestamp % 86400) / 1800] ++;
+                    if(t.power > max) max = t.power;
+                    
+                    if(on[t.mtu] && t.power < 20) {
+                        double av = usedSinceLastOff[t.mtu]/countSinceLastOff[t.mtu];
+                        int bucket = (int)(av / 10.0);
+                        if(bucket>=20) bucket = 19;
+                        histo[t.mtu][bucket]++;
+                        usedSinceLastOff[t.mtu] = 0;
+                        countSinceLastOff[t.mtu] = 0;
+                    }
+                    
+                    on[t.mtu] = t.power >= 20;
+                    usedSinceLastOff[t.mtu] += t.power;
+                    countSinceLastOff[t.mtu] ++;
+                }
+            }
+            finally {
+                iter.close();
+            }
+            
+            PrintStream out = System.out;
+            out.println("Max: " + max);
+            out.println("Av1: " + total[0]/count[0]);
+            out.println("Av2: " + total[1]/count[1]);
+            out.println();
+            for(int i = 0; i < 48; i++) {
+                out.println("Av1(" + i + "): " + totalByHalfHour[0][i]/countByHalfHour[0][i]);
+                out.println("Av2(" + i + "): " + totalByHalfHour[1][i]/countByHalfHour[1][i]);            
+            }
+            out.println();
+            for(int i = 0; i < 20; i++) {
+                out.println("Cycles(0," + i + "): " + histo[0][i]);
+            }
+            out.println();
+            for(int i = 0; i < 20; i++) {
+                out.println("Cycles(1," + i + "): " + histo[1][i]);
+            }
+        
+        }
+        catch(Throwable e) {
+            e.printStackTrace();
+            main.shutdown();
+        }
+    }
+
+}
