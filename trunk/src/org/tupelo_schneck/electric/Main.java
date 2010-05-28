@@ -45,7 +45,7 @@ import com.sleepycat.je.EnvironmentConfig;
 public class Main {
     Log log = LogFactory.getLog(Main.class);
     
-    boolean readOnly = false; // I set this true when running tests from a different main method
+    public boolean readOnly = false; // I set this true when running tests from a different main method
     
     public static final int[] durations = new int[] { 
         1, 4, 15, 60, 60*4, 60*15, 60*60, 60*60*3, 60*60*8, 60*60*24
