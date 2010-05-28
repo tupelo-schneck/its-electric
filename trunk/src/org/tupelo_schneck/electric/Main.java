@@ -329,7 +329,8 @@ public class Main {
             }
         }
         
-        private void runReal() {    
+        private void runReal() {
+            boolean firstTime = true;
             while(isRunning) {
                 // at start or following a reset, figure out where we are caught up to
                 Arrays.fill(caughtUpTo, Integer.MAX_VALUE);
@@ -340,6 +341,16 @@ public class Main {
                         }
                     }
                 }
+                // First time each run we do an extra catchup of two hours.
+                // This is because we might have crashed right after getting
+                // reset data for an hour ago, but before doing the reset.
+                if(firstTime) {
+                    for(byte mtu = 0; mtu < options.mtus; mtu++) {
+                        caughtUpTo[mtu] -= 7200;
+                    }
+                    firstTime = false;
+                }
+                
                 
                 while(!reset && isRunning) {
                     catchUpNewData();

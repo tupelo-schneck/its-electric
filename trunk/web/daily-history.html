@@ -1,0 +1,224 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!--
+This file is part of
+"it's electric": software for storing and viewing home energy monitoring data
+Copyright (C) 2009-2010 Robert R. Tupelo-Schneck <schneck@gmail.com>
+http://tupelo-schneck.org/its-electric
+
+"it's electric" is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+"it's electric" is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with "it's electric", as legal/COPYING-agpl.txt.
+If not, see <http://www.gnu.org/licenses/>.
+-->
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <title>it's electric daily history</title>
+    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+        google.load('visualization', '1', {'packages':['barchart', 'table']});
+        google.setOnLoadCallback(function() { init(); });
+    </script>
+    <script type="text/javascript">
+        function show(id) {
+            var e = document.getElementById(id);
+            e.style.display = '';
+        }
+        function hide(id) {
+            var e = document.getElementById(id);
+            e.style.display = 'none';
+        }
+    </script>
+    <style type="text/css">
+        .its-electric {
+            font-family: monospace;
+            font-size: 40px;
+            font-weight: bold;
+            letter-spacing: 5px;
+            text-shadow: gray 2px 2px 2px;
+        }
+        .monospace {
+            font-family: monospace;
+        }
+    </style>
+    <script>
+        var lookingAt = 'daily';
+        var cachedResponse;
+
+        var init = function() {
+            var query = new google.visualization.Query('http://localhost:8081?resolution=86400');
+            query.send(function(response) {handleQueryResponse(response);});
+        }
+
+        var handleQueryResponse = function(response) {
+            if(response==null) return;
+            cachedResponse = response;
+
+            if(response.isError()) {
+                alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+                return;
+            }
+            var origData = response.getDataTable();
+            var data = new google.visualization.DataTable();
+            data.addColumn('string','Date');
+            var numRows = origData.getNumberOfRows();
+            var numCols = origData.getNumberOfColumns();
+            for(var i = 1; i < numCols; i++) {
+               data.addColumn('number',origData.getColumnLabel(i) + " kWh");
+            }
+            var accum = [];
+            for(var i = 1; i < numCols; i++) {
+               accum[i] = 0;
+            }
+            var startDateString = null;
+            var nextStartDate = null;
+            for(var i = 0; i < numRows; i++) {
+               var date = origData.getValue(i,0);
+               var dateString = date.getFullYear() + "-";
+               var month = date.getMonth() + 1;
+               if(month < 10) month = "0" + month;
+               dateString = dateString + month + "-";
+               var day = date.getDate();
+               if(day < 10) day = "0" + day;
+               dateString = dateString + day;
+
+               if(lookingAt=='daily') {
+                   data.addRow();
+                   data.setValue(i,0,dateString);
+                   for(var j = 1; j < numCols; j++) {
+                       data.setValue(i,j,Math.round(origData.getValue(i,j) * 24 / 10)/100);
+                   }
+               }
+               else if(lookingAt=='weekly') {
+                   if(nextStartDate!=null && date>=nextStartDate) {
+                       var row = data.addRow();
+                       data.setValue(row,0,startDateString);
+                       for(var j = 1; j < numCols; j++) {
+                           data.setValue(row,j,Math.round(accum[j]*100)/100);
+                           accum[j] = 0;
+                       }
+                       startDateString = dateString;
+                       nextStartDate = new Date(date.getTime() + 86400000 * (7 - date.getDay()));
+                       nextStartDate.setHours(0);
+                       nextStartDate.setMinutes(0);
+                       nextStartDate.setSeconds(0);
+                   }
+                   if(nextStartDate==null) {
+                       startDateString = dateString;
+                       nextStartDate = new Date(date.getTime() + 86400000 * (7 - date.getDay()));
+                       nextStartDate.setHours(0);
+                       nextStartDate.setMinutes(0);
+                       nextStartDate.setSeconds(0);
+                   }
+                   for(var j = 1; j < numCols; j++) {
+                       accum[j] += origData.getValue(i,j) * 24 / 1000;
+                   }
+               }
+               else if(lookingAt=='monthly') {
+                   if(nextStartDate!=null && date>=nextStartDate) {
+                       var row = data.addRow();
+                       data.setValue(row,0,startDateString);
+                       for(var j = 1; j < numCols; j++) {
+                           data.setValue(row,j,Math.round(accum[j]*100)/100);
+                           accum[j] = 0;
+                       }
+                       startDateString = dateString;
+                       nextStartDate = new Date(date.getTime());
+                       nextStartDate.setDate(1);
+                       if(month==12) {
+                           nextStartDate.setFullYear(date.getFullYear()+1);
+                           nextStartDate.setMonth(0);
+                       }
+                       else {
+                           nextStartDate.setMonth(month);
+                       }
+                   }
+                   if(nextStartDate==null) {
+                       startDateString = dateString;
+                       nextStartDate = new Date(date.getTime());
+                       nextStartDate.setDate(1);
+                       if(month==12) {
+                           nextStartDate.setFullYear(date.getFullYear()+1);
+                           nextStartDate.setMonth(0);
+                       }
+                       else {
+                           nextStartDate.setMonth(month);
+                       }
+                   }
+                   for(var j = 1; j < numCols; j++) {
+                       accum[j] += origData.getValue(i,j) * 24 / 1000;
+                   }
+               }
+            }
+            if(startDateString!=null) {
+               var row = data.addRow();
+               data.setValue(row,0,startDateString);
+               for(var j = 1; j < numCols; j++) {
+                   data.setValue(row,j,Math.round(accum[j]*100)/100);
+               }
+            }
+
+            var table = new google.visualization.Table(document.getElementById('table'));
+            table.draw(data, {page: 'enable', pageSize: lookingAt=='daily' ? 14 : 12, sortColumn:0, sortAscending: false});
+
+            var chart = new google.visualization.BarChart(document.getElementById('barChart'));
+            chart.draw(data, {width: 1000, height: data.getNumberOfRows() * 22 + 60, reverseAxis: false,
+                              legend:'top', legendFontSize: 20, axisFontSize: 20});
+        }
+    </script>
+  </head>
+  <body>
+    <div>
+        <span class="its-electric">i<span style="letter-spacing:-5px">t</span><span style="letter-spacing:-3px">'s</span> electric</span>
+    </div>
+
+    <div style="width:1000px"><div style="margin-left:5%; margin-right:5%">
+        <p>
+            Daily history provided by <a href="http://tupelo-schneck.org/its-electric"><span class="monospace">it's electric</span></a>.  (Note that this data is only domestic hot water from 2010-04-08 to present.)
+        </p>
+
+        <p>
+            <a href="#" onclick="lookingAt='daily';handleQueryResponse(cachedResponse);return false;">Daily</a>
+            &nbsp;
+            <a href="#" onclick="lookingAt='weekly';handleQueryResponse(cachedResponse);return false;">Weekly</a>
+            &nbsp;
+            <a href="#" onclick="lookingAt='monthly';handleQueryResponse(cachedResponse);return false;">Monthly</a>
+        </p>
+    </div>
+
+    <div id="table"></div>
+
+    <div id="barChart"></div>
+
+    <p style="font-size:small">
+        <a href="http://tupelo-schneck.org/its-electric"><span class="monospace">it's electric</span></a>: software for storing and viewing home energy monitoring data
+        <br/>
+        Copyright &copy; 2009-2010 <a href="http://tupelo-schneck.org/robert">Robert R. Tupelo-Schneck</a>
+        &lt;<a href="mailto:schneck@gmail.com">schneck@gmail.com</a>&gt; -
+        <a href="#" onclick="show('copying');window.scrollBy(0,1000);return false;">free software / no warranty</a> -
+        <a href="its-electric-1.4.1.zip">download including source</a>
+        <span id="copying" style="display:none; color:gray; font-size:small">
+            <br/><br/>
+<span class="monospace">it's electric</span> is free software: you can redistribute it and/or modify
+it under the terms of the <a href="http://www.fsf.org/licensing/licenses/agpl.html">GNU Affero General Public License</a> as<br/>
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.<br/>
+            <br/>
+<span class="monospace">it's electric</span> is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of<br/>
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<a href="http://www.fsf.org/licensing/licenses/agpl.html">GNU Affero General Public License</a> for more details.
+&nbsp; <a href="#" onclick="hide('copying');return false;">hide</a>
+        </span>
+    </p>
+  </body>
+</html>
