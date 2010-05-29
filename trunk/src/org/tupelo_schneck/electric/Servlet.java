@@ -40,6 +40,8 @@ import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
 
 import com.google.visualization.datasource.DataSourceServlet;
 
+import com.google.visualization.datasource.base.DataSourceException;
+import com.google.visualization.datasource.base.ReasonType;
 import com.google.visualization.datasource.base.TypeMismatchException;
 import com.google.visualization.datasource.datatable.ColumnDescription;
 import com.google.visualization.datasource.datatable.DataTable;
@@ -136,6 +138,8 @@ public class Servlet extends DataSourceServlet {
     };
     
     private class DataTableBuilder {
+        private QueryParameters params;
+        
         private PriorityQueue<TableRow> rows;
         private int min = Integer.MAX_VALUE;
         private int max = 0;
@@ -147,7 +151,8 @@ public class Servlet extends DataSourceServlet {
         private int lastMTU;
         private GregorianCalendar cal;
         
-        public DataTableBuilder() {
+        public DataTableBuilder(QueryParameters params) {
+            this.params = params;
             rows = new PriorityQueue<TableRow>(100,TABLE_ROW_COMPARATOR);
             cal = new GregorianCalendar(GMT);
             
@@ -157,12 +162,6 @@ public class Servlet extends DataSourceServlet {
             for(int mtu = 0; mtu < main.options.mtus; mtu++) {
                 String label = "MTU" + (mtu+1);
                 cd.add(new ColumnDescription(label, ValueType.NUMBER, label));
-                if(main.options.voltage) {
-                    label = "VOLTS" + (mtu+1);
-                    ColumnDescription col = new ColumnDescription(label, ValueType.NUMBER, label);
-                    col.setCustomProperty("voltage","yes");
-                    cd.add(col);
-                }
             }
             data.addColumns(cd);
         }
@@ -170,9 +169,6 @@ public class Servlet extends DataSourceServlet {
         private void addNullsTo(int nextMTU) {
             for(int mtu = lastMTU + 1; mtu < nextMTU; mtu++) {
                 row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
-                if(main.options.voltage) {
-                    row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
-                }
             }
         }
         
@@ -207,8 +203,7 @@ public class Servlet extends DataSourceServlet {
                 lastMTU = -1;
             }
             addNullsTo(triple.mtu);
-            row.addCell(triple.power);
-            if(main.options.voltage) row.addCell(triple.voltage);
+            row.addCell(params.voltage ? triple.voltage : triple.power);
             lastMTU = triple.mtu;
         }
         
@@ -288,6 +283,7 @@ public class Servlet extends DataSourceServlet {
         public int minPoints;
         public int maxPoints;
         public int extraPoints;
+        public boolean voltage;
         
         private HttpServletRequest req;
 
@@ -303,8 +299,19 @@ public class Servlet extends DataSourceServlet {
             return res;
         }
         
-        public QueryParameters(HttpServletRequest req,int max) {
+        public QueryParameters(HttpServletRequest req,int max) throws DataSourceException {
             this.req = req;
+            
+            String path = req.getPathInfo();
+            if(path==null || "".equals(path) || "/".equals(path)) path = "power";
+            else if(path.startsWith("/")) path = path.substring(1);
+            if(!path.equals("power") && !path.equals("voltage")) {
+                throw new DataSourceException(ReasonType.INVALID_REQUEST, "Request '" + path + "', should be 'power' or 'voltage'");
+            }
+            voltage = path.equals("voltage");
+            if(voltage && !main.options.voltage) {
+                throw new DataSourceException(ReasonType.INVALID_REQUEST, "Voltage data not available");            
+            }
             
             rangeStart = getIntParameter("rangeStart",main.minimum);
             rangeEnd = getIntParameter("rangeEnd",max);
@@ -333,12 +340,13 @@ public class Servlet extends DataSourceServlet {
     }
     
     @Override
-    public DataTable generateDataTable(Query query, HttpServletRequest req) {
+    public DataTable generateDataTable(Query query, HttpServletRequest req) throws DataSourceException {
         int max = main.maximum;
+        
         QueryParameters params = new QueryParameters(req,max);
 
         // Create a data table,
-        DataTableBuilder builder = new DataTableBuilder();
+        DataTableBuilder builder = new DataTableBuilder(params);
 
         // Fill the data table.
         try {
@@ -431,7 +439,7 @@ public class Servlet extends DataSourceServlet {
         }
         catch(DatabaseException e) {
             e.printStackTrace();
-            return null;
+            throw new DataSourceException(ReasonType.INTERNAL_ERROR, e.getMessage());
         }
 
         // send time zone info 
