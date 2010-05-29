@@ -88,12 +88,13 @@ If not, see <http://www.gnu.org/licenses/>.
     <div style="width:100%;height:100%;overflow:hidden">
         <div style="position:relative;margin:4px;z-index:20;">
             <span class="its-electric">i<span style="letter-spacing:-5px">t</span><span style="letter-spacing:-3px">'s</span> electric</span>
-            &nbsp;&nbsp;
-            <a class="blocky" href="#">Show menu</a>
-            &nbsp;&nbsp;
+            &nbsp;
+            <a id="showMenu" class="blocky" href="#" onclick="show('menu');hide('showMenu');show('hideMenu');return false;">Show menu</a>
+            <a id="hideMenu" class="blocky" style="display:none" href="#" onclick="hide('menu');show('showMenu');hide('hideMenu');return false;">Hide menu</a>
+            &nbsp;
             <span id="busy" style="display:none"><img style="position:relative;top:5px;" src="wait20trans.gif" alt="[busy]"/></span>
         </div>
-        <div style="position:relative;top:-7px;z-index:20;width:445px;border:solid 1px;padding:4px;margin-left:1px;background-color:white">
+        <div id="menu" style="display:none;position:relative;top:-7px;z-index:20;width:445px;border:solid 1px;padding:4px;margin-left:1px;background-color:white">
             <form id="topform" action="#" onsubmit="return false;">
                 <p style="margin:0;padding:0;line-height:200%;" class="blocky">
                     <b>Zoom:</b>
@@ -126,6 +127,9 @@ If not, see <http://www.gnu.org/licenses/>.
                     <input type="text" name="wmax" value="10000" style="width:4em;text-align:right;" onchange="itsElectric.redraw();"/>W
                     &nbsp;
                     <a href="#" onclick="itsElectric.requery();return false;">Refresh</a>
+                    &nbsp;
+                    <a id="showRangeSelector" href="#" onclick="show('hideRangeSelector');hide('showRangeSelector');itsElectric.options.displayRangeSelector=true;itsElectric.redraw();return false;">Show range selector</a>
+                    <a id="hideRangeSelector" style="display:none" href="#" onclick="hide('hideRangeSelector');show('showRangeSelector');itsElectric.options.displayRangeSelector=false;itsElectric.redraw();return false;">Hide range selector</a>
                     <br/>
                     
                     <b>Resolution:</b>
