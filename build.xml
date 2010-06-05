@@ -54,7 +54,7 @@ If not, see <http://www.gnu.org/licenses/>.
     <target name="its-electric-only.jar" depends="build">
         <mkdir dir="main"/>
         <jar destfile="main/its-electric-only-${version}.jar">
-            <fileset dir="build" includes="org/**"/>
+            <fileset dir="build" includes="org/tupelo_schneck/electric/*.class"/>
         </jar>
     </target>
 
