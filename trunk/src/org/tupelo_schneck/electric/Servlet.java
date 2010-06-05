@@ -203,7 +203,12 @@ public class Servlet extends DataSourceServlet {
                 lastMTU = -1;
             }
             addNullsTo(triple.mtu);
-            row.addCell(params.voltage ? triple.voltage : triple.power);
+            if(params.voltage) {
+                row.addCell((double)triple.voltage/10);
+            }
+            else {
+                row.addCell(triple.power);
+            }
             lastMTU = triple.mtu;
         }
         

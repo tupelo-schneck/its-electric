@@ -19,13 +19,12 @@ along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
 */
 
-function ItsElectric(url,timelineId,busyId,getWMax,getWMin,resolutionId,initialZoom,realTimeUpdateInterval) {
+function ItsElectric(url,timelineId,busyId,resolutionId,initialZoom,realTimeUpdateInterval) {
     this.url = url;
+    this.queryPath = "/power";
     this.timelineId = timelineId;
     this.initialZoom = initialZoom;
     this.busyId = busyId;
-    this.getWMax = getWMax;
-    this.getWMin = getWMin;
     this.resolutionId = resolutionId;
 
     this.div1 = null;
@@ -91,6 +90,12 @@ ItsElectric.prototype.init = function() {
 ItsElectric.prototype.queryURL = function() {
     var realTimeNeedsAdjust = this.realTime && this.range && this.range.end.getTime() == this.maximum;
     var queryURL = this.url;
+    if(queryURL.charAt(queryURL.length-1)=='/' && this.queryPath.charAt(0)=='/') {
+      queryURL = queryURL + this.queryPath.substring(1);
+    }
+    else {
+      queryURL = queryURL + this.queryPath;
+    } 
     var extendChar = '?';
     if(true) { 
         queryURL = queryURL + extendChar + 'extraPoints=2';
@@ -150,11 +155,6 @@ ItsElectric.prototype.redraw = function() {
     this.maximum = data.getValue(data.getNumberOfRows()-1,0).getTime();
     this.timeZoneOffset = parseInt(data.getTableProperty('timeZoneOffset'));
     
-    var wmax = null;
-    var wmin = null;
-    if(this.getWMax) wmax = this.getWMax();
-    if(this.getWMin) wmin = this.getWMin();
-
     var options = {};
     for(p in this.options) options[p] = this.options[p];
 
@@ -182,13 +182,6 @@ ItsElectric.prototype.redraw = function() {
     setDateAdjusted(endDate,end);
     options.zoomStartTime = startDate;
     options.zoomEndTime = endDate;
-
-    if(wmax && wmax!='') {
-        options.max = wmax;
-    }
-    if(wmin && wmin!='') {
-        options.min = wmin;
-    }
 
     this.annotatedtimeline2.draw(data, options);
     this.resolutionString = data.getTableProperty('resolutionString');
