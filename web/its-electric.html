@@ -29,9 +29,8 @@ If not, see <http://www.gnu.org/licenses/>.
     
         var itsElectric = new ItsElectric('http://localhost:8081', // CHANGE URL HERE
                                           'timeline','busy',
-                                          function(){return document.forms['topform'].wmax.value;},
-                                          function(){return document.forms['topform'].wmin.value;},
                                           'resolutionId',4*60*60,60000);
+        itsElectric.options.wmode = 'opaque';
         //itsElectric.noFlashEvents = true; // not recommended, see README.txt
     </script>
     <title>it's electric</title>
@@ -49,6 +48,40 @@ If not, see <http://www.gnu.org/licenses/>.
             var e = document.getElementById(id);
             e.style.display = 'none';
         }
+        
+        function setMin(id) {
+            var val = document.getElementById(id).value;
+            if(val && val!='') itsElectric.options.min = val;
+            else delete itsElectric.options.min;
+        }
+        function setMax(id) {
+            var val = document.getElementById(id).value;
+            if(val && val!='') itsElectric.options.max = val;
+            else delete itsElectric.options.max;
+        }
+
+        function viewPower(id) {
+            show('viewVoltage');
+            hide('viewPower');
+            show('wattsMinAndMax');
+            hide('voltsMinAndMax');
+            setMin('wmin');
+            setMax('wmax');
+            itsElectric.options.allValuesSuffix="W";
+            itsElectric.queryPath="/power";
+            itsElectric.requery();
+        }            
+        function viewVoltage(id) {
+            hide('viewVoltage');
+            show('viewPower');
+            hide('wattsMinAndMax');
+            show('voltsMinAndMax');
+            setMin('vmin');
+            setMax('vmax');
+            itsElectric.options.allValuesSuffix="V";
+            itsElectric.queryPath="/voltage";
+            itsElectric.requery();
+        }            
     </script>
     <style type="text/css">
         .its-electric {
@@ -86,12 +119,22 @@ If not, see <http://www.gnu.org/licenses/>.
                 <a href="#" onclick="itsElectric.scrollToPresent();return false;">Scroll to present</a>
                 &nbsp;
                 &nbsp; &nbsp;
-                <b>Watts min:</b>
-                <input type="text" name="wmin" value="" style="width:4em;text-align:right;" onchange="itsElectric.redraw();"/>W
-                &nbsp;
-                <b>max:</b>
-                <input type="text" name="wmax" value="10000" style="width:4em;text-align:right;" onchange="itsElectric.redraw();"/>W
-                &nbsp;
+                <span id="wattsMinAndMax">
+                    <b>Watts min:</b>
+                    <input type="text" id="wmin" value="" style="width:4em;text-align:right;" onchange="setMin('wmin');itsElectric.redraw();"/>W
+                    &nbsp;
+                    <b>max:</b>
+                    <input type="text" id="wmax" value="" style="width:4em;text-align:right;" onchange="setMax('wmax');itsElectric.redraw();"/>W
+                    &nbsp;
+                </span>
+                <span id="voltsMinAndMax" style="display:none">
+                    <b>Volts min:</b>
+                    <input type="text" id="vmin" value="" style="width:4em;text-align:right;" onchange="setMin('vmin');itsElectric.redraw();"/>V
+                    &nbsp;
+                    <b>max:</b>
+                    <input type="text" id="vmax" value="" style="width:4em;text-align:right;" onchange="setMax('vmax');itsElectric.redraw();"/>V
+                    &nbsp;
+                </span>
                 <a href="#" onclick="itsElectric.requery();return false;">Refresh</a>
                 &nbsp; &nbsp;
                 <b>Resolution:</b>
@@ -115,8 +158,14 @@ If not, see <http://www.gnu.org/licenses/>.
             </p>
         </form>
     </div>
-    <div id="timeline" style="width:1000px;height:600px;"></div>        
-
+    <div style="position:relative;height:600px">
+        <span style="font-size:11px;font-family:sans-serif;position:absolute;top:7px;left:316px;z-index:10">
+            <a id="viewPower" style="display:none" href="#" onclick="viewPower();return false;">View power</a>
+            <a id="viewVoltage" href="#" onclick="viewVoltage();return false;">View voltage</a>
+        </span>
+        <div id="timeline" style="width:1000px;height:600px;position:absolute;top:0px;z-index:0"></div>        
+    </div>
+    
     <!--INSERT PERSONAL TEXT HERE-->
 
     <p style="font-size:small">

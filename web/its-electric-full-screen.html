@@ -29,10 +29,8 @@ If not, see <http://www.gnu.org/licenses/>.
     
         var itsElectric = new ItsElectric('http://localhost:8081', // CHANGE URL HERE
                                           'timeline','busy',
-                                          function(){return document.forms['topform'].wmax.value;},
-                                          function(){return document.forms['topform'].wmin.value;},
                                           'resolutionId',4*60*60,10000);
-        itsElectric.options.wmode = 'transparent';
+        itsElectric.options.wmode = 'opaque';
         itsElectric.options.displayZoomButtons = false;
         itsElectric.options.legendPosition = 'newRow';
         itsElectric.options.displayRangeSelector = false;
@@ -53,6 +51,41 @@ If not, see <http://www.gnu.org/licenses/>.
             var e = document.getElementById(id);
             e.style.display = 'none';
         }
+
+        function setMin(id) {
+            var val = document.getElementById(id).value;
+            if(val && val!='') itsElectric.options.min = val;
+            else delete itsElectric.options.min;
+        }
+        function setMax(id) {
+            var val = document.getElementById(id).value;
+            if(val && val!='') itsElectric.options.max = val;
+            else delete itsElectric.options.max;
+        }
+
+        function viewPower(id) {
+            show('viewVoltage');
+            hide('viewPower');
+            show('wattsMinAndMax');
+            hide('voltsMinAndMax');
+            setMin('wmin');
+            setMax('wmax');
+            itsElectric.options.allValuesSuffix="W";
+            itsElectric.queryPath="/power";
+            itsElectric.requery();
+        }            
+        function viewVoltage(id) {
+            hide('viewVoltage');
+            show('viewPower');
+            hide('wattsMinAndMax');
+            show('voltsMinAndMax');
+            setMin('vmin');
+            setMax('vmax');
+            itsElectric.options.allValuesSuffix="V";
+            itsElectric.queryPath="/voltage";
+            itsElectric.requery();
+        }            
+        
         var resizeTimeout = null;
         window.onresize = function(){
            if(resizeTimeout != null) clearTimeout(resizeTimeout);
@@ -61,6 +94,12 @@ If not, see <http://www.gnu.org/licenses/>.
                }, 
                200);
         };
+        
+        window.onload = function(){
+            setMin('wmin');
+            setMax('wmax');
+            itsElectric.redraw();
+        }
     </script>
     <style type="text/css">
         .its-electric {
@@ -94,7 +133,7 @@ If not, see <http://www.gnu.org/licenses/>.
             &nbsp;
             <span id="busy" style="display:none"><img style="position:relative;top:5px;" src="wait20trans.gif" alt="[busy]"/></span>
         </div>
-        <div id="menu" style="display:none;position:relative;top:-7px;z-index:20;width:445px;border:solid 1px;padding:4px;margin-left:1px;background-color:white">
+        <div id="menu" style="display:none;position:relative;top:-7px;z-index:21;width:445px;border:solid 1px;padding:4px;margin-left:1px;background-color:white">
             <form id="topform" action="#" onsubmit="return false;">
                 <p style="margin:0;padding:0;line-height:200%;" class="blocky">
                     <b>Zoom:</b>
@@ -120,13 +159,25 @@ If not, see <http://www.gnu.org/licenses/>.
                     <a href="#" onclick="itsElectric.scrollToPresent();return false;">Scroll to present</a>
                     <br/>
                     
-                    <b>Watts min:</b>
-                    <input type="text" name="wmin" value="" style="width:4em;text-align:right;" onchange="itsElectric.redraw();"/>W
+                    <a id="viewPower" style="display:none" href="#" onclick="viewPower();return false;">View power</a>
+                    <a id="viewVoltage" href="#" onclick="viewVoltage();return false;">View voltage</a>
                     &nbsp;
-                    <b>max:</b>
-                    <input type="text" name="wmax" value="10000" style="width:4em;text-align:right;" onchange="itsElectric.redraw();"/>W
-                    &nbsp;
-                    <a href="#" onclick="itsElectric.requery();return false;">Refresh</a>
+                    <span id="wattsMinAndMax">
+                        <b>Watts min:</b>
+                        <input type="text" id="wmin" value="" style="width:4em;text-align:right;" onchange="setMin('wmin');itsElectric.redraw();"/>W
+                        &nbsp;
+                        <b>max:</b>
+                        <input type="text" id="wmax" value="" style="width:4em;text-align:right;" onchange="setMax('wmax');itsElectric.redraw();"/>W
+                        &nbsp;
+                    </span>
+                    <span id="voltsMinAndMax" style="display:none">
+                        <b>Volts min:</b>
+                        <input type="text" id="vmin" value="" style="width:4em;text-align:right;" onchange="setMin('vmin');itsElectric.redraw();"/>V
+                        &nbsp;
+                        <b>max:</b>
+                        <input type="text" id="vmax" value="" style="width:4em;text-align:right;" onchange="setMax('vmax');itsElectric.redraw();"/>V
+                        &nbsp;
+                    </span>
                     &nbsp;
                     <a id="showRangeSelector" href="#" onclick="show('hideRangeSelector');hide('showRangeSelector');itsElectric.options.displayRangeSelector=true;itsElectric.redraw();return false;">Show range selector</a>
                     <a id="hideRangeSelector" style="display:none" href="#" onclick="hide('hideRangeSelector');show('showRangeSelector');itsElectric.options.displayRangeSelector=false;itsElectric.redraw();return false;">Hide range selector</a>
