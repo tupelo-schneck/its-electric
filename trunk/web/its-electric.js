@@ -38,6 +38,8 @@ function ItsElectric(url,timelineId,busyId,resolutionId,initialZoom,realTimeUpda
     this.minimum = 0;
     this.maximum = 0;
 
+    this.partialRange = false;
+
     this.realTime = true; // set false to prevent auto-update at latest time
 
     this.noFlashEvents = false; // set true to make it work (somewhat) when
@@ -107,10 +109,22 @@ ItsElectric.prototype.queryURL = function() {
     }
     if(this.ready) {
         if(this.range && (this.range.start.getTime() != this.minimum || this.range.end.getTime() != this.maximum)) {
+            var start = Math.floor(this.range.start.getTime()/1000);
+            var end = Math.floor(this.range.end.getTime()/1000);
             queryURL = queryURL + extendChar +
-                       'start='+ Math.floor(this.range.start.getTime()/1000) +
-                       '&end=' + Math.floor(this.range.end.getTime()/1000);
+                       'start='+ start +
+                       '&end=' + end;
             extendChar = '&';
+            if(this.partialRange) {
+                var rangeStart = start - (end - start);
+                rangeStart = Math.floor(Math.max(this.minimum/1000, rangeStart));
+                var rangeEnd = end + (end - start);
+                rangeEnd = Math.floor(Math.max(this.minimum/1000, rangeStart));
+                queryURL = queryURL + extendChar +
+                        'rangeStart=' + rangeStart +
+                        '&rangeEnd=' + rangeEnd;
+                extendChar = '&';
+            }
         }
     }
     if(this.resolution) {
@@ -151,8 +165,14 @@ ItsElectric.prototype.redraw = function() {
     
     var realTimeNeedsAdjust = this.realTime && this.range && this.range.end.getTime() == this.maximum;
 
-    this.minimum = data.getValue(0,0).getTime();
-    this.maximum = data.getValue(data.getNumberOfRows()-1,0).getTime();
+    this.minimum = parseInt(data.getTableProperty('minimum'))*1000;
+    if(isNaN(this.minimum) || this.minimum==0) {
+        this.minimum = data.getValue(0,0).getTime();
+    }
+    this.maximum = parseInt(data.getTableProperty('maximum'))*1000;
+    if(isNaN(this.maximum) || this.maximum==0) {
+        this.maximum = data.getValue(data.getNumberOfRows()-1,0).getTime();
+    }
     this.timeZoneOffset = parseInt(data.getTableProperty('timeZoneOffset'));
     
     var options = {};

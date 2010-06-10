@@ -1,12 +1,17 @@
+*** Check partialRange behavior, & voltage
+
+add spreadsheet download tool
+
+*** Quick Start in README!
+Reorganize download
+
 There is potential loss of data if its-electric crashes abruptly during a catchup---
 not loss of seconds data, but bad averaging.  Current solution is a hack,
 but then again it's not much of a problem...
 
 Trim data
-Voltage!!!
 MTU math
 
 serve web pages
-servlet should consider what's on the path
 
 Fix up "daily-history.html"
