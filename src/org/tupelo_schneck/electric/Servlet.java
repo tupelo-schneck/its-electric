@@ -59,7 +59,9 @@ public class Servlet extends DataSourceServlet {
 
     public static final String TIME_ZONE_OFFSET = "timeZoneOffset";
     public static final String RESOLUTION_STRING = "resolutionString";
-
+    public static final String MINIMUM_STRING = "minimum";
+    public static final String MAXIMUM_STRING = "maximum";
+    
     private Log log = LogFactory.getLog(Servlet.class);
 
     private Main main;
@@ -304,7 +306,7 @@ public class Servlet extends DataSourceServlet {
             return res;
         }
         
-        public QueryParameters(HttpServletRequest req,int max) throws DataSourceException {
+        public QueryParameters(HttpServletRequest req,int min,int max) throws DataSourceException {
             this.req = req;
             
             String path = req.getPathInfo();
@@ -318,7 +320,7 @@ public class Servlet extends DataSourceServlet {
                 throw new DataSourceException(ReasonType.INVALID_REQUEST, "Voltage data not available");            
             }
             
-            rangeStart = getIntParameter("rangeStart",main.minimum);
+            rangeStart = getIntParameter("rangeStart",min);
             rangeEnd = getIntParameter("rangeEnd",max);
             start = getIntParameter("start",rangeStart);
             end = getIntParameter("end",rangeEnd);
@@ -346,12 +348,15 @@ public class Servlet extends DataSourceServlet {
     
     @Override
     public DataTable generateDataTable(Query query, HttpServletRequest req) throws DataSourceException {
+        int min = main.minimum;
         int max = main.maximum;
         
-        QueryParameters params = new QueryParameters(req,max);
+        QueryParameters params = new QueryParameters(req,min,max);
 
         // Create a data table,
         DataTableBuilder builder = new DataTableBuilder(params);
+        builder.setCustomProperty(MINIMUM_STRING, String.valueOf(min));
+        builder.setCustomProperty(MAXIMUM_STRING, String.valueOf(max));
 
         // Fill the data table.
         try {
