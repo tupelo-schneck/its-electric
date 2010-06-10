@@ -154,25 +154,38 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
         return;
     }
 
-    this.data = response.getDataTable();
-    this.redraw();
-};
-
-ItsElectric.prototype.redraw = function() {
-    if(this.data==null) return;
-    if(this.busyId) document.getElementById(this.busyId).style.display="";
-    var data = this.data;
+    var data = response.getDataTable();
     
     var realTimeNeedsAdjust = this.realTime && this.range && this.range.end.getTime() == this.maximum;
 
+    var rangeStart = data.getValue(0,0).getTime();
     this.minimum = parseInt(data.getTableProperty('minimum'))*1000;
     if(isNaN(this.minimum) || this.minimum==0) {
-        this.minimum = data.getValue(0,0).getTime();
+        this.minimum = rangeStart;
     }
+    var rangeEnd = data.getValue(data.getNumberOfRows()-1,0).getTime()
     this.maximum = parseInt(data.getTableProperty('maximum'))*1000;
     if(isNaN(this.maximum) || this.maximum==0) {
-        this.maximum = data.getValue(data.getNumberOfRows()-1,0).getTime();
+        this.maximum = rangeEnd;
     }
+
+    if(this.partialRange) {
+        if(this.minimum < this.rangeStart) {
+            data.insertRows(0,1);
+            data.setValue(0,0,new Date(this.minimum));
+            for(var i = 1; i < data.getNumberOfColumns(); i++) {
+                data.setValue(0,i,null);
+            }
+        }
+        if(this.maximum > this.rangeEnd) {
+            var newRow = data.addRow();
+            data.setValue(newRow,0,new Date(this.maximum));
+            for(var i = 1; i < data.getNumberOfColumns(); i++) {
+                data.setValue(0,i,null);
+            }
+        }
+    }
+
     this.timeZoneOffset = parseInt(data.getTableProperty('timeZoneOffset'));
     
     var options = {};
@@ -202,9 +215,17 @@ ItsElectric.prototype.redraw = function() {
     setDateAdjusted(endDate,end);
     options.zoomStartTime = startDate;
     options.zoomEndTime = endDate;
+    this.resolutionString = data.getTableProperty('resolutionString');
+    
+    this.data = data;
+    this.redraw();
+};
+
+ItsElectric.prototype.redraw = function() {
+    if(this.data==null) return;
+    if(this.busyId) document.getElementById(this.busyId).style.display="";
 
     this.annotatedtimeline2.draw(data, options);
-    this.resolutionString = data.getTableProperty('resolutionString');
 
     if(this.noFlashEvents) this.readyHandler(null);
 };
