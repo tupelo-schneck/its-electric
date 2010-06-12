@@ -108,7 +108,7 @@ public class TimeSeriesDatabase {
     
     public static int voltageOfData(byte[] buf) {
         if(buf.length<=4) return -1;
-        else return ((buf[0]&0xFF)<<8) | (buf[1]&0xFF);
+        else return ((buf[buf.length-2]&0xFF)<<8) | (buf[buf.length-1]&0xFF);
     }
 
     // 4-byte timestamp, 1-byte mtu
@@ -237,8 +237,10 @@ public class TimeSeriesDatabase {
             throw new DatabaseException("Unexpected status " + status);
         }
         byte[] buf = readDataEntry.getData();
-        if(triple.power==powerOfData(buf) && triple.voltage==voltageOfData(buf)) return false;
+        int oldVoltage = voltageOfData(buf);
+        if(triple.power==powerOfData(buf) && (triple.voltage < 0 || triple.voltage==oldVoltage)) return false;
 
+        if(triple.voltage<0 && oldVoltage>=0) data = dataEntry(triple.power,oldVoltage);
         status = cursor.put(key, data);
         if(status!=OperationStatus.SUCCESS) {
             throw new DatabaseException("Unexpected status " + status);
@@ -378,7 +380,7 @@ public class TimeSeriesDatabase {
             }
             sum[mtu] += triple.power;
             count[mtu]++;
-            if(triple.voltage > 0) {
+            if(triple.voltage >= 0) {
                 sumVolts[mtu] += triple.voltage;
                 countVolts[mtu]++;
             }
