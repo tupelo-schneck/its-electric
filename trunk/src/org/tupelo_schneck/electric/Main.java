@@ -203,7 +203,7 @@ public class Main {
         ImportIterator iter = null;
         Cursor cursor = null;
         try {
-            iter = new ImportIterator(options.gatewayURL, mtu, count);
+            iter = new ImportIterator(options, mtu, count);
             cursor = secondsDb.openCursor();
             while(iter.hasNext()) {
                 if(!isRunning) return null;

@@ -38,12 +38,15 @@ public class ImportIterator implements Iterator<Triple> {
     byte mtu;
     byte[] line = new byte[25];
     volatile boolean closed;
+    
+    final boolean useVoltage;
 
-    public ImportIterator(final String gatewayURL, final byte mtu, final int count) throws IOException {
+    public ImportIterator(final Options options, final byte mtu, final int count) throws IOException {
         this.mtu = mtu;
+        this.useVoltage = options.voltage;
         URL url;
         try {
-            url = new URL(gatewayURL+"/history/rawsecondhistory.raw?INDEX=1&MTU="+mtu+"&COUNT="+count);
+            url = new URL(options.gatewayURL+"/history/rawsecondhistory.raw?INDEX=1&MTU="+mtu+"&COUNT="+count);
         }
         catch (MalformedURLException e) {
             throw new RuntimeException(e);
@@ -120,7 +123,7 @@ public class ImportIterator implements Iterator<Triple> {
         }
         cal.set(2000+(0x00FF & decoded[0]), decoded[1]-1, decoded[2], decoded[3], decoded[4], decoded[5]);
         int power = intOfBytes(decoded,6);
-        int voltage = unsignedShortOfBytes(decoded,14);
+        int voltage = useVoltage ? unsignedShortOfBytes(decoded,14) : -1;
         Triple res = new Triple((int)(cal.getTimeInMillis() / 1000),mtu,power,voltage);
         getNextLine();
         return res;
