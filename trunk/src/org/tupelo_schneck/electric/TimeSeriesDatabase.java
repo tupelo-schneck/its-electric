@@ -126,8 +126,7 @@ public class TimeSeriesDatabase {
     // otherwise last 2 bytes are voltage, preceding bytes are power
     private DatabaseEntry dataEntry(int power,int voltage) {
         int sizeOfPower;
-        if(voltage<0 && power==0) sizeOfPower = 0;
-        else if(voltage<0 && power<=127 && power>=-128) sizeOfPower = 1;
+        if(voltage<0 && power<=127 && power>=-128) sizeOfPower = 1;
         else if(voltage<0 && power<=32767 && power>=-32768) sizeOfPower = 2;
         else if(power<=8388607 && power>=-8388608) sizeOfPower = 3;
         else sizeOfPower = 4;
