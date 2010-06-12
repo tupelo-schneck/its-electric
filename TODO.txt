@@ -1,3 +1,5 @@
+**** Reorganize database data to allow for V and kVA better
+
 *** Check partialRange behavior, & voltage
 
 add spreadsheet download tool
