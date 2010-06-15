@@ -119,7 +119,7 @@ ItsElectric.prototype.queryURL = function() {
                 var rangeStart = start - (end - start);
                 rangeStart = Math.floor(Math.max(this.minimum/1000, rangeStart));
                 var rangeEnd = end + (end - start);
-                rangeEnd = Math.floor(Math.max(this.minimum/1000, rangeStart));
+                rangeEnd = Math.floor(Math.min(this.maximum/1000, rangeEnd));
                 queryURL = queryURL + extendChar +
                         'rangeStart=' + rangeStart +
                         '&rangeEnd=' + rangeEnd;
@@ -170,27 +170,24 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     }
 
     if(this.partialRange) {
-        if(this.minimum < this.rangeStart) {
+        if(this.minimum < rangeStart) {
             data.insertRows(0,1);
             data.setValue(0,0,new Date(this.minimum));
             for(var i = 1; i < data.getNumberOfColumns(); i++) {
-                data.setValue(0,i,null);
+                data.setValue(0,i,0);
             }
         }
-        if(this.maximum > this.rangeEnd) {
+        if(this.maximum > rangeEnd) {
             var newRow = data.addRow();
             data.setValue(newRow,0,new Date(this.maximum));
             for(var i = 1; i < data.getNumberOfColumns(); i++) {
-                data.setValue(0,i,null);
+                data.setValue(newRow,i,0);
             }
         }
     }
 
     this.timeZoneOffset = parseInt(data.getTableProperty('timeZoneOffset'));
     
-    var options = {};
-    for(p in this.options) options[p] = this.options[p];
-
     var startDate = new Date();
     var endDate = new Date();
     var start;
@@ -213,8 +210,8 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     }
     setDateAdjusted(startDate,start);
     setDateAdjusted(endDate,end);
-    options.zoomStartTime = startDate;
-    options.zoomEndTime = endDate;
+    this.options.zoomStartTime = startDate;
+    this.options.zoomEndTime = endDate;
     this.resolutionString = data.getTableProperty('resolutionString');
     
     this.data = data;
@@ -222,10 +219,10 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
 };
 
 ItsElectric.prototype.redraw = function() {
-    if(this.data==null) return;
+    if(!this.data) return;
     if(this.busyId) document.getElementById(this.busyId).style.display="";
 
-    this.annotatedtimeline2.draw(data, options);
+    this.annotatedtimeline2.draw(this.data, this.options);
 
     if(this.noFlashEvents) this.readyHandler(null);
 };
