@@ -466,7 +466,7 @@ public class Servlet extends DataSourceServlet {
         return false;
     }
 
-    public static Server startServlet(Main main) throws Exception {
+    public static Server setupServlet(Main main) throws Exception {
         HandlerCollection handlers = new HandlerCollection();
         if(main.options.serverLogFilename!=null) {
             RequestLogHandler requestLogHandler = new RequestLogHandler();
@@ -492,7 +492,6 @@ public class Servlet extends DataSourceServlet {
 
         Server server = new Server(main.options.port);
         server.setHandler(handlers);
-        server.start();
         return server;
     }
 }
