@@ -473,7 +473,8 @@ public class Main {
                 }
             });
 
-            main.server = Servlet.startServlet(main);
+            main.server = Servlet.setupServlet(main);
+            main.server.start();
             main.longImportTask = main.repeatedlyImport(3600, true, main.options.longImportInterval);
             main.shortImportTask = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
             ExecutorService execServ = Executors.newSingleThreadExecutor();
