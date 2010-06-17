@@ -19,13 +19,14 @@ along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
 */
 
-function ItsElectric(url,timelineId,busyId,resolutionId,initialZoom,realTimeUpdateInterval) {
+function ItsElectric(url,timelineId,busyId,resolutionId,initialZoom,realTimeUpdateInterval,toolbarId) {
     this.url = url;
     this.queryPath = "/power";
     this.timelineId = timelineId;
     this.initialZoom = initialZoom;
     this.busyId = busyId;
     this.resolutionId = resolutionId;
+    this.toolbarId = toolbarId;
 
     this.div1 = null;
     this.div2 = null;
@@ -135,6 +136,33 @@ ItsElectric.prototype.queryURL = function() {
     return queryURL;
 }
 
+ItsElectric.prototype.toolbarQueryURL = function() {
+    var queryURL = this.url;
+    if(queryURL.charAt(queryURL.length-1)=='/' && this.queryPath.charAt(0)=='/') {
+      queryURL = queryURL + this.queryPath.substring(1);
+    }
+    else {
+      queryURL = queryURL + this.queryPath;
+    } 
+    var extendChar = '?';
+    if(this.ready) {
+        if(this.range && (this.range.start.getTime() != this.minimum || this.range.end.getTime() != this.maximum)) {
+            var start = Math.floor(this.range.start.getTime()/1000);
+            var end = Math.floor(this.range.end.getTime()/1000);
+            queryURL = queryURL + extendChar +
+                       'rangeStart='+ start +
+                       '&rangeEnd=' + end;
+            extendChar = '&';
+        }
+    }
+    if(this.resolution) {
+        queryURL = queryURL + extendChar +
+                   'resolution=' + this.resolution;
+        extendChar = '&';
+    }
+    return queryURL;
+}
+
 ItsElectric.prototype.requery = function() {
     var query = new google.visualization.Query(this.queryURL());
     if(this.busyId) document.getElementById(this.busyId).style.display="";
@@ -216,6 +244,25 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     
     this.data = data;
     this.redraw();
+    if(this.toolbarId) {
+        var toolbarElement = document.getElementById(this.toolbarId);
+        var toolbarQueryURL = this.toolbarQueryURL();
+        google.visualization.drawToolbar(toolbarElement,
+         [{type: 'html', datasource: toolbarQueryURL},
+          {type: 'csv', datasource: toolbarQueryURL}])
+        this.renameChartOptions(toolbarElement);
+    }
+};
+
+ItsElectric.prototype.renameChartOptions = function(element) {
+    if(element.nodeType==3 && element.nodeValue=="Chart options") {
+        element.nodeValue = "Export data";
+        return true;
+    }
+    for(var i = 0; i < element.childNodes.length; i++) {
+        if (this.renameChartOptions(element.childNodes[i])) return true;
+    }
+    return false;
 };
 
 ItsElectric.prototype.redraw = function() {

@@ -29,7 +29,8 @@ If not, see <http://www.gnu.org/licenses/>.
     
         var itsElectric = new ItsElectric('http://localhost:8081', // CHANGE URL HERE
                                           'timeline','busy',
-                                          'resolutionId',4*60*60,60000);
+                                          'resolutionId',4*60*60,60000,
+                                          'toolbarId');
         itsElectric.options.wmode = 'opaque';
         //itsElectric.noFlashEvents = true; // not recommended, see README.txt
     </script>
@@ -165,6 +166,7 @@ If not, see <http://www.gnu.org/licenses/>.
         </span>
         <div id="timeline" style="width:1000px;height:600px;position:absolute;top:0px;z-index:0"></div>        
     </div>
+    <div style="font-size:11px;font-family:sans-serif" id="toolbarId"></div>
     
     <!--INSERT PERSONAL TEXT HERE-->
 

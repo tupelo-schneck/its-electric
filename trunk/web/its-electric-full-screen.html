@@ -29,7 +29,8 @@ If not, see <http://www.gnu.org/licenses/>.
     
         var itsElectric = new ItsElectric('http://localhost:8081', // CHANGE URL HERE
                                           'timeline','busy',
-                                          'resolutionId',4*60*60,10000);
+                                          'resolutionId',4*60*60,10000,
+                                          'toolbarId');
         itsElectric.partialRange = true;
         itsElectric.options.wmode = 'opaque';
         itsElectric.options.displayZoomButtons = false;
@@ -126,7 +127,7 @@ If not, see <http://www.gnu.org/licenses/>.
   </head>
   <body>
     <div style="width:100%;height:100%;overflow:hidden">
-        <div style="position:relative;margin:4px;z-index:20;">
+        <div style="position:relative;margin:4px;z-index:0;">
             <span class="its-electric">i<span style="letter-spacing:-5px">t</span><span style="letter-spacing:-3px">'s</span> electric</span>
             &nbsp;
             <a id="showMenu" class="blocky" href="#" onclick="show('menu');hide('showMenu');show('hideMenu');return false;">Show menu</a>
@@ -134,7 +135,7 @@ If not, see <http://www.gnu.org/licenses/>.
             &nbsp;
             <span id="busy" style="display:none"><img style="position:relative;top:5px;" src="wait20trans.gif" alt="[busy]"/></span>
         </div>
-        <div id="menu" style="display:none;position:relative;top:-7px;z-index:21;width:445px;border:solid 1px;padding:4px;margin-left:1px;background-color:white">
+        <div id="menu" style="display:none;position:relative;top:-7px;z-index:0;width:445px;border:solid 1px;padding:4px;margin-left:1px;background-color:white">
             <form id="topform" action="#" onsubmit="return false;">
                 <p style="margin:0;padding:0;line-height:200%;" class="blocky">
                     <b>Zoom:</b>
@@ -200,6 +201,9 @@ If not, see <http://www.gnu.org/licenses/>.
                     </span>
                     &nbsp;
                     <i>Currently: <span id="resolutionId"></span></i>
+                    <br/>
+                    
+                    <div class="blocky" id="toolbarId"></div>
                 </p>
             </form>
             <p style="font-size:small;margin-bottom:4px;padding-bottom:0">
@@ -226,7 +230,7 @@ If not, see <http://www.gnu.org/licenses/>.
             </p>
                     
         </div>
-        <div id="timeline" style="position:absolute;top:0px;width:100%;height:100%;z-index:10;overflow:hidden">
+        <div id="timeline" style="position:absolute;top:0px;width:100%;height:100%;z-index:-20;overflow:hidden">
         </div>
     </div>        
   </body>
