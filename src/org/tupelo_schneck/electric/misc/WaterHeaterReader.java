@@ -75,14 +75,16 @@ public class WaterHeaterReader {
             try {
                 while(iter.hasNext()) {
                     Triple t = iter.next();
+                    if(t.power==null) continue;
+                    int power = t.power.intValue();
                     if(t.timestamp % 86400 == 0) System.out.println(Main.dateString(t.timestamp));
-                    total[t.mtu]+=t.power;
+                    total[t.mtu]+=power;
                     count[t.mtu]++;
-                    totalByHalfHour[t.mtu][(t.timestamp % 86400) / 1800] += t.power;
+                    totalByHalfHour[t.mtu][(t.timestamp % 86400) / 1800] += power;
                     countByHalfHour[t.mtu][(t.timestamp % 86400) / 1800] ++;
-                    if(t.power > max) max = t.power;
+                    if(power > max) max = power;
                     
-                    if(on[t.mtu] && t.power < 20) {
+                    if(on[t.mtu] && power < 20) {
                         double av = usedSinceLastOff[t.mtu]/countSinceLastOff[t.mtu];
                         int bucket = (int)(av / 10.0);
                         if(bucket>=20) bucket = 19;
@@ -91,8 +93,8 @@ public class WaterHeaterReader {
                         countSinceLastOff[t.mtu] = 0;
                     }
                     
-                    on[t.mtu] = t.power >= 20;
-                    usedSinceLastOff[t.mtu] += t.power;
+                    on[t.mtu] = power >= 20;
+                    usedSinceLastOff[t.mtu] += power;
                     countSinceLastOff[t.mtu] ++;
                 }
             }

@@ -27,10 +27,10 @@ import java.util.Comparator;
 public class Triple {
     public final int timestamp;
     public final byte mtu;
-    public final int power;
-    public final int voltage;
+    public final Integer power;
+    public final Integer voltage;
     
-    public Triple(int timestamp, byte mtu, int power, int voltage) {
+    public Triple(int timestamp, byte mtu, Integer power, Integer voltage) {
         this.timestamp = timestamp;
         this.mtu = mtu;
         this.power = power;

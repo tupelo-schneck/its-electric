@@ -122,8 +122,8 @@ public class ImportIterator implements Iterator<Triple> {
             return next();
         }
         cal.set(2000+(0x00FF & decoded[0]), decoded[1]-1, decoded[2], decoded[3], decoded[4], decoded[5]);
-        int power = intOfBytes(decoded,6);
-        int voltage = useVoltage ? unsignedShortOfBytes(decoded,14) : -1;
+        Integer power = Integer.valueOf(intOfBytes(decoded,6));
+        Integer voltage = useVoltage ? Integer.valueOf(unsignedShortOfBytes(decoded,14)) : null;
         Triple res = new Triple((int)(cal.getTimeInMillis() / 1000),mtu,power,voltage);
         getNextLine();
         return res;

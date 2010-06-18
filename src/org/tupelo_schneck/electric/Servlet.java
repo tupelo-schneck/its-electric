@@ -139,6 +139,8 @@ public class Servlet extends DataSourceServlet {
         }
     };
     
+    private static final Value NULL_NUMBER = Value.getNullValueFromValueType(ValueType.NUMBER);
+
     private class DataTableBuilder {
         private QueryParameters params;
         
@@ -170,7 +172,7 @@ public class Servlet extends DataSourceServlet {
         
         private void addNullsTo(int nextMTU) {
             for(int mtu = lastMTU + 1; mtu < nextMTU; mtu++) {
-                row.addCell(Value.getNullValueFromValueType(ValueType.NUMBER));
+                row.addCell(NULL_NUMBER);
             }
         }
         
@@ -206,10 +208,12 @@ public class Servlet extends DataSourceServlet {
             }
             addNullsTo(triple.mtu);
             if(params.voltage) {
-                row.addCell((double)triple.voltage/10);
+                if(triple.voltage==null) row.addCell(NULL_NUMBER);
+                else row.addCell((double)triple.voltage.intValue()/10);
             }
             else {
-                row.addCell(triple.power);
+                if(triple.power==null) row.addCell(NULL_NUMBER);
+                else row.addCell(triple.power.intValue());
             }
             lastMTU = triple.mtu;
         }
