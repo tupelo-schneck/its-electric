@@ -46,7 +46,7 @@ I particularly recommend java -server for this.
 
 (2) Next you'll need to set up the "it's electric" web files
 its-electric.html and its-electric.js (and also the "wait icon"
-wait20.gif).  You may need to edit its-electric.html and tell it how
+wait20trans.gif).  You may need to edit its-electric.html and tell it how
 to contact the datasource server you set up in part (1); it comes
 looking for "http://localhost:8081" which may work fine for you, but
 will certainly need to be changed if you want your data accessible
