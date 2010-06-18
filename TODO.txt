@@ -1,8 +1,6 @@
-**** Reorganize database data to allow for V and kVA better
+*** Check voltage
 
-*** Check partialRange behavior, & voltage
-
-add spreadsheet download tool
+Insert version into pages, and links between
 
 *** Quick Start in README!
 Reorganize download
@@ -15,5 +13,3 @@ Trim data
 MTU math
 
 serve web pages
-
-Fix up "daily-history.html"

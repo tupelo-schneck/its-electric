@@ -55,7 +55,8 @@ If not, see <http://www.gnu.org/licenses/>.
         var cachedResponse;
 
         var init = function() {
-            var query = new google.visualization.Query('http://localhost:8081?resolution=86400');
+            var queryURL = 'http://localhost:8081';  // CHANGE URL HERE
+            var query = new google.visualization.Query(queryURL + '?resolution=86400');
             query.send(function(response) {handleQueryResponse(response);});
         }
 
@@ -171,7 +172,7 @@ If not, see <http://www.gnu.org/licenses/>.
             table.draw(data, {page: 'enable', pageSize: lookingAt=='daily' ? 14 : 12, sortColumn:0, sortAscending: false});
 
             var chart = new google.visualization.BarChart(document.getElementById('barChart'));
-            chart.draw(data, {width: 1000, height: data.getNumberOfRows() * 22 + 60, reverseAxis: false,
+            chart.draw(data, {width: 1000, height: data.getNumberOfRows() * (data.getNumberOfColumns()-1) * 11 + 60, reverseAxis: false,
                               legend:'top', legendFontSize: 20, axisFontSize: 20});
         }
     </script>
@@ -183,7 +184,7 @@ If not, see <http://www.gnu.org/licenses/>.
 
     <div style="width:1000px"><div style="margin-left:5%; margin-right:5%">
         <p>
-            Daily history provided by <a href="http://tupelo-schneck.org/its-electric"><span class="monospace">it's electric</span></a>.  (Note that this data is only domestic hot water from 2010-04-08 to present.)
+            Power usage history provided by <a href="http://tupelo-schneck.org/its-electric"><span class="monospace">it's electric</span></a>.
         </p>
 
         <p>
@@ -205,7 +206,7 @@ If not, see <http://www.gnu.org/licenses/>.
         Copyright &copy; 2009-2010 <a href="http://tupelo-schneck.org/robert">Robert R. Tupelo-Schneck</a>
         &lt;<a href="mailto:schneck@gmail.com">schneck@gmail.com</a>&gt; -
         <a href="#" onclick="show('copying');window.scrollBy(0,1000);return false;">free software / no warranty</a> -
-        <a href="its-electric-1.4.1.zip">download including source</a>
+        <a href="its-electric-1.4.2.zip">download including source</a>
         <span id="copying" style="display:none; color:gray; font-size:small">
             <br/><br/>
 <span class="monospace">it's electric</span> is free software: you can redistribute it and/or modify
