@@ -168,7 +168,7 @@ public class TimeSeriesDatabase {
 
         for(int i = first; i<buf.length; i++) {
             if(i-first < sizeOfPower) buf[i] = byteOfInteger(power, sizeOfPower - (i-first));
-            else buf[i] = byteOfInteger(voltage, sizeOfVoltage - (i - first - sizeOfPower));
+            else if(i-first - sizeOfPower < sizeOfVoltage) buf[i] = byteOfInteger(voltage, sizeOfVoltage - (i - first - sizeOfPower));
         }
         return new DatabaseEntry(buf);
     }

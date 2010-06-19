@@ -2,6 +2,7 @@
 *** Quick Start in README!
 *** New version #
 *** Test in windows
+*** Change localweb stuff for new pages
 
 There is potential loss of data if its-electric crashes abruptly during a catchup---
 not loss of seconds data, but bad averaging.  Current solution is a hack,
