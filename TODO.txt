@@ -1,9 +1,7 @@
 *** Check voltage
-
-Insert version into pages, and links between
-
 *** Quick Start in README!
-Reorganize download
+*** New version #
+*** Test in windows
 
 There is potential loss of data if its-electric crashes abruptly during a catchup---
 not loss of seconds data, but bad averaging.  Current solution is a hack,
