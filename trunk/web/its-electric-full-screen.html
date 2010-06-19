@@ -45,6 +45,7 @@ If not, see <http://www.gnu.org/licenses/>.
         google.setOnLoadCallback(function() { itsElectric.init(); });
     </script>
     <script type="text/javascript">
+    /*<![CDATA[*/
         function show(id) {
             var e = document.getElementById(id);
             e.style.display = '';
@@ -102,6 +103,7 @@ If not, see <http://www.gnu.org/licenses/>.
             setMax('wmax');
             itsElectric.redraw();
         }
+    /*]]>*/
     </script>
     <style type="text/css">
         .its-electric {
@@ -130,15 +132,17 @@ If not, see <http://www.gnu.org/licenses/>.
   </head>
   <body>
     <div style="width:100%;height:100%;overflow:hidden">
-        <div style="position:relative;margin:4px;z-index:10;">
-            <span class="its-electric">i<span style="letter-spacing:-5px">t</span><span style="letter-spacing:-3px">'s</span> electric</span>
-            &nbsp;
-            <a id="showMenu" class="blocky" href="#" onclick="show('menu');hide('showMenu');show('hideMenu');return false;">Show menu</a>
-            <a id="hideMenu" class="blocky" style="display:none" href="#" onclick="hide('menu');show('showMenu');hide('hideMenu');return false;">Hide menu</a>
-            &nbsp;
-            <span id="busy" style="display:none"><img style="position:relative;top:5px;" src="wait20trans.gif" alt="[busy]"/></span>
+        <div style="position:absolute;top:0px;height:42px;width:100%;z-index:10;">
+            <div style="position:absolute;bottom:-2px;margin-left:4px">
+                <span class="its-electric">i<span style="letter-spacing:-5px">t</span><span style="letter-spacing:-3px">'s</span> electric</span>
+                &nbsp;
+                <a id="showMenu" class="blocky" href="#" onclick="show('menu');hide('showMenu');show('hideMenu');return false;">Show menu</a>
+                <a id="hideMenu" class="blocky" style="display:none" href="#" onclick="hide('menu');show('showMenu');hide('hideMenu');return false;">Hide menu</a>
+                &nbsp;
+                <span id="busy" style="display:none"><img style="position:relative;top:5px;" src="wait20trans.gif" alt="[busy]"/></span>
+            </div>
         </div>
-        <div id="menu" style="display:none;position:relative;top:-7px;z-index:10;width:445px;border:solid 1px;padding:4px;margin-left:1px;background-color:white">
+        <div id="menu" style="display:none;position:absolute;top:42px;z-index:10;width:445px;border:solid 1px;padding:4px;margin-left:1px;background-color:white">
             <form id="topform" action="#" onsubmit="return false;">
                 <p style="margin:0;padding:0;line-height:200%;" class="blocky">
                     <b>Zoom:</b>

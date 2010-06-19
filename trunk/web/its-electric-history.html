@@ -60,7 +60,8 @@ If not, see <http://www.gnu.org/licenses/>.
             font-family: monospace;
         }
     </style>
-    <script>
+    <script type="text/javascript">
+    /*<![CDATA[*/
         var lookingAt = 'daily';
         var cachedResponse;
 
@@ -185,6 +186,7 @@ If not, see <http://www.gnu.org/licenses/>.
             chart.draw(data, {width: 1000, height: data.getNumberOfRows() * (data.getNumberOfColumns()-1) * 11 + 60, reverseAxis: false,
                               legend:'top', legendFontSize: 20, axisFontSize: 20});
         }
+    /*]]>*/
     </script>
   </head>
   <body>
@@ -193,7 +195,7 @@ If not, see <http://www.gnu.org/licenses/>.
         <span class="monospace">v1.4.2</span>
     </div>
 
-    <div style="width:1000px"><div style="margin-left:5%; margin-right:5%">
+    <div style="width:1000px;margin-left:5%;margin-right:5%">
         <p>
             Power usage history provided by <a href="http://tupelo-schneck.org/its-electric"><span class="monospace">it's electric</span></a>.
             &nbsp;
