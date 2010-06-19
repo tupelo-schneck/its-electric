@@ -24,11 +24,11 @@ If not, see <http://www.gnu.org/licenses/>.
 
     <target name="its-electric.zip" depends="its-electric.jar">
         <zip destfile="build/its-electric-${version}.zip">
-            <fileset file="build/its-electric-${version}.jar"/>
-            <fileset dir="web"/>
-            <fileset file="README.txt"/>
-                <fileset file="NEWS.txt"/>
-            <fileset dir="." includes="legal/**"/>
+            <zipfileset file="build/its-electric-${version}.jar" prefix="its-electric"/>
+            <zipfileset dir="web" prefix="its-electric/web"/>
+            <zipfileset file="README.txt" prefix="its-electric"/>
+            <zipfileset file="NEWS.txt" prefix="its-electric"/>
+            <zipfileset dir="." includes="legal/**" prefix="its-electric"/>
         </zip>
     </target>
 
