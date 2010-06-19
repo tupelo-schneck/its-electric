@@ -41,6 +41,7 @@ If not, see <http://www.gnu.org/licenses/>.
         google.setOnLoadCallback(function() { itsElectric.init(); });
     </script>
     <script type="text/javascript">
+    /*<![CDATA[*/
         function show(id) {
             var e = document.getElementById(id);
             e.style.display = '';
@@ -82,7 +83,8 @@ If not, see <http://www.gnu.org/licenses/>.
             itsElectric.options.allValuesSuffix="V";
             itsElectric.queryPath="/voltage";
             itsElectric.requery();
-        }            
+        } 
+    /*]]>*/
     </script>
     <style type="text/css">
         .its-electric {
