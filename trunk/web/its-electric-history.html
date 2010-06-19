@@ -22,7 +22,7 @@ If not, see <http://www.gnu.org/licenses/>.
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
   <head>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-    <title>it's electric daily history</title>
+    <title>it's electric history</title>
     <script type="text/javascript" src="http://www.google.com/jsapi"></script>
     <script type="text/javascript">
         google.load('visualization', '1', {'packages':['barchart', 'table']});
@@ -36,6 +36,16 @@ If not, see <http://www.gnu.org/licenses/>.
         function hide(id) {
             var e = document.getElementById(id);
             e.style.display = 'none';
+        }
+        function xshow(id) {
+            var e = document.getElementById(id);
+            e.style.position = '';
+            e.style.visibility = '';
+        }
+        function xhide(id) {
+            var e = document.getElementById(id);
+            e.style.position = 'absolute';
+            e.style.visibility = 'hidden';
         }
     </script>
     <style type="text/css">
@@ -180,11 +190,14 @@ If not, see <http://www.gnu.org/licenses/>.
   <body>
     <div>
         <span class="its-electric">i<span style="letter-spacing:-5px">t</span><span style="letter-spacing:-3px">'s</span> electric</span>
+        <span class="monospace">v1.4.2</span>
     </div>
 
     <div style="width:1000px"><div style="margin-left:5%; margin-right:5%">
         <p>
             Power usage history provided by <a href="http://tupelo-schneck.org/its-electric"><span class="monospace">it's electric</span></a>.
+            &nbsp;
+            <a href="its-electric.html">Original timeline view</a> | <a href="its-electric-full-screen.html">Fullscreen timeline view</a>
         </p>
 
         <p>
@@ -198,7 +211,12 @@ If not, see <http://www.gnu.org/licenses/>.
 
     <div id="table"></div>
 
-    <div id="barChart"></div>
+    <p>
+        <a id="showBarChart" href="#" onclick="xshow('barChart');hide('showBarChart');show('hideBarChart');return false;">Show bar chart</a>
+        <a id="hideBarChart" href="#" onclick="xhide('barChart');show('showBarChart');hide('hideBarChart');return false;" style="display:none">Hide bar chart</a>
+    </p>
+
+    <div id="barChart" style="position:absolute;visibility:hidden;"></div>
 
     <p style="font-size:small">
         <a href="http://tupelo-schneck.org/its-electric"><span class="monospace">it's electric</span></a>: software for storing and viewing home energy monitoring data
