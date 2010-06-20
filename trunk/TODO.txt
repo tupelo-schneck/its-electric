@@ -1,7 +1,6 @@
 *** Check voltage
 *** Quick Start in README!
 *** New version #
-*** Test in windows
 *** Change localweb stuff for new pages
 *** jetty 7.1.4 and remove ShutdownThread hack
 

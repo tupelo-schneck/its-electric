@@ -269,6 +269,7 @@ ItsElectric.prototype.redraw = function() {
     if(!this.data) return;
     if(this.busyId) document.getElementById(this.busyId).style.display="";
 
+    this.div2.style.visibility = 'visible'; // workaround to odd behavior in Windows, see http://code.google.com/p/google-visualization-api-issues/issues/detail?id=319
     this.annotatedtimeline2.draw(this.data, this.options);
 
     if(this.noFlashEvents) this.readyHandler(null);
@@ -293,12 +294,13 @@ ItsElectric.prototype.readyHandler = function(e) {
     var temp = this.annotatedtimeline2;
     this.annotatedtimeline2 = this.annotatedtimeline;
     this.annotatedtimeline = temp;
-    temp = this.div1.style.zIndex;
-    this.div1.style.zIndex = this.div2.style.zIndex;
-    this.div2.style.zIndex = temp;
-    temp = this.div1.style.visibility;
-    this.div1.style.visibility = this.div2.style.visibility;
-    this.div2.style.visibility = temp;
+    temp = this.div2;
+    this.div2 = this.div1;
+    this.div1 = temp;
+    this.div1.style.visibility = 'visible';
+    this.div1.style.zIndex = '1';
+    this.div2.style.visibility = 'hidden';
+    this.div2.style.zIndex = '0';
 
     this.ready = true;
     if(this.firstTime && !this.noFlashEvents) {
