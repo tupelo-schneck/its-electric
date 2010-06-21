@@ -29,47 +29,15 @@ If not, see <http://www.gnu.org/licenses/>.
         google.setOnLoadCallback(function() { init(); });
     </script>
     <script type="text/javascript">
-        function show(id) {
-            var e = document.getElementById(id);
-            e.style.display = '';
-        }
-        function hide(id) {
-            var e = document.getElementById(id);
-            e.style.display = 'none';
-        }
-        function xshow(id) {
-            var e = document.getElementById(id);
-            e.style.position = '';
-            e.style.visibility = '';
-        }
-        function xhide(id) {
-            var e = document.getElementById(id);
-            e.style.position = 'absolute';
-            e.style.visibility = 'hidden';
-        }
-    </script>
-    <style type="text/css">
-        .its-electric {
-            font-family: monospace;
-            font-size: 40px;
-            font-weight: bold;
-            letter-spacing: 5px;
-            text-shadow: gray 2px 2px 2px;
-        }
-        .monospace {
-            font-family: monospace;
-        }
-    </style>
-    <script type="text/javascript">
     /*<![CDATA[*/
-        var lookingAt = 'daily';
-        var cachedResponse;
-
         var init = function() {
             var queryURL = 'http://localhost:8081';  // CHANGE URL HERE
             var query = new google.visualization.Query(queryURL + '?resolution=86400');
             query.send(function(response) {handleQueryResponse(response);});
         }
+
+        var lookingAt = 'daily';
+        var cachedResponse;
 
         var handleQueryResponse = function(response) {
             if(response==null) return;
@@ -180,7 +148,7 @@ If not, see <http://www.gnu.org/licenses/>.
             }
 
             var table = new google.visualization.Table(document.getElementById('table'));
-            table.draw(data, {page: 'enable', pageSize: lookingAt=='daily' ? 14 : 12, sortColumn:0, sortAscending: false});
+            table.draw(data, {width:600, page: 'enable', pageSize: lookingAt=='daily' ? 14 : 12, sortColumn:0, sortAscending: false});
 
             var chart = new google.visualization.BarChart(document.getElementById('barChart'));
             chart.draw(data, {width: 1000, height: data.getNumberOfRows() * (data.getNumberOfColumns()-1) * 11 + 60, reverseAxis: false,
@@ -188,11 +156,43 @@ If not, see <http://www.gnu.org/licenses/>.
         }
     /*]]>*/
     </script>
+    <script type="text/javascript">
+        function show(id) {
+            var e = document.getElementById(id);
+            e.style.display = '';
+        }
+        function hide(id) {
+            var e = document.getElementById(id);
+            e.style.display = 'none';
+        }
+        function xshow(id) {
+            var e = document.getElementById(id);
+            e.style.position = '';
+            e.style.visibility = '';
+        }
+        function xhide(id) {
+            var e = document.getElementById(id);
+            e.style.position = 'absolute';
+            e.style.visibility = 'hidden';
+        }
+    </script>
+    <style type="text/css">
+        .its-electric {
+            font-family: monospace;
+            font-size: 40px;
+            font-weight: bold;
+            letter-spacing: 5px;
+            text-shadow: gray 2px 2px 2px;
+        }
+        .monospace {
+            font-family: monospace;
+        }
+    </style>
   </head>
   <body>
     <div>
         <span class="its-electric">i<span style="letter-spacing:-5px">t</span><span style="letter-spacing:-3px">'s</span> electric</span>
-        <span class="monospace">v1.4.2</span>
+        <span class="monospace">v1.5</span>
     </div>
 
     <div style="width:1000px;margin-left:5%;margin-right:5%">
@@ -226,7 +226,7 @@ If not, see <http://www.gnu.org/licenses/>.
         Copyright &copy; 2009-2010 <a href="http://tupelo-schneck.org/robert">Robert R. Tupelo-Schneck</a>
         &lt;<a href="mailto:schneck@gmail.com">schneck@gmail.com</a>&gt; -
         <a href="#" onclick="show('copying');window.scrollBy(0,1000);return false;">free software / no warranty</a> -
-        <a href="its-electric-1.4.2.zip">download including source</a>
+        <a href="its-electric-1.5.zip">download including source</a>
         <span id="copying" style="display:none; color:gray; font-size:small">
             <br/><br/>
 <span class="monospace">it's electric</span> is free software: you can redistribute it and/or modify

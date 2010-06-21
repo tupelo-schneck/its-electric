@@ -9,14 +9,14 @@
 	<classpathentry kind="lib" path="lib/commons-cli-1.2.jar"/>
 	<classpathentry kind="lib" path="lib/google-collect-1.0-rc3.jar"/>
 	<classpathentry kind="lib" path="lib/commons-codec-1.4.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-continuation-7.0.2.v20100331.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-http-7.0.2.v20100331.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-io-7.0.2.v20100331.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-security-7.0.2.v20100331.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-server-7.0.2.v20100331.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-servlet-7.0.2.v20100331.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-util-7.0.2.v20100331.jar"/>
 	<classpathentry kind="lib" path="lib/icu4j-4_0_1_1-calendar.jar"/>
 	<classpathentry kind="lib" path="lib/je-3.3.98.jar"/>
+	<classpathentry kind="lib" path="lib/jetty-continuation-7.1.4.v20100610.jar"/>
+	<classpathentry kind="lib" path="lib/jetty-http-7.1.4.v20100610.jar"/>
+	<classpathentry kind="lib" path="lib/jetty-io-7.1.4.v20100610.jar"/>
+	<classpathentry kind="lib" path="lib/jetty-security-7.1.4.v20100610.jar"/>
+	<classpathentry kind="lib" path="lib/jetty-server-7.1.4.v20100610.jar"/>
+	<classpathentry kind="lib" path="lib/jetty-servlet-7.1.4.v20100610.jar"/>
+	<classpathentry kind="lib" path="lib/jetty-util-7.1.4.v20100610.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

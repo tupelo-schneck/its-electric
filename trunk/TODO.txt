@@ -1,8 +1,5 @@
 *** Check voltage
 *** Quick Start in README!
-*** New version #
-*** Change localweb stuff for new pages
-*** jetty 7.1.4 and remove ShutdownThread hack
 
 There is potential loss of data if its-electric crashes abruptly during a catchup---
 not loss of seconds data, but bad averaging.  Current solution is a hack,
