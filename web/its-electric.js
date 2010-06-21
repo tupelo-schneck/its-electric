@@ -46,8 +46,8 @@ function ItsElectric(url,timelineId,busyId,resolutionId,initialZoom,realTimeUpda
     this.noFlashEvents = false; // set true to make it work (somewhat) when
                                 // accessing a file: URL without privileges
 
-    var self = this;
-    setInterval(function(){self.realTimeUpdate();},realTimeUpdateInterval);
+    this.realTimeUpdateInterval = realTimeUpdateInterval;
+    this.realTimeUpdater = null;
 }
 
 ItsElectric.prototype.init = function() {
@@ -241,6 +241,19 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     this.options.zoomStartTime = startDate;
     this.options.zoomEndTime = endDate;
     this.resolutionString = data.getTableProperty('resolutionString');
+    
+    this.currentResolution = parseInt(data.getTableProperty('resolution'));
+    if(this.realTimeUpdateInterval) {
+        if(isNaN(this.currentResolution)) {
+           if(this.resolution!=null) this.currentResolution = this.resolution;
+           else this.currentResolution = 1;     
+        }
+        if(this.realTimeUpdater) {
+           clearInterval(this.realTimeUpdater);
+        }
+        var self = this;
+        this.realTimeUpdater = setInterval(function(){self.realTimeUpdate();},Math.max(this.currentResolution*1000,this.realTimeUpdateInterval));
+    }
     
     this.data = data;
     this.redraw();

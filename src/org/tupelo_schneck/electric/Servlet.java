@@ -59,6 +59,7 @@ public class Servlet extends DataSourceServlet {
 
     public static final String TIME_ZONE_OFFSET = "timeZoneOffset";
     public static final String RESOLUTION_STRING = "resolutionString";
+    public static final String RESOLUTION = "resolution";
     public static final String MINIMUM_STRING = "minimum";
     public static final String MAXIMUM_STRING = "maximum";
     
@@ -372,6 +373,7 @@ public class Servlet extends DataSourceServlet {
             if(params.resolution<0) resolutionString += " (auto)";
             else if(params.resolution<zoomDb.resolution) resolutionString += " (capped)";
             builder.setCustomProperty(RESOLUTION_STRING, resolutionString);
+            builder.setCustomProperty(RESOLUTION,String.valueOf(zoomDb.resolution));
             
             int range = params.end - params.start;
             int start = params.extraPoints > 1 ? Math.max(params.rangeStart, params.start - range) : params.start;
