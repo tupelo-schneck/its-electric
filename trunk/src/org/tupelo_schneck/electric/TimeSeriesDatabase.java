@@ -81,8 +81,7 @@ public class TimeSeriesDatabase {
         return res;
     }
 
-    public static int intOfVariableBytes(byte[] buf, int offset, int len) {
-        int size = len - offset;
+    public static int intOfVariableBytes(byte[] buf, int offset, int size) {
         if(size<=0) return 0;
         int res = 0;
         res |= ((buf[offset+0] & 0xFF) << 24);

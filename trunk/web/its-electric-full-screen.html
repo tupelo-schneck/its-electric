@@ -59,6 +59,8 @@ If not, see <http://www.gnu.org/licenses/>.
             var val = document.getElementById(id).value;
             if(val && val!='') itsElectric.options.min = val;
             else delete itsElectric.options.min;
+            if(itsElectric.queryPath=='/voltage' || (val && val!='')) itsElectric.options.scaleType = 'maximized';
+            else itsElectric.options.scaleType = 'fixed';
         }
         function setMax(id) {
             var val = document.getElementById(id).value;
@@ -71,10 +73,10 @@ If not, see <http://www.gnu.org/licenses/>.
             hide('viewPower');
             show('wattsMinAndMax');
             hide('voltsMinAndMax');
-            setMin('wmin');
-            setMax('wmax');
             itsElectric.options.allValuesSuffix="W";
             itsElectric.queryPath="/power";
+            setMin('wmin');
+            setMax('wmax');
             itsElectric.requery();
         }            
         function viewVoltage(id) {
@@ -82,10 +84,10 @@ If not, see <http://www.gnu.org/licenses/>.
             show('viewPower');
             hide('wattsMinAndMax');
             show('voltsMinAndMax');
-            setMin('vmin');
-            setMax('vmax');
             itsElectric.options.allValuesSuffix="V";
             itsElectric.queryPath="/voltage";
+            setMin('vmin');
+            setMax('vmax');
             itsElectric.requery();
         }            
         
