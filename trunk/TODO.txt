@@ -1,4 +1,4 @@
-*** Check voltage
+*** Change servlet boundary-adding code to include points from all MTUs...?
 *** Quick Start in README!
 
 There is potential loss of data if its-electric crashes abruptly during a catchup---

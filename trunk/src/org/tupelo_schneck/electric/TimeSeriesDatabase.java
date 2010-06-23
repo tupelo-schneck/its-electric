@@ -309,11 +309,11 @@ public class TimeSeriesDatabase {
     }
     
     public ReadIterator read(int startDate, int endDate) throws DatabaseException {
-        return new ReadIterator(startDate,endDate);
+        return new ReadIterator(startDate<0?0:startDate,endDate);
     }
 
     public ReadIterator read(int startDate) throws DatabaseException {
-        return new ReadIterator(startDate,-1);
+        return new ReadIterator(startDate<0?0:startDate,-1);
     }
 
     public class ReadIterator implements Iterator<Triple> {
