@@ -210,7 +210,7 @@ public class Servlet extends DataSourceServlet {
             addNullsTo(triple.mtu);
             if(params.voltage) {
                 if(triple.voltage==null) row.addCell(NULL_NUMBER);
-                else row.addCell((double)triple.voltage.intValue()/10);
+                else row.addCell((double)triple.voltage.intValue()/20);
             }
             else {
                 if(triple.power==null) row.addCell(NULL_NUMBER);
