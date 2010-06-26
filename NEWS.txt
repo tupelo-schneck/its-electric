@@ -1,7 +1,7 @@
 "it's electric" news
 http://tupelo-schneck.org/its-electric
 
-Version 1.5 2010-06-21
+Version 1.5 2010-06-25
 ======================
 Voltage.
 New full-screen and history displays.
@@ -9,7 +9,7 @@ Export functionality.
 
 Version 1.4.2 2010-05-16
 ========================
-Bugfix which preventing 1.4.1 working on a new database.
+Fix bug which prevented 1.4.1 working on a new database.
 
 Version 1.4.1 2010-05-12
 ========================

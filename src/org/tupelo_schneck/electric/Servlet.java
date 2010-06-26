@@ -193,6 +193,8 @@ public class Servlet extends DataSourceServlet {
         
         private void addTriple(Triple triple) {
             if (triple.timestamp < lastTime) return;
+            if(params.voltage && triple.voltage==null) return;
+            else if(!params.voltage && triple.power==null) return;
             if (triple.timestamp > lastTime || row==null) {
                 finishRow();
                 row = new TableRow();
