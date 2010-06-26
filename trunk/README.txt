@@ -1,25 +1,52 @@
 "it's electric": software for storing and viewing home energy monitoring data
 
+Quick Start Guide
+=================
+
+0) Install Java (Mac: automatic; Windows: visit java.com) and Adobe
+Flash Player ( http://get.adobe.com/flashplayer/ )
+
+1) Extract all files from its-electric-1.5.zip.
+
+2) Open the command prompt and cd to the extracted its-electric directory.
+
+3) Type the command:
+java -jar its-electric-1.5.jar -g http://192.168.1.99 -m 2 -d its-electric-db
+BUT CHANGE "192.168.1.99" to the IP address of your TED Gateway, and
+change "2" (in "-m 2") to the number of MTUs in your TED system.
+(If you want to monitor voltage, add "-v yes".)
+
+4) Tell Flash to trust the its-electric web pages by going to the Flash Player 
+Settings Manager and adding that file to the trusted locations.  Go to
+
+http://www.macromedia.com/support/documentation/en/flashplayer/help/settings_manager04.html
+
+click on "Add Location" in the "Edit Locations" dropdown, and 
+"Browse for folder" to the extracted its-electric/web subdirectory.
+
+5) Open its-electric/web/its-electric.html in your browser (for instance, 
+by double-clicking it). 
+
+
 Installation advice from users
 ==============================
 
-I've been told that the instructions in this README are a little terse.
 I've highlighted a couple of posts by users, detailing installation on their
 platforms, on the entry page to our Google Group:
 http://groups.google.com/group/its-electric-software
 
 
-Running "it's electric"
-=======================
+Running "it's electric": some more detail
+=========================================
 
 (1) You'll need to run the "it's electric" Java program, which polls 
 the TED 5000 for data, stores it in a database along with averages 
 over longer time spans, and runs the server which provides the data 
 according to the Google Visualizations API.  The command is:
  
-  java -jar its-electric-{version}.jar [options] database-directory
+  java -jar its-electric-{version}.jar [options]
 
-The (required!) database-directory is the directory in your filesystem 
+The option -d is required, to specify the directory in your filesystem 
 where the database will be stored.  Note: the database gets big, on 
 the order of 1GB/month.  (More precisely, around 250MB/month/MTU.)
 
@@ -30,7 +57,12 @@ but I don't know whether that works even on Windows.  If your TED 5000
 has IP address 192.168.1.99 and port 1234, use -g http://192.168.1.99:1234.)
 
 The -p option allows you to specify the port where the server listens.
-The default is 8081.
+The default is 8081.  Note: -g specifies the URL (generally with IP address
+and port) where the its-electric server will contact TED; -p specifies the 
+port where the its-electric web pages will contact the its-electric server.
+
+If you include "-v yes", then its-electric will monitor the voltage data
+from TED as well as power.
 
 You can read about other options by using option "--help".
 
@@ -44,14 +76,13 @@ an option like -server or -Xmx128M .  In fact consider that in any case;
 I particularly recommend java -server for this.
 
 
-(2) Next you'll need to set up the "it's electric" web files
-its-electric.html and its-electric.js (and also the "wait icon"
-wait20trans.gif).  You may need to edit its-electric.html and tell it how
-to contact the datasource server you set up in part (1); it comes
-looking for "http://localhost:8081" which may work fine for you, but
-will certainly need to be changed if you want your data accessible
+(2) Next you'll need to set up the "it's electric" web files, in the 
+extracted its-electric/web directory.  You may need to edit the 
+html files to tell them how to contact the datasource server you set up in 
+part (1); they come looking for "http://localhost:8081" which may work fine 
+for you, but will certainly need to be changed if you want your data accessible
 over the Internet---it's a client-side process to get the data and
-pass it to the chart.
+pass it to the chart.  Look for "CHANGE URL HERE" in the html files.
 
 Even if you're just looking at the data yourself, you may want to 
 access the files through a webserver.  (On a Mac, this just means 
