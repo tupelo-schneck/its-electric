@@ -1,5 +1,4 @@
-*** Change servlet boundary-adding code to include points from all MTUs...?
-*** Quick Start in README!
+Change servlet boundary-adding code to include points from all MTUs...?
 
 There is potential loss of data if its-electric crashes abruptly during a catchup---
 not loss of seconds data, but bad averaging.  Current solution is a hack,
