@@ -21,7 +21,6 @@ If not, see <http://www.gnu.org/licenses/>.
 
 package org.tupelo_schneck.electric;
 
-import java.util.Arrays;
 import java.util.Iterator;
 
 import org.apache.commons.logging.Log;
@@ -53,8 +52,10 @@ public class TimeSeriesDatabase {
     private int[] start;
     private int[] sum;
     private int[] sumVolts;
+    private int[] sumVA;
     private int[] count;
     private int[] countVolts;
+    private int[] countVA;
     public int[] maxForMTU;
 
     public static DatabaseConfig ALLOW_CREATE_CONFIG = null;
@@ -115,6 +116,15 @@ public class TimeSeriesDatabase {
         else return Integer.valueOf(intOfVariableBytes(buf,1+sizeOfPower,sizeOfVoltage));
     }
 
+    public static Integer voltAmperesOfData(byte[] buf) {
+        if(buf.length<=4) return null;
+        int sizeOfPower = buf[0]/25;
+        int sizeOfVoltage = (buf[0] - 25*sizeOfPower)/5;
+        int sizeOfVoltAmperes = buf[0] - 25*sizeOfPower - 5*sizeOfVoltage;
+        if(sizeOfVoltAmperes==0) return null;
+        else return Integer.valueOf(intOfVariableBytes(buf,1+sizeOfPower + sizeOfVoltage,sizeOfVoltAmperes));
+    }
+
     // 4-byte timestamp, 1-byte mtu
     private DatabaseEntry keyEntry(int timestamp, byte mtu) {
         byte[] buf = new byte[5];
@@ -145,29 +155,33 @@ public class TimeSeriesDatabase {
     
     // if size<=4, all is power (and empty means 0)
     // otherwise first byte denotes sizes of power, voltage, kva (as base 5); for each, empty means missing
-    private DatabaseEntry dataEntry(Integer powerObj,Integer voltageObj) {
+    private DatabaseEntry dataEntry(Integer powerObj,Integer voltageObj,Integer voltAmperesObj) {
         int power = powerObj==null?0:powerObj.intValue();
         int voltage = voltageObj==null?0:voltageObj.intValue();
+        int voltAmperes = voltAmperesObj==null?0:voltAmperesObj.intValue();
 
         int sizeOfPower = sizeOfInteger(powerObj);
         int sizeOfVoltage = sizeOfInteger(voltageObj);
+        int sizeOfVoltAmperes = sizeOfInteger(voltAmperesObj);
 
         byte[] buf;
         int first;
-        if(voltageObj==null && powerObj!=null) {
+        if(voltageObj==null && voltAmperesObj==null && powerObj!=null) {
             first = 0;
             if(powerObj.intValue()==0) buf = new byte[0];
             else buf = new byte[sizeOfPower];
         }
         else {
             first = 1;
-            buf = new byte[Math.max(5, 1 + sizeOfPower + sizeOfVoltage)];
-            buf[0] = (byte)(25*sizeOfPower + 5*sizeOfVoltage);
+            buf = new byte[Math.max(5, 1 + sizeOfPower + sizeOfVoltage + sizeOfVoltAmperes)];
+            buf[0] = (byte)(25*sizeOfPower + 5*sizeOfVoltage + sizeOfVoltAmperes);
         }
 
         for(int i = first; i<buf.length; i++) {
             if(i-first < sizeOfPower) buf[i] = byteOfInteger(power, sizeOfPower - (i-first));
             else if(i-first - sizeOfPower < sizeOfVoltage) buf[i] = byteOfInteger(voltage, sizeOfVoltage - (i - first - sizeOfPower));
+            else if(i-first - sizeOfPower - sizeOfVoltage < sizeOfVoltAmperes) buf[i] = byteOfInteger(voltAmperes, sizeOfVoltAmperes - (i - first - sizeOfPower - sizeOfVoltage));
+            else break;
         }
         return new DatabaseEntry(buf);
     }
@@ -191,13 +205,17 @@ public class TimeSeriesDatabase {
             start = new int[mtus];
             sum = new int[mtus];
             sumVolts = new int[mtus];
+            sumVA = new int[mtus];
             count = new int[mtus];
             countVolts = new int[mtus];
+            countVA = new int[mtus];
 
-            Arrays.fill(sum, 0);
-            Arrays.fill(sumVolts, 0);
-            Arrays.fill(count, 0);
-            Arrays.fill(countVolts, 0);
+//            Arrays.fill(sum, 0);
+//            Arrays.fill(sumVolts, 0);
+//            Arrays.fill(sumVA, 0);
+//            Arrays.fill(count, 0);
+//            Arrays.fill(countVolts, 0);
+//            Arrays.fill(countVA, 0);
             
             for(byte mtu = 0; mtu < mtus; mtu++) {
                 start[mtu] = maxStoredTimestampForMTU(mtu) + resolution;
@@ -238,9 +256,9 @@ public class TimeSeriesDatabase {
         if(database!=null) try { database.close(); } catch(Exception e) { e.printStackTrace(); }
     }
 
-    public void put(Cursor cursor,int timestamp, byte mtu, Integer power, Integer voltage) throws DatabaseException {
+    public void put(Cursor cursor,int timestamp, byte mtu, Integer power, Integer voltage, Integer voltAmperes) throws DatabaseException {
         OperationStatus status;
-        status = cursor.put(keyEntry(timestamp, mtu), dataEntry(power,voltage));
+        status = cursor.put(keyEntry(timestamp, mtu), dataEntry(power,voltage, voltAmperes));
         if(status!=OperationStatus.SUCCESS) {
             throw new DatabaseException("Unexpected status " + status);
         }
@@ -253,7 +271,7 @@ public class TimeSeriesDatabase {
     public boolean putIfChanged(Cursor cursor, Triple triple) throws DatabaseException {
         OperationStatus status;
         DatabaseEntry key = keyEntry(triple.timestamp,triple.mtu);
-        DatabaseEntry data = dataEntry(triple.power,triple.voltage);
+        DatabaseEntry data = dataEntry(triple.power,triple.voltage,triple.voltAmperes);
         status = cursor.putNoOverwrite(key, data);
         if(status==OperationStatus.SUCCESS) return true;
         if(status!=OperationStatus.KEYEXIST) {
@@ -268,10 +286,13 @@ public class TimeSeriesDatabase {
         byte[] buf = readDataEntry.getData();
         Integer oldPower = powerOfData(buf);
         Integer oldVoltage = voltageOfData(buf);
-        if((triple.power==null || triple.power==oldPower) && (triple.voltage==null || triple.voltage==oldVoltage)) return false;
+        Integer oldVoltAmperes = voltAmperesOfData(buf);
+        if((triple.power==null || triple.power==oldPower) && (triple.voltage==null || triple.voltage==oldVoltage) && (triple.voltAmperes==null || triple.voltAmperes==oldVoltAmperes)) return false;
 
-        if(triple.power==null && oldPower!=null) data = dataEntry(oldPower,triple.voltage);
-        if(triple.voltage==null && oldVoltage!=null) data = dataEntry(triple.power,oldVoltage);
+        Integer newPower = triple.power==null ? oldPower : triple.power;
+        Integer newVoltage = triple.voltage==null ? oldVoltage : triple.voltage;
+        Integer newVoltAmperes = triple.voltAmperes==null ? oldVoltAmperes : triple.voltAmperes;
+        data = dataEntry(newPower,newVoltage,newVoltAmperes);
         status = cursor.put(key, data);
         if(status!=OperationStatus.SUCCESS) {
             throw new DatabaseException("Unexpected status " + status);
@@ -371,7 +392,8 @@ public class TimeSeriesDatabase {
             buf = data.getData();
             Integer power = powerOfData(buf);
             Integer voltage = voltageOfData(buf);
-            Triple res = new Triple(timestamp,mtu,power,voltage);
+            Integer voltAmperes = voltAmperesOfData(buf);
+            Triple res = new Triple(timestamp,mtu,power,voltage,voltAmperes);
             try {
                 status = readCursor.getNext(key, data, LockMode.READ_UNCOMMITTED);
                 closeIfNeeded();
@@ -405,11 +427,20 @@ public class TimeSeriesDatabase {
                 else {
                     avgVolts = null;
                 }
-                put(cursor,start[mtu], mtu, avg, avgVolts);
+                Integer avgVA;
+                if(countVA[mtu]>0) {
+                    avgVA = Integer.valueOf(sumVA[mtu]/countVA[mtu]);
+                }
+                else {
+                    avgVA = null;
+                }
+                put(cursor,start[mtu], mtu, avg, avgVolts, avgVA);
                 sum[mtu] = 0;
                 count[mtu] = 0;
                 sumVolts[mtu] = 0;
                 countVolts[mtu] = 0;
+                sumVA[mtu] = 0;
+                countVA[mtu] = 0;
                 // start at day boundaries, but not dealing with daylight savings time...
                 start[mtu] = ((timestamp+main.options.timeZoneRawOffset)/resolution)*resolution - main.options.timeZoneRawOffset;
             }
@@ -420,6 +451,10 @@ public class TimeSeriesDatabase {
             if(triple.voltage!=null) {
                 sumVolts[mtu] += triple.voltage.intValue();
                 countVolts[mtu]++;
+            }
+            if(triple.voltAmperes!=null) {
+                sumVA[mtu] += triple.voltAmperes.intValue();
+                countVA[mtu]++;
             }
         }
     }
@@ -434,6 +469,8 @@ public class TimeSeriesDatabase {
             count[mtu] = 0;
             sumVolts[mtu] = 0;
             countVolts[mtu] = 0;
+            sumVA[mtu] = 0;
+            countVA[mtu] = 0;
         }
     }
 }

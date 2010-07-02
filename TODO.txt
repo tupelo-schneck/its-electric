@@ -1,4 +1,8 @@
+Debug big-blue-bar effect on timeline
 Change servlet boundary-adding code to include points from all MTUs...?
+
+Don't have "Show voltage" when voltage is not available.
+Export data without having to view it in the timeline.  Better max-points configuration.
 
 There is potential loss of data if its-electric crashes abruptly during a catchup---
 not loss of seconds data, but bad averaging.  Current solution is a hack,

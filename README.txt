@@ -16,6 +16,9 @@ BUT CHANGE "192.168.1.99" to the IP address of your TED Gateway, and
 change "2" (in "-m 2") to the number of MTUs in your TED system.
 (If you want to monitor voltage, add "-v yes".)
 
+(Note: if your TED Gateway is automatically assigned an IP address, you can
+try using -g http://TED5000 which is known to work on Windows.)
+
 4) Tell Flash to trust the its-electric web pages by going to the Flash Player 
 Settings Manager and adding that file to the trusted locations.  Go to
 

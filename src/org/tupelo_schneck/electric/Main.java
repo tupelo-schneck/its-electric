@@ -43,6 +43,8 @@ import com.sleepycat.je.Environment;
 import com.sleepycat.je.EnvironmentConfig;
 
 public class Main {
+    public static final int KVA_LAG = 300;
+    
     Log log = LogFactory.getLog(Main.class);
     
     public boolean readOnly = false; // I set this true when running tests from a different main method
@@ -82,6 +84,8 @@ public class Main {
     
     private volatile boolean newData;
     private Object newDataLock = new Object();
+    
+    private volatile int latestVoltAmperesTimestamp;
     
     public void openEnvironment(File envHome) throws DatabaseException {
         EnvironmentConfig configuration = new EnvironmentConfig();
@@ -148,14 +152,14 @@ public class Main {
         }
     }
 
-    private void reset(List<Pair> changes) {
+    private void reset(List<Pair> changes, boolean resetOnly) {
         if(!isRunning || changes==null || changes.isEmpty()) return;
         boolean setReset = false;
         boolean setNewData = false;
         synchronized(resetLock) {
             if(resetTimestamp==null) {
                 resetTimestamp = new int[options.mtus];
-                Arrays.fill(resetTimestamp,0);
+//                Arrays.fill(resetTimestamp,0);
             }
 
             for(Pair change : changes) {
@@ -184,6 +188,8 @@ public class Main {
             }
 
             if(setReset) reset = true;
+            else if(resetOnly) return; 
+            
             if(setNewData) newData = true;
             
             synchronized(newDataLock) {
@@ -276,7 +282,7 @@ public class Main {
                 changes.add(new Pair(minAndMax.min,mtu));
             }
 
-            reset(changes);
+            reset(changes, false);
             
             synchronized(minMaxLock) {
                 if(minimum==0 || minimum > newMin) minimum = newMin;
@@ -301,6 +307,57 @@ public class Main {
         }
     }
     
+    public class VoltAmpereImporter implements Runnable {
+        public VoltAmpereImporter() {}
+        
+        @Override
+        public void run() {
+            try {
+                runReal();
+            }
+            catch(Throwable e) {
+                e.printStackTrace();
+                shutdown();
+            }
+        }
+        
+        public void runReal() {
+            int[] newMaxForMTU = new int[options.mtus];
+            List<Pair> changes = new LinkedList<Pair>();
+            boolean changed = false;
+
+            VoltAmpereFetcher fetcher = new VoltAmpereFetcher(options);
+            List<Triple> triples = fetcher.doImport();
+
+            if(triples.isEmpty()) return;
+            
+            int timestamp = 0;
+            Cursor cursor = null;
+            try {
+                cursor = secondsDb.openCursor();
+                for(Triple triple : triples) {
+                    timestamp = triple.timestamp;
+                    if (secondsDb.putIfChanged(cursor, triple)) {
+                        changed = true;
+                        newMaxForMTU[triple.mtu] = timestamp;
+                        changes.add(new Pair(timestamp,triple.mtu));
+                    }
+                }
+            }
+            catch(DatabaseException e) {
+                e.printStackTrace();
+            }
+            finally {
+                if(cursor!=null) try { cursor.close(); } catch (Exception e) { e.printStackTrace(); }
+            }
+            
+            if(changed) {
+                latestVoltAmperesTimestamp = timestamp;
+                reset(changes, true);
+            }
+        }
+    }
+    
     private static class Task {
         private final ExecutorService execServ;
         private final Future<?> future;
@@ -320,6 +377,12 @@ public class Main {
     public Task repeatedlyImport(int count,boolean longImport,int interval) {
         ScheduledExecutorService execServ = Executors.newSingleThreadScheduledExecutor();
         Future<?> future = execServ.scheduleAtFixedRate(new MultiImporter(count, longImport), 0, interval, TimeUnit.SECONDS);
+        return new Task(execServ,future);
+    }
+
+    public Task voltAmpereImporter(ExecutorService execServ, int interval) {
+        if(!(execServ instanceof ScheduledExecutorService)) throw new AssertionError();
+        Future<?> future = ((ScheduledExecutorService)execServ).scheduleAtFixedRate(new VoltAmpereImporter(), 0, interval, TimeUnit.SECONDS);
         return new Task(execServ,future);
     }
 
@@ -402,7 +465,8 @@ public class Main {
                     }
                     while(iter.hasNext() && !reset && isRunning) {
                         Triple triple = iter.next();
-                        if(triple.timestamp > caughtUpTo[triple.mtu]){ 
+                        if(triple.timestamp > caughtUpTo[triple.mtu]) {
+                            if(triple.timestamp > maximum || (triple.timestamp > latestVoltAmperesTimestamp && triple.timestamp - KVA_LAG < latestVoltAmperesTimestamp)) break;
                             synchronized(resetLock) {
                                 for(int i = 1; i < numDurations; i++) {
                                     databases[i].accumulateForAverages(cursors[i],triple);
@@ -441,6 +505,7 @@ public class Main {
     private Server server;
     private Task longImportTask;
     private Task shortImportTask;
+    private Task voltAmpereImportTask;
     private Task catchUpTask;    
     
     public void shutdown() {
@@ -449,6 +514,7 @@ public class Main {
             isRunning = false;
             try { longImportTask.stop(); } catch (Throwable e) {}
             try { shortImportTask.stop(); } catch (Throwable e) {}
+            try { voltAmpereImportTask.stop(); } catch (Throwable e) {}
             try { catchUpTask.stop(); } catch (Throwable e) {}
             try { server.stop(); } catch (Throwable e) {}
             try { close(); } catch (Throwable e) {}
@@ -477,6 +543,7 @@ public class Main {
             main.server.start();
             main.longImportTask = main.repeatedlyImport(3600, true, main.options.longImportInterval);
             main.shortImportTask = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
+            if(main.options.voltAmpereImportInterval>0) main.voltAmpereImportTask = main.voltAmpereImporter(main.shortImportTask.execServ, main.options.voltAmpereImportInterval);
             ExecutorService execServ = Executors.newSingleThreadExecutor();
             main.catchUpTask = new Task(execServ,execServ.submit(main.new CatchUp()));
         }

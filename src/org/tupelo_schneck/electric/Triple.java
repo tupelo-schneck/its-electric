@@ -29,12 +29,14 @@ public class Triple {
     public final byte mtu;
     public final Integer power;
     public final Integer voltage;
+    public final Integer voltAmperes;
     
-    public Triple(int timestamp, byte mtu, Integer power, Integer voltage) {
+    public Triple(int timestamp, byte mtu, Integer power, Integer voltage, Integer voltAmperes) {
         this.timestamp = timestamp;
         this.mtu = mtu;
         this.power = power;
         this.voltage = voltage;
+        this.voltAmperes = voltAmperes;
     }
 
     public static final Comparator<Triple> COMPARATOR = new Comparator<Triple>() {
@@ -46,6 +48,6 @@ public class Triple {
 
     @Override
     public String toString() {
-        return Main.dateString(timestamp) + ", MTU" + mtu + ", " + power + "W" + ", " + voltage + "dV";
+        return Main.dateString(timestamp) + ", MTU" + mtu + ", " + power + "W" + ", " + voltage + "dV" + ", " + voltAmperes + "VA";
     }
 }
