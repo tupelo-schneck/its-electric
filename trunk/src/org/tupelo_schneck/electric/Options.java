@@ -63,6 +63,7 @@ public class Options extends org.apache.commons.cli.Options {
     public int maxDataPoints = 5000;
     public int port = 8081;
     public boolean voltage = false;
+    public int voltAmpereImportInterval = 0;
 
     public Options() {
         this.addOption("d","database-directory",true,"database directory (required)");
@@ -77,6 +78,7 @@ public class Options extends org.apache.commons.cli.Options {
         this.addOption("o","import-overlap",true,"extra seconds imported each time for good measure (default 4)");        
         this.addOption("e","long-import-interval",true,"seconds between imports of whole hours (default 300)");
         this.addOption("v","voltage",true,"whether ('yes' or 'no') to include voltage data (default no)");
+        this.addOption("k","volt-ampere-import-interval",true,"seconds between polls for kVA data (default 0 means no kVA data)");
         this.addOption("h","help",false,"print this help text");
     }
 
@@ -162,7 +164,7 @@ public class Options extends org.apache.commons.cli.Options {
             }
             if(cmd.hasOption("e")) {
                 try {
-                    longImportInterval = Integer.parseInt(cmd.getOptionValue("i"));
+                    longImportInterval = Integer.parseInt(cmd.getOptionValue("e"));
                     if(longImportInterval<=0) showUsageAndExit = true;
                 }
                 catch(NumberFormatException e) {
@@ -180,6 +182,15 @@ public class Options extends org.apache.commons.cli.Options {
                 if("no".equals(val) || "false".equals(val)) {
                     voltage = false;
                 }
+            }
+            if(cmd.hasOption("k")) {
+                try {
+                    voltAmpereImportInterval = Integer.parseInt(cmd.getOptionValue("k"));
+                    if(voltAmpereImportInterval<0) showUsageAndExit = true;
+                }
+                catch(NumberFormatException e) {
+                    showUsageAndExit = true;
+                }            
             }
             if(cmd.hasOption("h")) {
                 showUsageAndExit = true;

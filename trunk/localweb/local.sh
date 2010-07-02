@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export where=test3
+export where=test
 
 if false
 then export where=its-electric; rm -rf main/* build/*

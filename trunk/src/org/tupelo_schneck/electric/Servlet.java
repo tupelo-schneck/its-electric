@@ -35,7 +35,6 @@ import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.eclipse.jetty.server.handler.RequestLogHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.util.thread.ShutdownThread;
 import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
 
 import com.google.visualization.datasource.DataSourceServlet;
@@ -167,6 +166,10 @@ public class Servlet extends DataSourceServlet {
             for(int mtu = 0; mtu < main.options.mtus; mtu++) {
                 String label = "MTU" + (mtu+1);
                 cd.add(new ColumnDescription(label, ValueType.NUMBER, label));
+                if(params.queryType==QueryType.COMBINED_POWER) {
+                    label = "MTU" + (mtu+1) + "VA";
+                    cd.add(new ColumnDescription(label, ValueType.NUMBER, label));
+                }
             }
             data.addColumns(cd);
         }
@@ -174,6 +177,7 @@ public class Servlet extends DataSourceServlet {
         private void addNullsTo(int nextMTU) {
             for(int mtu = lastMTU + 1; mtu < nextMTU; mtu++) {
                 row.addCell(NULL_NUMBER);
+                if(params.queryType==QueryType.COMBINED_POWER) row.addCell(NULL_NUMBER);
             }
         }
         
@@ -193,8 +197,11 @@ public class Servlet extends DataSourceServlet {
         
         private void addTriple(Triple triple) {
             if (triple.timestamp < lastTime) return;
-            if(params.voltage && triple.voltage==null) return;
-            else if(!params.voltage && triple.power==null) return;
+            if(params.queryType==QueryType.VOLTAGE && triple.voltage==null) return;
+            else if(params.queryType==QueryType.POWER && triple.power==null) return;
+            else if(params.queryType==QueryType.VOLT_AMPERES && triple.voltAmperes==null) return;
+            else if(params.queryType==QueryType.COMBINED_POWER && triple.voltAmperes==null && triple.power==null) return;
+            else if(params.queryType==QueryType.POWER_FACTOR && (triple.voltAmperes==null || triple.power==null || triple.voltAmperes==Integer.valueOf(0))) return;
             if (triple.timestamp > lastTime || row==null) {
                 finishRow();
                 row = new TableRow();
@@ -210,13 +217,27 @@ public class Servlet extends DataSourceServlet {
                 lastMTU = -1;
             }
             addNullsTo(triple.mtu);
-            if(params.voltage) {
+            if(params.queryType==QueryType.VOLTAGE) {
                 if(triple.voltage==null) row.addCell(NULL_NUMBER);
                 else row.addCell((double)triple.voltage.intValue()/20);
             }
-            else {
+            else if(params.queryType==QueryType.POWER) {
                 if(triple.power==null) row.addCell(NULL_NUMBER);
                 else row.addCell(triple.power.intValue());
+            }
+            else if(params.queryType==QueryType.VOLT_AMPERES) {
+                if(triple.voltAmperes==null) row.addCell(NULL_NUMBER);
+                else row.addCell(triple.power.intValue());
+            }
+            else if(params.queryType==QueryType.COMBINED_POWER) {
+                if(triple.power==null) row.addCell(NULL_NUMBER);
+                else row.addCell(triple.power.intValue());
+                if(triple.voltAmperes==null) row.addCell(NULL_NUMBER);
+                else row.addCell(triple.power.intValue());
+            }
+            else if(params.queryType==QueryType.POWER_FACTOR) {
+                if(triple.power==null || triple.voltAmperes==null || triple.voltAmperes==Integer.valueOf(0)) row.addCell(NULL_NUMBER);
+                else row.addCell((triple.power.intValue() * 1000 / triple.voltAmperes.intValue()) / 1000.0);
             }
             lastMTU = triple.mtu;
         }
@@ -288,6 +309,10 @@ public class Servlet extends DataSourceServlet {
         }
     }
     
+    private enum QueryType {
+        POWER, VOLTAGE, VOLT_AMPERES, COMBINED_POWER, POWER_FACTOR;
+    }
+
     private class QueryParameters {
         public int rangeStart;
         public int rangeEnd;
@@ -297,7 +322,7 @@ public class Servlet extends DataSourceServlet {
         public int minPoints;
         public int maxPoints;
         public int extraPoints;
-        public boolean voltage;
+        public QueryType queryType;
         
         private HttpServletRequest req;
 
@@ -319,12 +344,20 @@ public class Servlet extends DataSourceServlet {
             String path = req.getPathInfo();
             if(path==null || "".equals(path) || "/".equals(path)) path = "power";
             else if(path.startsWith("/")) path = path.substring(1);
-            if(!path.equals("power") && !path.equals("voltage")) {
-                throw new DataSourceException(ReasonType.INVALID_REQUEST, "Request '" + path + "', should be 'power' or 'voltage'");
+            
+            if(path.equals("power")) queryType = QueryType.POWER;
+            else if(path.equals("voltage")) queryType = QueryType.VOLTAGE;
+            else if(path.equals("volt-amperes")) queryType = QueryType.VOLT_AMPERES;
+            else if(path.equals("combined-power")) queryType = QueryType.COMBINED_POWER;
+            else if(path.equals("power-factor")) queryType = QueryType.POWER_FACTOR;
+            else {
+                throw new DataSourceException(ReasonType.INVALID_REQUEST, "Request '" + path + "' unknown");
             }
-            voltage = path.equals("voltage");
-            if(voltage && !main.options.voltage) {
-                throw new DataSourceException(ReasonType.INVALID_REQUEST, "Voltage data not available");            
+            if(queryType==QueryType.VOLTAGE) {
+                if(!main.options.voltage) throw new DataSourceException(ReasonType.INVALID_REQUEST, "Voltage data not available");            
+            }
+            else if(queryType != QueryType.POWER) {
+                if(main.options.voltAmpereImportInterval==0) throw new DataSourceException(ReasonType.INVALID_REQUEST, "Volt-amperage data not available");
             }
             
             rangeStart = getIntParameter("rangeStart",min);
@@ -495,8 +528,6 @@ public class Servlet extends DataSourceServlet {
 
         ServletContextHandler root = new ServletContextHandler(handlers, "/", ServletContextHandler.NO_SESSIONS|ServletContextHandler.NO_SECURITY);
         root.addServlet(new ServletHolder(new Servlet(main)), "/*");
-
-        ShutdownThread.getInstance(); // work around a jetty bug that causes problems at shutdown
 
         Server server = new Server(main.options.port);
         server.setHandler(handlers);
