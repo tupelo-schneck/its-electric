@@ -287,7 +287,7 @@ public class TimeSeriesDatabase {
         Integer oldPower = powerOfData(buf);
         Integer oldVoltage = voltageOfData(buf);
         Integer oldVoltAmperes = voltAmperesOfData(buf);
-        if((triple.power==null || triple.power==oldPower) && (triple.voltage==null || triple.voltage==oldVoltage) && (triple.voltAmperes==null || triple.voltAmperes==oldVoltAmperes)) return false;
+        if((triple.power==null || triple.power.equals(oldPower)) && (triple.voltage==null || triple.voltage.equals(oldVoltage)) && (triple.voltAmperes==null || triple.voltAmperes.equals(oldVoltAmperes))) return false;
 
         Integer newPower = triple.power==null ? oldPower : triple.power;
         Integer newVoltage = triple.voltage==null ? oldVoltage : triple.voltage;

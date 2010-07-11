@@ -201,7 +201,7 @@ public class Servlet extends DataSourceServlet {
             else if(params.queryType==QueryType.POWER && triple.power==null) return;
             else if(params.queryType==QueryType.VOLT_AMPERES && triple.voltAmperes==null) return;
             else if(params.queryType==QueryType.COMBINED_POWER && triple.voltAmperes==null && triple.power==null) return;
-            else if(params.queryType==QueryType.POWER_FACTOR && (triple.voltAmperes==null || triple.power==null || triple.voltAmperes==Integer.valueOf(0))) return;
+            else if(params.queryType==QueryType.POWER_FACTOR && (triple.voltAmperes==null || triple.power==null || triple.voltAmperes.intValue()==0)) return;
             if (triple.timestamp > lastTime || row==null) {
                 finishRow();
                 row = new TableRow();
@@ -236,7 +236,7 @@ public class Servlet extends DataSourceServlet {
                 else row.addCell(triple.power.intValue());
             }
             else if(params.queryType==QueryType.POWER_FACTOR) {
-                if(triple.power==null || triple.voltAmperes==null || triple.voltAmperes==Integer.valueOf(0)) row.addCell(NULL_NUMBER);
+                if(triple.power==null || triple.voltAmperes==null || triple.voltAmperes.intValue()==0) row.addCell(NULL_NUMBER);
                 else row.addCell((triple.power.intValue() * 1000 / triple.voltAmperes.intValue()) / 1000.0);
             }
             lastMTU = triple.mtu;
