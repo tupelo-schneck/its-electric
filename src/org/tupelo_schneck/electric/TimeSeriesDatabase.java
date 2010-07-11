@@ -257,8 +257,8 @@ public class TimeSeriesDatabase {
     }
 
     public void put(Cursor cursor,int timestamp, byte mtu, Integer power, Integer voltage, Integer voltAmperes) throws DatabaseException {
-        OperationStatus status;
-        status = cursor.put(keyEntry(timestamp, mtu), dataEntry(power,voltage, voltAmperes));
+        if(power==null && voltage==null && voltAmperes==null) return;
+        OperationStatus status = cursor.put(keyEntry(timestamp, mtu), dataEntry(power,voltage, voltAmperes));
         if(status!=OperationStatus.SUCCESS) {
             throw new DatabaseException("Unexpected status " + status);
         }
@@ -269,6 +269,7 @@ public class TimeSeriesDatabase {
     }
     
     public boolean putIfChanged(Cursor cursor, Triple triple) throws DatabaseException {
+        if(triple.power==null && triple.voltage==null && triple.voltAmperes==null) return false;
         OperationStatus status;
         DatabaseEntry key = keyEntry(triple.timestamp,triple.mtu);
         DatabaseEntry data = dataEntry(triple.power,triple.voltage,triple.voltAmperes);
