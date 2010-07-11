@@ -352,6 +352,7 @@ public class Main {
             }
             
             if(changed) {
+                log.trace("kVA data at " + Main.dateString(timestamp));
                 latestVoltAmperesTimestamp = timestamp;
                 reset(changes, true);
             }

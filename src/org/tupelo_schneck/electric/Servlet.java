@@ -227,13 +227,13 @@ public class Servlet extends DataSourceServlet {
             }
             else if(params.queryType==QueryType.VOLT_AMPERES) {
                 if(triple.voltAmperes==null) row.addCell(NULL_NUMBER);
-                else row.addCell(triple.power.intValue());
+                else row.addCell(triple.voltAmperes.intValue());
             }
             else if(params.queryType==QueryType.COMBINED_POWER) {
                 if(triple.power==null) row.addCell(NULL_NUMBER);
                 else row.addCell(triple.power.intValue());
                 if(triple.voltAmperes==null) row.addCell(NULL_NUMBER);
-                else row.addCell(triple.power.intValue());
+                else row.addCell(triple.voltAmperes.intValue());
             }
             else if(params.queryType==QueryType.POWER_FACTOR) {
                 if(triple.power==null || triple.voltAmperes==null || triple.voltAmperes.intValue()==0) row.addCell(NULL_NUMBER);
