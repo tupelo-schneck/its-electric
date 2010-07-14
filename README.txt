@@ -6,15 +6,16 @@ Quick Start Guide
 0) Install Java (Mac: automatic; Windows: visit java.com) and Adobe
 Flash Player ( http://get.adobe.com/flashplayer/ )
 
-1) Extract all files from its-electric-1.5.zip.
+1) Extract all files from its-electric-1.6.zip.
 
 2) Open the command prompt and cd to the extracted its-electric directory.
 
 3) Type the command:
-java -jar its-electric-1.5.jar -g http://192.168.1.99 -m 2 -d its-electric-db
+java -jar its-electric-1.6.jar -g http://192.168.1.99 -m 2 -d its-electric-db
 BUT CHANGE "192.168.1.99" to the IP address of your TED Gateway, and
 change "2" (in "-m 2") to the number of MTUs in your TED system.
-(If you want to monitor voltage, add "-v yes".)
+(If you want to monitor voltage, add "-v yes".  If you want to monitor kVA, add "-k 2"
+where 2 is the number of seconds "it's electric" waits between polls for kVA data.)
 
 (Note: if your TED Gateway is automatically assigned an IP address, you can
 try using -g http://TED5000 which is known to work on Windows.)

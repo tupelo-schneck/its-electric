@@ -64,32 +64,36 @@ If not, see <http://www.gnu.org/licenses/>.
             else delete itsElectric.options.max;
         }
 
-        function viewPower(id) {
-            show('viewVoltage');
-            hide('viewPower');
-            show('wattsMinAndMax');
-            hide('voltsMinAndMax');
-            itsElectric.options.allValuesSuffix="W";
-            itsElectric.queryPath="/power";
-            setMin('wmin');
-            setMax('wmax');
+        function changeView(view) {
+            itsElectric.queryPath = "/" + view;
+            if(view=="voltage") {
+                hide('wattsMinAndMax');
+                show('voltsMinAndMax');
+                itsElectric.options.allValuesSuffix="V";
+                setMin('vmin');
+                setMax('vmax');
+            }
+            else if(view=="power-factor") {
+                hide('wattsMinAndMax');
+                hide('voltsMinAndMax');
+                delete itsElectric.options.allValuesSuffix;
+                itsElectric.options.scaleType = 'fixed';
+                delete itsElectric.options.min;
+                delete itsElectric.options.max;
+            }
+            else {
+                show('wattsMinAndMax');
+                hide('voltsMinAndMax');
+                if(view=="volt-amperes") itsElectric.options.allValuesSuffix="VA";
+                else itsElectric.options.allValuesSuffix="W";
+                setMin('wmin');
+                setMax('wmax');
+            }
             itsElectric.requery();
         }            
-        function viewVoltage(id) {
-            hide('viewVoltage');
-            show('viewPower');
-            hide('wattsMinAndMax');
-            show('voltsMinAndMax');
-            itsElectric.options.allValuesSuffix="V";
-            itsElectric.queryPath="/voltage";
-            setMin('vmin');
-            setMax('vmax');
-            itsElectric.requery();
-        } 
-
+        
         window.onload = function(){
-            setMin('wmin');
-            setMax('wmax');
+            changeView(document.getElementById('view').value);
             itsElectric.redraw();
         }
     /*]]>*/
@@ -110,7 +114,7 @@ If not, see <http://www.gnu.org/licenses/>.
   <body>
     <div>
         <span class="its-electric">i<span style="letter-spacing:-5px">t</span><span style="letter-spacing:-3px">'s</span> electric</span>
-        <span class="monospace">v1.5</span>
+        <span class="monospace">v1.6</span>
     </div>
     
     <div style="position:relative;width:1000px;">
@@ -170,9 +174,14 @@ If not, see <http://www.gnu.org/licenses/>.
         </form>
     </div>
     <div style="position:relative;height:600px">
-        <span style="font-size:11px;font-family:sans-serif;position:absolute;top:7px;left:316px;z-index:10">
-            <a id="viewPower" style="display:none" href="#" onclick="viewPower();return false;">View power</a>
-            <a id="viewVoltage" href="#" onclick="viewVoltage();return false;">View voltage</a>
+        <span style="font-size:11px;font-family:sans-serif;position:absolute;top:5px;left:316px;z-index:10">
+            <select id="view" onchange="changeView(document.getElementById('view').value);">
+                <option selected="selected" value="power">Power</option>
+                <option value="voltage">Voltage</option>
+                <option value="volt-amperes">Volt-Amperes</option>
+                <option value="combined-power">Combined Power</option>
+                <option value="power-factor">Power Factor</option>
+            </select>                        
         </span>
         <div id="timeline" style="width:1000px;height:600px;position:absolute;top:0px;z-index:0"></div>        
     </div>
@@ -189,7 +198,7 @@ If not, see <http://www.gnu.org/licenses/>.
         Copyright &copy; 2009-2010 <a href="http://tupelo-schneck.org/robert">Robert R. Tupelo-Schneck</a>
         &lt;<a href="mailto:schneck@gmail.com">schneck@gmail.com</a>&gt; -
         <a href="#" onclick="show('copying');window.scrollBy(0,1000);return false;">free software / no warranty</a> -
-        <a href="its-electric-1.5.zip">download including source</a>
+        <a href="its-electric-1.6.zip">download including source</a>
         <span id="copying" style="display:none; color:gray; font-size:small">
             <br/><br/>
 <span class="monospace">it's electric</span> is free software: you can redistribute it and/or modify

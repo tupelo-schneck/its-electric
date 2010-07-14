@@ -166,8 +166,10 @@ public class Servlet extends DataSourceServlet {
             for(int mtu = 0; mtu < main.options.mtus; mtu++) {
                 String label = "MTU" + (mtu+1);
                 cd.add(new ColumnDescription(label, ValueType.NUMBER, label));
-                if(params.queryType==QueryType.COMBINED_POWER) {
-                    label = "MTU" + (mtu+1) + "VA";
+            }
+            if(params.queryType==QueryType.COMBINED_POWER) {
+                for(int mtu = 0; mtu < main.options.mtus; mtu++) {
+                    String label = "MTU" + (mtu+1) + "VA";
                     cd.add(new ColumnDescription(label, ValueType.NUMBER, label));
                 }
             }
@@ -182,6 +184,17 @@ public class Servlet extends DataSourceServlet {
         }
         
         private void addRow() {
+            if(params.queryType==QueryType.COMBINED_POWER) {
+                TableRow oldRow = row;
+                row = new TableRow();
+                row.addCell(oldRow.getCell(0));
+                for(int mtu = 0; mtu < main.options.mtus; mtu++) {
+                    row.addCell(oldRow.getCell(1+mtu*2));
+                }
+                for(int mtu = 0; mtu < main.options.mtus; mtu++) {
+                    row.addCell(oldRow.getCell(2+mtu*2));
+                }
+            }
             rows.add(row);
         }
         
