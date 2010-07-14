@@ -38,6 +38,7 @@ public class ImportIterator implements Iterator<Triple> {
     byte mtu;
     byte[] line = new byte[25];
     volatile boolean closed;
+    Triple pushback;
     
     final boolean useVoltage;
 
@@ -90,7 +91,7 @@ public class ImportIterator implements Iterator<Triple> {
     
     @Override
     public boolean hasNext() {
-        return !closed;
+        return pushback!=null || !closed;
     }
 
     /** The opposite of TimeSeriesDatabase.intOfBytes */
@@ -110,8 +111,7 @@ public class ImportIterator implements Iterator<Triple> {
         return res;
     }
 
-    @Override
-    public Triple next() {
+    private Triple nextFromLine() {
         if(closed) return null;
         byte[] decoded = base64.decode(line);
         if(decoded==null || decoded.length<16) return null;
@@ -127,5 +127,39 @@ public class ImportIterator implements Iterator<Triple> {
         Triple res = new Triple((int)(cal.getTimeInMillis() / 1000),mtu,power,voltage,null);
         getNextLine();
         return res;
-   }
+    }
+
+    private Triple privateNext() {
+        if(pushback!=null) {
+            Triple res = pushback;
+            pushback = null;
+            return res;
+        }
+        if(!closed) return nextFromLine();
+        return null;
+    }
+    
+    @Override
+    public Triple next() {
+        Triple first = privateNext();
+        if(first==null) return null;
+        int timestamp = first.timestamp;
+        int power = first.power.intValue();
+        int voltage = first.voltage.intValue();
+        int count = 1;
+        while(true) {
+            Triple next = privateNext();
+            if(next==null || next.timestamp != timestamp) {
+                pushback = next;
+                break;
+            }
+            else {
+                count++;
+                power += next.power.intValue();
+                voltage += next.voltage.intValue();
+            }
+        }
+        if(count==1) return first;
+        else return new Triple(timestamp, first.mtu, Integer.valueOf(power/count), Integer.valueOf(voltage/count), null);
+    }
 }
