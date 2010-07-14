@@ -68,26 +68,31 @@ If not, see <http://www.gnu.org/licenses/>.
             else delete itsElectric.options.max;
         }
 
-        function viewPower(id) {
-            show('viewVoltage');
-            hide('viewPower');
-            show('wattsMinAndMax');
-            hide('voltsMinAndMax');
-            itsElectric.options.allValuesSuffix="W";
-            itsElectric.queryPath="/power";
-            setMin('wmin');
-            setMax('wmax');
-            itsElectric.requery();
-        }            
-        function viewVoltage(id) {
-            hide('viewVoltage');
-            show('viewPower');
-            hide('wattsMinAndMax');
-            show('voltsMinAndMax');
-            itsElectric.options.allValuesSuffix="V";
-            itsElectric.queryPath="/voltage";
-            setMin('vmin');
-            setMax('vmax');
+        function changeView(view) {
+            itsElectric.queryPath = "/" + view;
+            if(view=="voltage") {
+                hide('wattsMinAndMax');
+                show('voltsMinAndMax');
+                itsElectric.options.allValuesSuffix="V";
+                setMin('vmin');
+                setMax('vmax');
+            }
+            else if(view=="power-factor") {
+                hide('wattsMinAndMax');
+                hide('voltsMinAndMax');
+                delete itsElectric.options.allValuesSuffix;
+                itsElectric.options.scaleType = 'fixed';
+                delete itsElectric.options.min;
+                delete itsElectric.options.max;
+            }
+            else {
+                show('wattsMinAndMax');
+                hide('voltsMinAndMax');
+                if(view=="volt-amperes") itsElectric.options.allValuesSuffix="VA";
+                else itsElectric.options.allValuesSuffix="W";
+                setMin('wmin');
+                setMax('wmax');
+            }
             itsElectric.requery();
         }            
         
@@ -101,8 +106,7 @@ If not, see <http://www.gnu.org/licenses/>.
         };
         
         window.onload = function(){
-            setMin('wmin');
-            setMax('wmax');
+            changeView(document.getElementById('view').value);
             itsElectric.redraw();
         }
     /*]]>*/
@@ -170,8 +174,13 @@ If not, see <http://www.gnu.org/licenses/>.
                     <a href="#" onclick="itsElectric.scrollToPresent();return false;">Scroll to present</a>
                     <br/>
                     
-                    <a id="viewPower" style="display:none" href="#" onclick="viewPower();return false;">View power</a>
-                    <a id="viewVoltage" href="#" onclick="viewVoltage();return false;">View voltage</a>
+                    <select id="view" onchange="changeView(document.getElementById('view').value);">
+                        <option selected="selected" value="power">Power</option>
+                        <option value="voltage">Voltage</option>
+                        <option value="volt-amperes">Volt-Amperes</option>
+                        <option value="combined-power">Combined Power</option>
+                        <option value="power-factor">Power Factor</option>
+                    </select>                        
                     &nbsp;
                     <span id="wattsMinAndMax">
                         <b>Watts min:</b>
@@ -227,8 +236,8 @@ If not, see <http://www.gnu.org/licenses/>.
                 &lt;<a href="mailto:schneck@gmail.com">schneck@gmail.com</a>&gt;
                 <br/>
                 <a href="#" onclick="show('copying');window.scrollBy(0,1000);return false;">free software / no warranty</a> -
-                <a href="its-electric-1.5.zip">download including source</a>
-                <span style="position:absolute;right:1em" class="monospace">v1.5</span>
+                <a href="its-electric-1.6.zip">download including source</a>
+                <span style="position:absolute;right:1em" class="monospace">v1.6</span>
                 <span id="copying" style="display:none; color:gray; font-size:small">
                     <br/><br/>
         <span class="monospace">it's electric</span> is free software: you can redistribute it and/or modify

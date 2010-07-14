@@ -1,6 +1,11 @@
 "it's electric" news
 http://tupelo-schneck.org/its-electric
 
+Version 1.6 2010-07-15
+======================
+kVA data.
+Fix bugs which made 1.5 work harder than needed.
+
 Version 1.5 2010-06-25
 ======================
 Voltage.
