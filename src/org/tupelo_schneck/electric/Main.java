@@ -26,6 +26,7 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -243,6 +244,8 @@ public class Main {
         }
     }
 
+    private volatile CountDownLatch importInterleaver;
+    
     public class MultiImporter implements Runnable {
         private int count;
         private boolean longImport;
@@ -264,6 +267,17 @@ public class Main {
         }
         
         private void runReal() {
+            if(longImport) {
+                importInterleaver = new CountDownLatch(1);
+                try {
+                    importInterleaver.await();
+                }
+                catch(InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+            
             int newMin = Integer.MAX_VALUE;
             int newMax = 0;
             int[] newMaxForMTU = new int[options.mtus];
@@ -295,14 +309,17 @@ public class Main {
                 maxSecondForMTU = newMaxForMTU;
             }
             
-            try {
-                if(longImport) {
+            if(longImport) {
+                try {
                     environment.sync();
                     log.trace("Environment synced.");
                 }
+                catch(DatabaseException e) {
+                    log.debug("Exception syncing environment: " + e);
+                }
             }
-            catch(DatabaseException e) {
-                log.debug("Exception syncing environment: " + e);
+            else {
+                if(importInterleaver!=null) importInterleaver.countDown();
             }
         }
     }
