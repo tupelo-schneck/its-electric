@@ -19,11 +19,9 @@ along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
 */
 
-function ItsElectric(url,timelineId,busyId,resolutionId,initialZoom,realTimeUpdateInterval,toolbarId) {
-    this.url = url;
+function ItsElectric(timelineId,busyId,resolutionId,initialZoom,realTimeUpdateInterval,toolbarId) {
     this.queryPath = "/power";
     this.timelineId = timelineId;
-    this.initialZoom = initialZoom;
     this.busyId = busyId;
     this.resolutionId = resolutionId;
     this.toolbarId = toolbarId;
@@ -39,15 +37,23 @@ function ItsElectric(url,timelineId,busyId,resolutionId,initialZoom,realTimeUpda
     this.minimum = 0;
     this.maximum = 0;
 
-    this.partialRange = false;
-
     this.realTime = true; // set false to prevent auto-update at latest time
 
     this.noFlashEvents = false; // set true to make it work (somewhat) when
                                 // accessing a file: URL without privileges
 
-    this.realTimeUpdateInterval = realTimeUpdateInterval;
     this.realTimeUpdater = null;
+}
+
+ItsElectric.prototype.configure = function(config) {
+    this.gatewayURL = config.gatewayURL;
+    this.partialRange = config.partialRange; // if true, graph only has points near the zoomed-in area
+    this.initialZoom = config.initialZoom;
+    this.realTimeUpdateInterval = config.realTimeUpdateInterval;
+    this.hasVoltage = config.hasVoltage;
+    this.hasKVA = config.hasKVA;
+    this.noFlashEvents = config.noFlashEvents; // set true to make it work (somewhat) when
+                                               // accessing a file: URL without privileges
 }
 
 ItsElectric.prototype.init = function() {
@@ -92,7 +98,7 @@ ItsElectric.prototype.init = function() {
 
 ItsElectric.prototype.queryURL = function() {
     var realTimeNeedsAdjust = this.realTime && this.range && this.range.end.getTime() == this.maximum;
-    var queryURL = this.url;
+    var queryURL = this.gatewayURL;
     if(queryURL.charAt(queryURL.length-1)=='/' && this.queryPath.charAt(0)=='/') {
       queryURL = queryURL + this.queryPath.substring(1);
     }
@@ -137,7 +143,7 @@ ItsElectric.prototype.queryURL = function() {
 }
 
 ItsElectric.prototype.toolbarQueryURL = function() {
-    var queryURL = this.url;
+    var queryURL = this.gatewayURL;
     if(queryURL.charAt(queryURL.length-1)=='/' && this.queryPath.charAt(0)=='/') {
       queryURL = queryURL + this.queryPath.substring(1);
     }
@@ -173,7 +179,8 @@ ItsElectric.prototype.requery = function() {
 ItsElectric.prototype.options = {displayAnnotations: false, 
                                  displayExactValues: true,
                                  allValuesSuffix: 'W',
-                                 dateFormat: 'yyyy-MM-dd HH:mm:ss'};
+                                 dateFormat: 'yyyy-MM-dd HH:mm:ss',
+                                 wmode: 'opaque'};
 
 ItsElectric.prototype.handleQueryResponse = function(response) {
     if (response.isError()) {
