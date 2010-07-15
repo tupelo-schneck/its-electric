@@ -250,7 +250,12 @@ public class Servlet extends DataSourceServlet {
             }
             else if(params.queryType==QueryType.POWER_FACTOR) {
                 if(triple.power==null || triple.voltAmperes==null || triple.voltAmperes.intValue()==0) row.addCell(NULL_NUMBER);
-                else row.addCell((triple.power.intValue() * 1000 / triple.voltAmperes.intValue()) / 1000.0);
+                else {
+                    double factor = (triple.power.intValue() * 1000 / triple.voltAmperes.intValue()) / 1000.0;
+                    if(factor > 1.0) factor = 1.0;
+                    if(factor < -1.0) factor = -1.0;
+                    row.addCell(factor);
+                }
             }
             lastMTU = triple.mtu;
         }

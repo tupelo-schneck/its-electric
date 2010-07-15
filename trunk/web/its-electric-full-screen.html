@@ -24,20 +24,12 @@ If not, see <http://www.gnu.org/licenses/>.
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
     <script type="text/javascript" src="its-electric.js"></script>
     <script type="text/javascript">
-    
-        // CHANGE URL BELOW to the URL of your "it's electric" data server
-    
-        var itsElectric = new ItsElectric('http://localhost:8081', // CHANGE URL HERE
-                                          'timeline','busy',
-                                          'resolutionId',4*60*60,10000,
-                                          'toolbarId');
-        itsElectric.partialRange = true;
-        itsElectric.options.wmode = 'opaque';
+        var itsElectric = new ItsElectric('timeline','busy','resolutionId','toolbarId');
         itsElectric.options.displayZoomButtons = false;
         itsElectric.options.legendPosition = 'newRow';
         itsElectric.options.displayRangeSelector = false;
-        //itsElectric.noFlashEvents = true; // not recommended, see README.txt
     </script>
+    <script type="text/javascript" src="its-electric-config.js"></script>
     <title>it's electric</title>
     <script type="text/javascript" src="http://www.google.com/jsapi"></script>
     <script type="text/javascript">
@@ -107,6 +99,14 @@ If not, see <http://www.gnu.org/licenses/>.
         
         window.onload = function(){
             changeView(document.getElementById('view').value);
+            if(!itsElectric.hasVoltage) {
+                document.getElementById('view.voltage').disabled = true;
+            }
+            if(!itsElectric.hasKVA) {
+                document.getElementById('view.volt-amperes').disabled = true;
+                document.getElementById('view.combined-power').disabled = true;
+                document.getElementById('view.power-factor').disabled = true;
+            }
             itsElectric.redraw();
         }
     /*]]>*/
@@ -176,10 +176,10 @@ If not, see <http://www.gnu.org/licenses/>.
                     
                     <select id="view" onchange="changeView(document.getElementById('view').value);">
                         <option selected="selected" value="power">Power</option>
-                        <option value="voltage">Voltage</option>
-                        <option value="volt-amperes">Volt-Amperes</option>
-                        <option value="combined-power">Combined Power</option>
-                        <option value="power-factor">Power Factor</option>
+                        <option id="view.voltage" value="voltage">Voltage</option>
+                        <option id="view.volt-amperes" value="volt-amperes">Volt-Amperes</option>
+                        <option id="view.combined-power" value="combined-power">Combined Power</option>
+                        <option id="view.power-factor" value="power-factor">Power Factor</option>
                     </select>                        
                     &nbsp;
                     <span id="wattsMinAndMax">
@@ -198,7 +198,7 @@ If not, see <http://www.gnu.org/licenses/>.
                         <input type="text" id="vmax" value="" style="width:3.5em;text-align:right;" onchange="setMax('vmax');itsElectric.redraw();"/>V
                         &nbsp;
                     </span>
-                    &nbsp;
+                    <br/>
                     <a id="showRangeSelector" href="#" onclick="show('hideRangeSelector');hide('showRangeSelector');itsElectric.options.displayRangeSelector=true;itsElectric.redraw();return false;">Show range selector</a>
                     <a id="hideRangeSelector" style="display:none" href="#" onclick="hide('hideRangeSelector');show('showRangeSelector');itsElectric.options.displayRangeSelector=false;itsElectric.redraw();return false;">Hide range selector</a>
                     <br/>
