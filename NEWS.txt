@@ -5,6 +5,7 @@ Version 1.6 2010-07-15
 ======================
 kVA data.
 Fix bugs which made 1.5 work harder than needed.
+Added its-electric-config.js.
 
 Version 1.5 2010-06-25
 ======================

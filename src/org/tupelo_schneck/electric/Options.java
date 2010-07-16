@@ -56,7 +56,7 @@ public class Options extends org.apache.commons.cli.Options {
     public String password = null;
     public String serverLogFilename;
     public byte mtus = 1;
-    public int importOverlap = 4;
+    public int importOverlap = 8;
     public int importInterval = 4; // seconds
     public int longImportInterval = 5*60;
     public int numDataPoints = 1000;

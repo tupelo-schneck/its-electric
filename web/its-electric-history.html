@@ -29,9 +29,18 @@ If not, see <http://www.gnu.org/licenses/>.
         google.setOnLoadCallback(function() { init(); });
     </script>
     <script type="text/javascript">
+        var itsElectricConfig;
+        var itsElectric = {
+            configure: function(config) {
+                itsElectricConfig = config;
+            }
+        }; 
+    </script>
+    <script type="text/javascript" src="its-electric-config.js"></script>
+    <script type="text/javascript">
     /*<![CDATA[*/
         var init = function() {
-            var queryURL = 'http://localhost:8081';  // CHANGE URL HERE
+            var queryURL = itsElectricConfig.gatewayURL;
             var query = new google.visualization.Query(queryURL + '?resolution=86400');
             query.send(function(response) {handleQueryResponse(response);});
         }
