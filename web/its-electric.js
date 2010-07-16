@@ -41,7 +41,7 @@ function ItsElectric(timelineId,busyId,resolutionId,initialZoom,realTimeUpdateIn
 }
 
 ItsElectric.prototype.configure = function(config) {
-    this.gatewayURL = config.gatewayURL;
+    this.datasourceURL = config.datasourceURL;
     this.partialRange = config.partialRange;
     this.initialZoom = config.initialZoom;
     this.realTime = config.realTime;
@@ -94,7 +94,7 @@ ItsElectric.prototype.init = function() {
 
 ItsElectric.prototype.queryURL = function() {
     var realTimeNeedsAdjust = this.realTime && this.range && this.range.end.getTime() == this.maximum;
-    var queryURL = this.gatewayURL;
+    var queryURL = this.datasourceURL;
     if(queryURL.charAt(queryURL.length-1)=='/' && this.queryPath.charAt(0)=='/') {
       queryURL = queryURL + this.queryPath.substring(1);
     }
@@ -139,7 +139,7 @@ ItsElectric.prototype.queryURL = function() {
 }
 
 ItsElectric.prototype.toolbarQueryURL = function() {
-    var queryURL = this.gatewayURL;
+    var queryURL = this.datasourceURL;
     if(queryURL.charAt(queryURL.length-1)=='/' && this.queryPath.charAt(0)=='/') {
       queryURL = queryURL + this.queryPath.substring(1);
     }
