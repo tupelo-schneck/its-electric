@@ -59,6 +59,16 @@ public class ImportIterator implements Iterator<Triple> {
         urlStream = urlConnection.getInputStream();
         urlConnection.setReadTimeout(1000);
         getNextLine();
+        
+        // skip the first timestamp, in case we see only part of multiple values
+        if(!closed) {
+            Triple first = nextFromLine();
+            Triple next = first;
+            while(next!=null && next.timestamp == first.timestamp) {
+                next = nextFromLine();
+            }
+            pushback = next;
+        }
     }
 
     public void close() {

@@ -6,6 +6,8 @@ if false
 then export where=its-electric; rm -rf main/* build/*
 fi
 
+ant clean
+
 mkdir -p build/web
 sed -e '/<!--INSERT PERSONAL TEXT HERE-->/ rlocalweb/local.html' \
     -e '/>v1.5</ s/v1.5/<a href="NEWS.txt">v1.5<\/a>/' \
