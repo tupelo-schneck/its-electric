@@ -6,12 +6,12 @@ Quick Start Guide
 0) Install Java (Mac: automatic; Windows: visit java.com) and Adobe
 Flash Player ( http://get.adobe.com/flashplayer/ )
 
-1) Extract all files from its-electric-1.6.zip.
+1) Extract all files from its-electric-1.6.1.zip.
 
 2) Open the command prompt and cd to the extracted its-electric directory.
 
 3) Type the command:
-java -jar its-electric-1.6.jar -g http://192.168.1.99 -m 2 -d its-electric-db
+java -jar its-electric-1.6.1.jar -g http://192.168.1.99 -m 2 -d its-electric-db
 BUT CHANGE "192.168.1.99" to the IP address of your TED Gateway, and
 change "2" (in "-m 2") to the number of MTUs in your TED system.
 
@@ -93,8 +93,8 @@ server you set up in part (1); it comes looking for "http://localhost:8081"
 which may work fine for you, but will certainly need to be changed if you 
 want your data accessible over the Internet---it's a client-side process 
 to get the data and pass it to the chart.  Change the property
-"gatewayURL".  If you're storing voltage and/or kVA data, change "hasVoltage"
-and/or "hasKVA" to "true".
+"datasourceURL".  If you're storing voltage and/or kVA data, change 
+"hasVoltage" and/or "hasKVA" to "true".
 
 Even if you're just looking at the data yourself, you may want to 
 access the files through a webserver.  (On a Mac, this just means 
