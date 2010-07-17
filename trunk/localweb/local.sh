@@ -3,14 +3,14 @@
 export where=test
 
 if false
-then export where=its-electric; rm -rf main/* build/*
+then export where=its-electric
 fi
 
 ant clean
 
 mkdir -p build/web
 sed -e '/<!--INSERT PERSONAL TEXT HERE-->/ rlocalweb/local.html' \
-    -e '/>v1.5</ s/v1.5/<a href="NEWS.txt">v1.5<\/a>/' \
+    -e '/>v1.6.1</ s/v1.6.1/<a href="NEWS.txt">v1.6.1<\/a>/' \
     web/its-electric.html \
     > build/web/its-electric.html
 sed -e '/datasourceURL:/ s/localhost:8081/tupelo-schneck.org:8081/' \
