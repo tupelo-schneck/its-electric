@@ -1,8 +1,12 @@
 "it's electric" news
 http://tupelo-schneck.org/its-electric
 
-Version 1.6 2010-07-16
-======================
+Version 1.6.2 2010-07-18
+========================
+Bugfix to allow voltage to be missing.
+
+Version 1.6.1 2010-07-16
+========================
 Fixing minor parameter naming error.
 
 Version 1.6 2010-07-15
