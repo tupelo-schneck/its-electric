@@ -149,13 +149,12 @@ public class ImportIterator implements Iterator<Triple> {
         return null;
     }
     
-    @Override
     public Triple next() {
         Triple first = privateNext();
         if(first==null) return null;
         int timestamp = first.timestamp;
         int power = first.power.intValue();
-        int voltage = first.voltage.intValue();
+        int voltage = useVoltage ? first.voltage.intValue() : 0;
         int count = 1;
         while(true) {
             Triple next = privateNext();
@@ -166,10 +165,10 @@ public class ImportIterator implements Iterator<Triple> {
             else {
                 count++;
                 power += next.power.intValue();
-                voltage += next.voltage.intValue();
+                voltage += useVoltage ? next.voltage.intValue() : 0;
             }
         }
         if(count==1) return first;
-        else return new Triple(timestamp, first.mtu, Integer.valueOf(power/count), Integer.valueOf(voltage/count), null);
+        else return new Triple(timestamp, first.mtu, Integer.valueOf(power/count), useVoltage ? Integer.valueOf(voltage/count) : null, null);
     }
 }
