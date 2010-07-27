@@ -76,8 +76,12 @@ public class VoltAmpereFetcher {
             if(!m.find(0)) return 0;
             minute = Integer.parseInt(m.group(1));
             m.usePattern(secondPattern);
-            if(!m.find(0)) return 0;
-            second = Integer.parseInt(m.group(1));
+            if(m.find(0)) {
+                second = Integer.parseInt(m.group(1));
+            }
+            else {
+                second = new GregorianCalendar().get(GregorianCalendar.SECOND);
+            }
         }
         catch(NumberFormatException e) {
             return 0;
