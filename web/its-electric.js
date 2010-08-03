@@ -19,7 +19,7 @@ along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
 */
 
-function ItsElectric(timelineId,busyId,resolutionId,initialZoom,realTimeUpdateInterval,toolbarId) {
+function ItsElectric(timelineId,busyId,resolutionId,toolbarId) {
     this.queryPath = "/power";
     this.timelineId = timelineId;
     this.busyId = busyId;
