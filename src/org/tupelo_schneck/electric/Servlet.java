@@ -169,6 +169,10 @@ public class Servlet extends DataSourceServlet {
             }
             if(params.queryType==QueryType.COMBINED_POWER) {
                 for(int mtu = 0; mtu < main.options.mtus; mtu++) {
+                    String label = "MTU" + (mtu+1) + "var";
+                    cd.add(new ColumnDescription(label, ValueType.NUMBER, label));
+                }
+                for(int mtu = 0; mtu < main.options.mtus; mtu++) {
                     String label = "MTU" + (mtu+1) + "VA";
                     cd.add(new ColumnDescription(label, ValueType.NUMBER, label));
                 }
@@ -179,7 +183,10 @@ public class Servlet extends DataSourceServlet {
         private void addNullsTo(int nextMTU) {
             for(int mtu = lastMTU + 1; mtu < nextMTU; mtu++) {
                 row.addCell(NULL_NUMBER);
-                if(params.queryType==QueryType.COMBINED_POWER) row.addCell(NULL_NUMBER);
+                if(params.queryType==QueryType.COMBINED_POWER) {
+                    row.addCell(NULL_NUMBER);
+                    row.addCell(NULL_NUMBER);
+                }
             }
         }
         
@@ -189,10 +196,13 @@ public class Servlet extends DataSourceServlet {
                 row = new TableRow();
                 row.addCell(oldRow.getCell(0));
                 for(int mtu = 0; mtu < main.options.mtus; mtu++) {
-                    row.addCell(oldRow.getCell(1+mtu*2));
+                    row.addCell(oldRow.getCell(1+mtu*3));
                 }
                 for(int mtu = 0; mtu < main.options.mtus; mtu++) {
-                    row.addCell(oldRow.getCell(2+mtu*2));
+                    row.addCell(oldRow.getCell(2+mtu*3));
+                }
+                for(int mtu = 0; mtu < main.options.mtus; mtu++) {
+                    row.addCell(oldRow.getCell(3+mtu*3));
                 }
             }
             rows.add(row);
@@ -213,6 +223,7 @@ public class Servlet extends DataSourceServlet {
             if(params.queryType==QueryType.VOLTAGE && triple.voltage==null) return;
             else if(params.queryType==QueryType.POWER && triple.power==null) return;
             else if(params.queryType==QueryType.VOLT_AMPERES && triple.voltAmperes==null) return;
+            else if(params.queryType==QueryType.VOLT_AMPERES_REACTIVE && (triple.voltAmperes==null || triple.power==null)) return;
             else if(params.queryType==QueryType.COMBINED_POWER && triple.voltAmperes==null && triple.power==null) return;
             else if(params.queryType==QueryType.POWER_FACTOR && (triple.voltAmperes==null || triple.power==null || triple.voltAmperes.intValue()==0)) return;
             if (triple.timestamp > lastTime || row==null) {
@@ -242,9 +253,27 @@ public class Servlet extends DataSourceServlet {
                 if(triple.voltAmperes==null) row.addCell(NULL_NUMBER);
                 else row.addCell(triple.voltAmperes.intValue());
             }
+            else if(params.queryType==QueryType.VOLT_AMPERES_REACTIVE) {
+                if(triple.power==null || triple.voltAmperes==null) row.addCell(NULL_NUMBER);
+                else {
+                    double w = triple.power.intValue();
+                    double va = triple.voltAmperes.intValue();
+                    double varsqr = va*va - w*w;
+                    if(varsqr < 0) row.addCell(0);
+                    else row.addCell(Math.round(Math.sqrt(varsqr)));
+                }
+            }
             else if(params.queryType==QueryType.COMBINED_POWER) {
                 if(triple.power==null) row.addCell(NULL_NUMBER);
                 else row.addCell(triple.power.intValue());
+                if(triple.power==null || triple.voltAmperes==null) row.addCell(NULL_NUMBER);
+                else {
+                    double w = triple.power.intValue();
+                    double va = triple.voltAmperes.intValue();
+                    double varsqr = va*va - w*w;
+                    if(varsqr < 0) row.addCell(0);
+                    else row.addCell(Math.round(Math.sqrt(varsqr)));
+                }
                 if(triple.voltAmperes==null) row.addCell(NULL_NUMBER);
                 else row.addCell(triple.voltAmperes.intValue());
             }
@@ -328,7 +357,7 @@ public class Servlet extends DataSourceServlet {
     }
     
     private enum QueryType {
-        POWER, VOLTAGE, VOLT_AMPERES, COMBINED_POWER, POWER_FACTOR;
+        POWER, VOLTAGE, VOLT_AMPERES, POWER_FACTOR, VOLT_AMPERES_REACTIVE, COMBINED_POWER;
     }
 
     private class QueryParameters {
@@ -366,6 +395,7 @@ public class Servlet extends DataSourceServlet {
             if(path.equals("power")) queryType = QueryType.POWER;
             else if(path.equals("voltage")) queryType = QueryType.VOLTAGE;
             else if(path.equals("volt-amperes")) queryType = QueryType.VOLT_AMPERES;
+            else if(path.equals("volt-amperes-reactive")) queryType = QueryType.VOLT_AMPERES_REACTIVE;
             else if(path.equals("combined-power")) queryType = QueryType.COMBINED_POWER;
             else if(path.equals("power-factor")) queryType = QueryType.POWER_FACTOR;
             else {

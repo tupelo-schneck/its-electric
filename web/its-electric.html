@@ -78,6 +78,7 @@ If not, see <http://www.gnu.org/licenses/>.
                 show('wattsMinAndMax');
                 hide('voltsMinAndMax');
                 if(view=="volt-amperes") itsElectric.options.allValuesSuffix="VA";
+                else if(view=="volt-amperes-reactive") itsElectric.options.allValuesSuffix="var";
                 else itsElectric.options.allValuesSuffix="W";
                 setMin('wmin');
                 setMax('wmax');
@@ -92,6 +93,7 @@ If not, see <http://www.gnu.org/licenses/>.
             }
             if(!itsElectric.hasKVA) {
                 document.getElementById('view.volt-amperes').disabled = true;
+                document.getElementById('view.volt-amperes-reactive').disabled = true;
                 document.getElementById('view.combined-power').disabled = true;
                 document.getElementById('view.power-factor').disabled = true;
             }
@@ -151,6 +153,9 @@ If not, see <http://www.gnu.org/licenses/>.
                     <input type="text" id="vmax" value="" style="width:3.5em;text-align:right;" onchange="setMax('vmax');itsElectric.redraw();"/>V
                     &nbsp;
                 </span>
+                <span style="visibility:hidden">
+                    <input type="text" style="width:1px"/>
+                </span>
                 <a href="#" onclick="itsElectric.requery();return false;">Refresh</a>
                 &nbsp; &nbsp;
                 <b>Resolution:</b>
@@ -180,6 +185,7 @@ If not, see <http://www.gnu.org/licenses/>.
                 <option selected="selected" value="power">Power</option>
                 <option id="view.voltage" value="voltage">Voltage</option>
                 <option id="view.volt-amperes" value="volt-amperes">Volt-Amperes</option>
+                <option id="view.volt-amperes-reactive" value="volt-amperes-reactive">Volt-Amperes Reactive</option>
                 <option id="view.combined-power" value="combined-power">Combined Power</option>
                 <option id="view.power-factor" value="power-factor">Power Factor</option>
             </select>                        
