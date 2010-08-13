@@ -411,6 +411,8 @@ public class Servlet extends DataSourceServlet {
         
         QueryParameters params = new QueryParameters(req,min,max);
 
+        log.trace("Begin query for " + params.queryType);
+        
         // Create a data table,
         DataTableBuilder builder = new DataTableBuilder(params);
         builder.setCustomProperty(MINIMUM_STRING, String.valueOf(min));
@@ -478,7 +480,9 @@ public class Servlet extends DataSourceServlet {
             }
             
             if(params.extraPoints > 0) {
-                if(builder.min() > params.start) builder.addOneRowFromIterator(main.secondsDb.read(params.start));
+                if(builder.min() > params.start) {
+                    builder.addOneRowFromIterator(main.secondsDb.read(params.start));
+                }
 
                 if(params.end == max && builder.max()>0) {
                     int zoomDbIndex;
@@ -517,6 +521,7 @@ public class Servlet extends DataSourceServlet {
         // We'll still send this in case it's useful.  Whether it says standard or daylight time
         // is determined by the highest date in the visible range.
         builder.setCustomProperty(TIME_ZONE_OFFSET, String.valueOf(main.options.timeZone.getOffset(1000L*params.end) / 1000));
+        log.trace("Query complete.");
         return builder.dataTable();
     }
 
