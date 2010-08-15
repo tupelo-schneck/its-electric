@@ -184,12 +184,27 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
         alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
         return;
     }
-
-    var data = response.getDataTable();
     
     var realTimeNeedsAdjust = this.realTime && this.range && this.range.end.getTime() == this.maximum;
 
+    var data = response.getDataTable();
     var numRows = data.getNumberOfRows();
+    var numCols = data.getNumberOfColumns();
+
+    if(this.delta && numRows >= 2) {
+        var prev = [];
+        for(var i = 1; i < numCols; i++) {
+            prev[i] = data.getValue(0,i);
+            data.setValue(0,i,0);
+        }
+        for(var i = 1; i < numRows; i++) {
+            for(var j = 1; j < numCols; j++) {
+                var temp = data.getValue(i,j);
+                data.setValue(i,j,temp - prev[j]);
+                prev[j] = temp;
+            }
+        }
+    }
 
     var rangeStart = numRows==0 ? 0 : data.getValue(0,0).getTime();
     if(isNaN(this.minimum) || this.minimum==0) {
@@ -204,14 +219,14 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     if(this.minimum!=0 && (numRows==0 || this.minimum < rangeStart)) {
         data.insertRows(0,1);
         data.setValue(0,0,new Date(this.minimum));
-        for(var i = 1; i < data.getNumberOfColumns(); i++) {
+        for(var i = 1; i < numCols; i++) {
             data.setValue(0,i,numRows==0 ? 0 : data.getValue(1,i));
         }
     }
     if(this.maximum!=0 && (numRows==0 || this.maximum > rangeEnd)) {
         var newRow = data.addRow();
         data.setValue(newRow,0,new Date(this.maximum));
-        for(var i = 1; i < data.getNumberOfColumns(); i++) {
+        for(var i = 1; i < numCols; i++) {
             data.setValue(newRow,i,numRows==0 ? 0 : data.getValue(newRow-1,i));
         }
     }
