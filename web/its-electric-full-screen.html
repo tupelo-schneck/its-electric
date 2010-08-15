@@ -99,6 +99,7 @@ If not, see <http://www.gnu.org/licenses/>.
         };
         
         window.onload = function(){
+            itsElectric.delta = document.getElementById('delta').checked;
             changeView(document.getElementById('view').value);
             if(!itsElectric.hasVoltage) {
                 document.getElementById('view.voltage').disabled = true;
@@ -201,6 +202,8 @@ If not, see <http://www.gnu.org/licenses/>.
                         <input type="text" id="vmax" value="" style="width:3.5em;text-align:right;" onchange="setMax('vmax');itsElectric.redraw();"/>V
                         &nbsp;
                     </span>
+                    &nbsp;
+                    <input id="delta" type="checkbox" onclick="itsElectric.delta = this.checked; itsElectric.requery();"/> Delta
                     <br/>
                     <a id="showRangeSelector" href="#" onclick="show('hideRangeSelector');hide('showRangeSelector');itsElectric.options.displayRangeSelector=true;itsElectric.redraw();return false;">Show range selector</a>
                     <a id="hideRangeSelector" style="display:none" href="#" onclick="hide('hideRangeSelector');show('showRangeSelector');itsElectric.options.displayRangeSelector=false;itsElectric.redraw();return false;">Hide range selector</a>
