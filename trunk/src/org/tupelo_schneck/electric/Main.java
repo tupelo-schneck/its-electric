@@ -42,6 +42,7 @@ import com.sleepycat.je.Cursor;
 import com.sleepycat.je.DatabaseException;
 import com.sleepycat.je.Environment;
 import com.sleepycat.je.EnvironmentConfig;
+import com.sleepycat.je.StatsConfig;
 
 public class Main {
     public static final int KVA_LAG = 300;
@@ -245,7 +246,7 @@ public class Main {
     }
 
     private volatile CountDownLatch importInterleaver;
-    
+
     public class MultiImporter implements Runnable {
         private int count;
         private boolean longImport;
@@ -313,6 +314,7 @@ public class Main {
                 try {
                     environment.sync();
                     log.trace("Environment synced.");
+                    log.trace(environment.getStats(StatsConfig.DEFAULT).toString());
                 }
                 catch(DatabaseException e) {
                     log.debug("Exception syncing environment: " + e);
