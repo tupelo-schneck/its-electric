@@ -83,7 +83,9 @@ public class Servlet extends DataSourceServlet {
     }
 
     public TimeSeriesDatabase rangeDb(QueryParameters params) {
-        int range = params.rangeEnd - params.rangeStart;
+        int start = Math.max(main.minimum,params.rangeStart);
+        int end = Math.min(main.maximum,params.rangeEnd);
+        int range = end - start;
         TimeSeriesDatabase db;
         if(params.minPoints > 0) {
             db = databaseForResolution(range / params.minPoints, true);
@@ -99,7 +101,9 @@ public class Servlet extends DataSourceServlet {
     }
 
     public TimeSeriesDatabase zoomDb(QueryParameters params) {
-        int range = params.end - params.start;
+        int start = Math.max(main.minimum,params.start);
+        int end = Math.min(main.maximum,params.end);
+        int range = end - start;
         int res = params.resolution;
         TimeSeriesDatabase db = null;
         if(res < 0) {
