@@ -43,6 +43,7 @@ If not, see <http://www.gnu.org/licenses/>.
                 <include name="src/**"/>
                 <include name="web/**"/>
                 <include name="build.xml"/>
+                <include name="build.properties"/>
                 <include name="README.txt"/>
                 <include name="NEWS.txt"/>
                 <include name=".classpath"/>
