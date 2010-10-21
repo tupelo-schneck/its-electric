@@ -58,6 +58,7 @@ public class VoltAmpereFetcher {
     private int gatewayTime() {
         this.scanner.skip(skipPattern);
         String gatewayTimeChunk = this.scanner.findWithinHorizon(gatewayTimeChunkPattern, 4096);
+        if(gatewayTimeChunk==null) return 0;
         int year,month,day,hour,minute,second;
         try {
             Matcher m = yearPattern.matcher(gatewayTimeChunk);
@@ -93,6 +94,7 @@ public class VoltAmpereFetcher {
     
     private Triple nextKVA(int timestamp) {
         String mtuChunk = this.scanner.findWithinHorizon(mtuChunkPattern, 4096);
+        if(mtuChunk==null) return null;
         try {
             Matcher m = mtuNumberPattern.matcher(mtuChunk);
             if(!m.find()) return null;
