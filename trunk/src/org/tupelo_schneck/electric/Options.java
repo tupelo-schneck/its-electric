@@ -18,6 +18,8 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.ParseException;
 
 public class Options extends org.apache.commons.cli.Options {
@@ -63,7 +65,8 @@ public class Options extends org.apache.commons.cli.Options {
     public int maxDataPoints = 5000;
     public int port = 8081;
     public boolean voltage = false;
-    public int voltAmpereImportInterval = 0;
+    public long voltAmpereImportIntervalMS = 0;
+    public int kvaThreads = 0;
 
     public Options() {
         this.addOption("d","database-directory",true,"database directory (required)");
@@ -78,7 +81,10 @@ public class Options extends org.apache.commons.cli.Options {
         this.addOption("o","import-overlap",true,"extra seconds imported each time for good measure (default 4)");        
         this.addOption("e","long-import-interval",true,"seconds between imports of whole hours (default 300)");
         this.addOption("v","voltage",true,"whether ('yes' or 'no') to include voltage data (default no)");
-        this.addOption("k","volt-ampere-import-interval",true,"seconds between polls for kVA data (default 0 means no kVA data)");
+        this.addOption("k","volt-ampere-import-interval",true,"seconds between polls for kVA data (accepts decimal values; default 0 means no kVA data)");
+        @SuppressWarnings("static-access")
+        Option kvaThreadsOpt = OptionBuilder.withLongOpt("volt-ampere-threads").withDescription("number of threads for polling kVA (default 0 means share short import thread)").hasArg().create(); 
+        this.addOption(kvaThreadsOpt);
         this.addOption("h","help",false,"print this help text");
     }
 
@@ -185,8 +191,18 @@ public class Options extends org.apache.commons.cli.Options {
             }
             if(cmd.hasOption("k")) {
                 try {
-                    voltAmpereImportInterval = Integer.parseInt(cmd.getOptionValue("k"));
-                    if(voltAmpereImportInterval<0) showUsageAndExit = true;
+                    double value = Double.parseDouble(cmd.getOptionValue("k"));
+                    voltAmpereImportIntervalMS = (long)(1000 * value);
+                    if(voltAmpereImportIntervalMS<0) showUsageAndExit = true;
+                }
+                catch(NumberFormatException e) {
+                    showUsageAndExit = true;
+                }            
+            }
+            if(cmd.hasOption("volt-ampere-threads")) {
+                try {
+                    kvaThreads = Integer.parseInt(cmd.getOptionValue("volt-ampere-threads"));
+                    if(kvaThreads<0) showUsageAndExit = true;
                 }
                 catch(NumberFormatException e) {
                     showUsageAndExit = true;

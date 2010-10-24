@@ -409,7 +409,7 @@ public class Servlet extends DataSourceServlet {
                 if(!main.options.voltage) throw new DataSourceException(ReasonType.INVALID_REQUEST, "Voltage data not available");            
             }
             else if(queryType != QueryType.POWER) {
-                if(main.options.voltAmpereImportInterval==0) throw new DataSourceException(ReasonType.INVALID_REQUEST, "Volt-amperage data not available");
+                if(main.options.voltAmpereImportIntervalMS==0) throw new DataSourceException(ReasonType.INVALID_REQUEST, "Volt-amperage data not available");
             }
             
             rangeStart = getIntParameter("rangeStart",min);

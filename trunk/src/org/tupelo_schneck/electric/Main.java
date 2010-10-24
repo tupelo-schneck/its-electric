@@ -400,9 +400,9 @@ public class Main {
         return new Task(execServ,future);
     }
 
-    public Task voltAmpereImporter(ExecutorService execServ, int interval) {
+    public Task voltAmpereImporter(ExecutorService execServ, long interval) {
         if(!(execServ instanceof ScheduledExecutorService)) throw new AssertionError();
-        Future<?> future = ((ScheduledExecutorService)execServ).scheduleAtFixedRate(new VoltAmpereImporter(), 0, interval, TimeUnit.SECONDS);
+        Future<?> future = ((ScheduledExecutorService)execServ).scheduleAtFixedRate(new VoltAmpereImporter(), 0, interval, TimeUnit.MILLISECONDS);
         return new Task(execServ,future);
     }
 
@@ -563,7 +563,10 @@ public class Main {
             main.server.start();
             main.longImportTask = main.repeatedlyImport(3600, true, main.options.longImportInterval);
             main.shortImportTask = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
-            if(main.options.voltAmpereImportInterval>0) main.voltAmpereImportTask = main.voltAmpereImporter(main.shortImportTask.execServ, main.options.voltAmpereImportInterval);
+            ExecutorService voltAmpereExecServ;
+            if(main.options.kvaThreads==0) voltAmpereExecServ = main.shortImportTask.execServ;
+            else voltAmpereExecServ = Executors.newFixedThreadPool(main.options.kvaThreads);
+            if(main.options.voltAmpereImportIntervalMS>0) main.voltAmpereImportTask = main.voltAmpereImporter(voltAmpereExecServ, main.options.voltAmpereImportIntervalMS);
             ExecutorService execServ = Executors.newSingleThreadExecutor();
             main.catchUpTask = new Task(execServ,execServ.submit(main.new CatchUp()));
         }
