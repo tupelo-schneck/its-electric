@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -353,8 +352,10 @@ public class Main {
             int timestamp = 0;
             Cursor cursor = null;
             try {
+                if(!isRunning) return;
                 cursor = secondsDb.openCursor();
                 for(Triple triple : triples) {
+                    if(!isRunning) return;
                     timestamp = triple.timestamp;
                     if (secondsDb.putIfChanged(cursor, triple)) {
                         changed = true;
@@ -378,32 +379,23 @@ public class Main {
         }
     }
     
-    private static class Task {
-        private final ExecutorService execServ;
-        private final Future<?> future;
-        
-        public Task(ExecutorService execServ, Future<?> future) {
-            this.execServ = execServ;
-            this.future = future;
-        }
-        
-        public void stop() {
-            try { this.future.cancel(true); } catch (Exception e) {}
-            try { this.future.get(); } catch (Exception e) {}
-            try { this.execServ.shutdown(); } catch (Exception e) {}
-        }
-    }
-    
-    public Task repeatedlyImport(int count,boolean longImport,int interval) {
+    public ExecutorService repeatedlyImport(int count,boolean longImport,int interval) {
         ScheduledExecutorService execServ = Executors.newSingleThreadScheduledExecutor();
-        Future<?> future = execServ.scheduleAtFixedRate(new MultiImporter(count, longImport), 0, interval, TimeUnit.SECONDS);
-        return new Task(execServ,future);
+        execServ.scheduleAtFixedRate(new MultiImporter(count, longImport), 0, interval, TimeUnit.SECONDS);
+        return execServ;
     }
 
-    public Task voltAmpereImporter(ExecutorService execServ, long interval) {
+    public ExecutorService voltAmpereImporter(final ExecutorService execServ, long interval) {
         if(!(execServ instanceof ScheduledExecutorService)) throw new AssertionError();
-        Future<?> future = ((ScheduledExecutorService)execServ).scheduleAtFixedRate(new VoltAmpereImporter(), 0, interval, TimeUnit.MILLISECONDS);
-        return new Task(execServ,future);
+        if(options.kvaThreads <= 1) {
+            ((ScheduledExecutorService)execServ).scheduleAtFixedRate(new VoltAmpereImporter(), 0, interval, TimeUnit.MILLISECONDS);
+        }
+        else {
+            for(int i = 0; i < options.kvaThreads; i++) {
+                ((ScheduledExecutorService)execServ).scheduleAtFixedRate(new VoltAmpereImporter(), i*interval, interval*options.kvaThreads, TimeUnit.MILLISECONDS);
+            }
+        }
+        return execServ;
     }
 
     public class CatchUp implements Runnable {
@@ -523,19 +515,23 @@ public class Main {
     }
     
     private Server server;
-    private Task longImportTask;
-    private Task shortImportTask;
-    private Task voltAmpereImportTask;
-    private Task catchUpTask;    
+    private ExecutorService longImportTask;
+    private ExecutorService shortImportTask;
+    private ExecutorService voltAmpereImportTask;
+    private ExecutorService catchUpTask;    
     
     public void shutdown() {
         if(isRunning) {
             try { log.info("Exiting."); } catch (Throwable e) {}
             isRunning = false;
-            try { longImportTask.stop(); } catch (Throwable e) {}
-            try { shortImportTask.stop(); } catch (Throwable e) {}
-            try { voltAmpereImportTask.stop(); } catch (Throwable e) {}
-            try { catchUpTask.stop(); } catch (Throwable e) {}
+            try { longImportTask.shutdownNow(); } catch (Throwable e) {}
+            try { shortImportTask.shutdownNow(); } catch (Throwable e) {}
+            try { voltAmpereImportTask.shutdownNow(); } catch (Throwable e) {}
+            try { catchUpTask.shutdownNow(); } catch (Throwable e) {}
+            try { longImportTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
+            try { shortImportTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
+            try { voltAmpereImportTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
+            try { catchUpTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
             try { server.stop(); } catch (Throwable e) {}
             try { close(); } catch (Throwable e) {}
         }
@@ -564,11 +560,12 @@ public class Main {
             main.longImportTask = main.repeatedlyImport(3600, true, main.options.longImportInterval);
             main.shortImportTask = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
             ExecutorService voltAmpereExecServ;
-            if(main.options.kvaThreads==0) voltAmpereExecServ = main.shortImportTask.execServ;
-            else voltAmpereExecServ = Executors.newFixedThreadPool(main.options.kvaThreads);
+            if(main.options.kvaThreads==0) voltAmpereExecServ = main.shortImportTask;
+            else voltAmpereExecServ = Executors.newScheduledThreadPool(main.options.kvaThreads);
             if(main.options.voltAmpereImportIntervalMS>0) main.voltAmpereImportTask = main.voltAmpereImporter(voltAmpereExecServ, main.options.voltAmpereImportIntervalMS);
             ExecutorService execServ = Executors.newSingleThreadExecutor();
-            main.catchUpTask = new Task(execServ,execServ.submit(main.new CatchUp()));
+            main.catchUpTask = execServ;
+            execServ.execute(main.new CatchUp());
         }
         catch(Throwable e) {
             e.printStackTrace();
