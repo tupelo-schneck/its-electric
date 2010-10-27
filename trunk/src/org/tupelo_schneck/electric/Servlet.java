@@ -223,14 +223,15 @@ public class Servlet extends DataSourceServlet {
         }
         
         private void addTriple(Triple triple) {
-            if (triple.timestamp < lastTime) return;
+            if(triple.mtu >= main.options.mtus) return;
+            if(triple.timestamp < lastTime) return;
             if(params.queryType==QueryType.VOLTAGE && triple.voltage==null) return;
             else if(params.queryType==QueryType.POWER && triple.power==null) return;
             else if(params.queryType==QueryType.VOLT_AMPERES && triple.voltAmperes==null) return;
             else if(params.queryType==QueryType.VOLT_AMPERES_REACTIVE && (triple.voltAmperes==null || triple.power==null)) return;
             else if(params.queryType==QueryType.COMBINED_POWER && triple.voltAmperes==null && triple.power==null) return;
             else if(params.queryType==QueryType.POWER_FACTOR && (triple.voltAmperes==null || triple.power==null || triple.voltAmperes.intValue()==0)) return;
-            if (triple.timestamp > lastTime || row==null) {
+            if(triple.timestamp > lastTime || row==null) {
                 finishRow();
                 row = new TableRow();
                 lastTime = triple.timestamp;
@@ -405,12 +406,12 @@ public class Servlet extends DataSourceServlet {
             else {
                 throw new DataSourceException(ReasonType.INVALID_REQUEST, "Request '" + path + "' unknown");
             }
-            if(queryType==QueryType.VOLTAGE) {
-                if(!main.options.voltage) throw new DataSourceException(ReasonType.INVALID_REQUEST, "Voltage data not available");            
-            }
-            else if(queryType != QueryType.POWER) {
-                if(main.options.voltAmpereImportIntervalMS==0) throw new DataSourceException(ReasonType.INVALID_REQUEST, "Volt-amperage data not available");
-            }
+//            if(queryType==QueryType.VOLTAGE) {
+//                if(!main.options.voltage) throw new DataSourceException(ReasonType.INVALID_REQUEST, "Voltage data not available");            
+//            }
+//            else if(queryType != QueryType.POWER) {
+//                if(main.options.voltAmpereImportIntervalMS==0) throw new DataSourceException(ReasonType.INVALID_REQUEST, "Volt-amperage data not available");
+//            }
             
             rangeStart = getIntParameter("rangeStart",min);
             rangeEnd = getIntParameter("rangeEnd",max);
