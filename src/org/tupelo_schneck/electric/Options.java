@@ -3,6 +3,7 @@ package org.tupelo_schneck.electric;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Authenticator;
 import java.net.PasswordAuthentication;
 import java.util.TimeZone;
@@ -70,7 +71,7 @@ public class Options extends org.apache.commons.cli.Options {
     public boolean record = true;
     public boolean serve = true;
     
-    public boolean read = false;
+    public boolean export = false;
     public int startTime;
     public int endTime;
     public int resolution;
@@ -87,10 +88,10 @@ public class Options extends org.apache.commons.cli.Options {
         .hasOptionalArg().withArgName(null).create(); 
         this.addOption(noRecordOpt);
 
-        Option readOpt = OptionBuilder.withLongOpt("read")
-        .withDescription("output CSV for existing data from <start> to <end> of resolution <res>; implies --no-serve --no-record")
+        Option exportOpt = OptionBuilder.withLongOpt("export")
+        .withDescription("export CSV for existing data from <start> to <end> of resolution <res>; implies --no-serve --no-record")
         .hasArgs(3).withArgName("start> <end> <res").create();
-        this.addOption(readOpt);
+        this.addOption(exportOpt);
 
         this.addOption("d","database-directory",true,"database directory (required)");
         this.addOption("p","port",true,"port served by datasource server (\"none\" same as --no-serve; default 8081)");
@@ -169,7 +170,7 @@ public class Options extends org.apache.commons.cli.Options {
                 if(cmd.hasOption("read")) {
                     serve = false;
                     record = false;
-                    read = true;
+                    export = true;
                     String[] vals = cmd.getOptionValues("read");
                     startTime = Integer.parseInt(vals[0]);
                     endTime = Integer.parseInt(vals[1]);
@@ -251,16 +252,42 @@ public class Options extends org.apache.commons.cli.Options {
             }
         }
           
-        if(!serve && !record && !read) {
+        if(!serve && !record && !export) {
             showUsageAndExit = true;
         }
         
         if(showUsageAndExit) {
+            StringBuilder header = new StringBuilder();
+            header.append("\n");
+            header.append("The \"it's electric\" Java program is designed to perform two simultaneous\n");
+            header.append("activities:\n");
+            header.append("(1) it records data from TED into a permanent database; and\n");
+            header.append("(2) it serves data from the database in Google Visualization API format.\n");
+            header.append("Additionally, the program can\n");
+            header.append("(3) export data from the database in CSV format.\n");
+            header.append("\n");
+            header.append("To export data, use: java -jar its-electric-*.jar -d <database-directory>\n");
+            header.append("                                      --export <start> <end> <resolution>\n");
+            header.append("\n");
+            header.append("You can specify to only record data using option --no-serve (e.g. for an\n");
+            header.append("unattended setup) and to only serve data using option --no-record (e.g. with a\n");
+            header.append("static copy of an its-electric database).\n");
+            header.append("\n");
+            header.append("Options -d (specifying the database directory) and -m (specifying the number of\n");
+            header.append("MTUs) are important for both recording and serving.  Option -g (the TED Gateway\n");
+            header.append("URL) and options -v and -k (which determine whether to record voltage and\n");
+            header.append("volt-amperes) are important for recording.  Option -p (the port on which to\n");
+            header.append("serve) is important for serving.  Other options are generally minor.\n");
+            header.append("\n");
+            header.append("Options (-d is REQUIRED):");
+            
             HelpFormatter help = new HelpFormatter();
-            help.printHelp("java -jar its-electric-*.jar [options]", 
-                    "\noptions (-d is REQUIRED; other important options are -g, -m, -p):",
-                    this,
-                    "");
+            PrintWriter writer = new PrintWriter(System.out);
+            writer.println("usage: java -jar its-electric-*.jar [options]");
+            writer.println(header.toString());
+            help.printOptions(writer,80,this,0,0);
+            writer.flush();
+            writer.close();
             return false;
         }
         else {
