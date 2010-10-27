@@ -571,7 +571,7 @@ public class Main {
                 main.catchUpTask = execServ;
                 execServ.execute(main.new CatchUp());
             }
-            if(main.options.read) {
+            if(main.options.export) {
                 TimeSeriesDatabase database = main.databases[Main.numDurations - 1];
                 for(int i = Main.numDurations - 2; i >= 0; i--) {
                     if(database.resolution <= main.options.resolution) break;
