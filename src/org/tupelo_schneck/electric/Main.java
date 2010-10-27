@@ -543,6 +543,7 @@ public class Main {
 
         try {
             if(!main.options.parseOptions(args)) return;
+            main.readOnly = !main.options.record;
             File dbFile = new File(main.options.dbFilename);
             dbFile.mkdirs();
             main.openEnvironment(dbFile);
@@ -555,17 +556,48 @@ public class Main {
                 }
             });
 
-            main.server = Servlet.setupServlet(main);
-            main.server.start();
-            main.longImportTask = main.repeatedlyImport(3600, true, main.options.longImportInterval);
-            main.shortImportTask = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
-            ExecutorService voltAmpereExecServ;
-            if(main.options.kvaThreads==0) voltAmpereExecServ = main.shortImportTask;
-            else voltAmpereExecServ = Executors.newScheduledThreadPool(main.options.kvaThreads);
-            if(main.options.voltAmpereImportIntervalMS>0) main.voltAmpereImportTask = main.voltAmpereImporter(voltAmpereExecServ, main.options.voltAmpereImportIntervalMS);
-            ExecutorService execServ = Executors.newSingleThreadExecutor();
-            main.catchUpTask = execServ;
-            execServ.execute(main.new CatchUp());
+            if(main.options.serve) { 
+                main.server = Servlet.setupServlet(main);
+                main.server.start();
+            }
+            if(main.options.record) { 
+                main.longImportTask = main.repeatedlyImport(3600, true, main.options.longImportInterval);
+                main.shortImportTask = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
+                ExecutorService voltAmpereExecServ;
+                if(main.options.kvaThreads==0) voltAmpereExecServ = main.shortImportTask;
+                else voltAmpereExecServ = Executors.newScheduledThreadPool(main.options.kvaThreads);
+                if(main.options.voltAmpereImportIntervalMS>0) main.voltAmpereImportTask = main.voltAmpereImporter(voltAmpereExecServ, main.options.voltAmpereImportIntervalMS);
+                ExecutorService execServ = Executors.newSingleThreadExecutor();
+                main.catchUpTask = execServ;
+                execServ.execute(main.new CatchUp());
+            }
+            if(main.options.read) {
+                TimeSeriesDatabase database = main.databases[Main.numDurations - 1];
+                for(int i = Main.numDurations - 2; i >= 0; i--) {
+                    if(database.resolution <= main.options.resolution) break;
+                    database = main.databases[i];
+                }
+                
+                ReadIterator iter = database.read(main.options.startTime,main.options.endTime);
+                try {
+                    while(iter.hasNext()) {
+                        Triple triple = iter.next();
+                        System.out.print(Main.dateString(triple.timestamp));
+                        System.out.print(",");
+                        System.out.print(triple.mtu + 1);
+                        System.out.print(",");
+                        if(triple.power!=null) System.out.print(triple.power);
+                        System.out.print(",");
+                        if(triple.voltage!=null) System.out.print((double)triple.voltage.intValue()/20);
+                        System.out.print(",");
+                        if(triple.voltAmperes!=null) System.out.print(triple.voltAmperes);
+                        System.out.println();
+                    }
+                }
+                finally {
+                    iter.close();
+                }
+            }
         }
         catch(Throwable e) {
             e.printStackTrace();
