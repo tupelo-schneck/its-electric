@@ -39,7 +39,6 @@ import com.sleepycat.je.OperationStatus;
 public class TimeSeriesDatabase {
     Log log = LogFactory.getLog(TimeSeriesDatabase.class);
 
-    private Main main;
     private Database database;
 
     public int resolution;
@@ -188,7 +187,6 @@ public class TimeSeriesDatabase {
 
     public TimeSeriesDatabase(Main main, Environment environment, String name, byte mtus, int resolution, String resolutionString) {
         try {
-            this.main = main;
             this.resolution = resolution;
             this.resolutionString = resolutionString;
             synchronized(TimeSeriesDatabase.class) {
@@ -449,7 +447,7 @@ public class TimeSeriesDatabase {
                 sumVA[mtu] = 0;
                 countVA[mtu] = 0;
                 // start at day boundaries, but not dealing with daylight savings time...
-                start[mtu] = ((timestamp+main.options.timeZoneRawOffset)/resolution)*resolution - main.options.timeZoneRawOffset;
+                start[mtu] = ((timestamp+Options.timeZoneRawOffset)/resolution)*resolution - Options.timeZoneRawOffset;
             }
             if(triple.power!=null) {
                 sum[mtu] += triple.power.intValue();
@@ -470,7 +468,7 @@ public class TimeSeriesDatabase {
     // not relevant for resolution=1
     public void resetForNewData(int timestamp, byte mtu) {
         if(maxForMTU[mtu] >= timestamp) {
-            start[mtu] = ((timestamp+main.options.timeZoneRawOffset)/resolution)*resolution - main.options.timeZoneRawOffset;
+            start[mtu] = ((timestamp+Options.timeZoneRawOffset)/resolution)*resolution - Options.timeZoneRawOffset;
             maxForMTU[mtu] = start[mtu] - 1;
             sum[mtu] = 0;
             count[mtu] = 0;
