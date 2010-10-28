@@ -6,8 +6,6 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Authenticator;
 import java.net.PasswordAuthentication;
-import java.util.GregorianCalendar;
-import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,6 +23,9 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.ParseException;
+
+import com.ibm.icu.util.GregorianCalendar;
+import com.ibm.icu.util.TimeZone;
 
 public class Options extends org.apache.commons.cli.Options {
     static {
@@ -53,10 +54,11 @@ public class Options extends org.apache.commons.cli.Options {
         } catch (Exception e) { } 
     }
 
+    public static final TimeZone GMT = TimeZone.getTimeZone("GMT");
     public static final TimeZone timeZone = TimeZone.getDefault();
     public static final int timeZoneRawOffset = timeZone.getRawOffset() / 1000;
 
-    public static final Pattern dateTimePattern = Pattern.compile("(\\d\\d\\d\\d)(?>-?+(\\d\\d)(?>-?+(\\d\\d)(?>[T\\s]*+(\\d\\d)(?>:?+(\\d\\d)(?>:?+(\\d\\d)(?>[.,]\\d*+)?+(Z|[+-](\\d\\d):?+(\\d\\d)?+)?+)?+)?+)?+)?+)?+");
+    public static final Pattern dateTimePattern = Pattern.compile("(\\d\\d\\d\\d)(?:-?+(\\d\\d?+)(?:-?+(\\d\\d?+)(?:[T\\s]++(\\d\\d??)(?>:?+(\\d\\d)(?>:?+(\\d\\d)(?>[.,]\\d*+)?+)?+)?+)?)?)?(Z|[+-](\\d\\d):?+(\\d\\d)?+)?+");
     
     private static int parseInt(String s,int def) {
         if(s==null) return def;
@@ -81,7 +83,7 @@ public class Options extends org.apache.commons.cli.Options {
         int timeZoneHours = 0;
         int timeZoneMinutes = 0;
         if(matcher.group(7)!=null) {
-            thisTimeZone = TimeZone.getTimeZone("UTC");
+            thisTimeZone = GMT;
             char start = matcher.group(7).charAt(0);
             if(start=='+' || start=='-') {
                 timeZoneHours = parseInt(matcher.group(8),0);
@@ -116,7 +118,6 @@ public class Options extends org.apache.commons.cli.Options {
         return (int)time;
     }
     
-
     public String dbFilename = null;
     public String gatewayURL = "http://TED5000";
     public String username = null;
@@ -231,13 +232,13 @@ public class Options extends org.apache.commons.cli.Options {
                 if(cmd.hasOption("no-record")) {
                     record = !optionalBoolean(cmd,"no-record",false);
                 }
-                if(cmd.hasOption("read")) {
+                if(cmd.hasOption("export")) {
                     serve = false;
                     record = false;
                     export = true;
-                    String[] vals = cmd.getOptionValues("read");
-                    startTime = Integer.parseInt(vals[0]);
-                    endTime = Integer.parseInt(vals[1]);
+                    String[] vals = cmd.getOptionValues("export");
+                    startTime = timestampFromUserInput(vals[0],false);
+                    endTime = timestampFromUserInput(vals[1],true);
                     resolution = Integer.parseInt(vals[2]);
                 }
                 
