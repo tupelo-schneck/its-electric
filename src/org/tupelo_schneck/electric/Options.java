@@ -110,7 +110,10 @@ public class Options extends org.apache.commons.cli.Options {
         calendar.add(GregorianCalendar.HOUR, -timeZoneHours);
         calendar.add(GregorianCalendar.MINUTE, -timeZoneMinutes);
         
-        return (int)(calendar.getTimeInMillis() / 1000);
+        long time = calendar.getTimeInMillis() / 1000;
+        if(time < 0) return 0;
+        if(time > Integer.MAX_VALUE) return Integer.MAX_VALUE;
+        return (int)time;
     }
     
 
