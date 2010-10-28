@@ -50,12 +50,9 @@ import com.google.visualization.datasource.datatable.value.Value;
 import com.google.visualization.datasource.datatable.value.ValueType;
 import com.google.visualization.datasource.query.Query;
 import com.ibm.icu.util.GregorianCalendar;
-import com.ibm.icu.util.TimeZone;
 import com.sleepycat.je.DatabaseException;
 
 public class Servlet extends DataSourceServlet {
-    private static final TimeZone GMT = TimeZone.getTimeZone("GMT");
-
     public static final String TIME_ZONE_OFFSET = "timeZoneOffset";
     public static final String RESOLUTION_STRING = "resolutionString";
     public static final String RESOLUTION = "resolution";
@@ -162,7 +159,7 @@ public class Servlet extends DataSourceServlet {
         public DataTableBuilder(QueryParameters params) {
             this.params = params;
             rows = new PriorityQueue<TableRow>(100,TABLE_ROW_COMPARATOR);
-            cal = new GregorianCalendar(GMT);
+            cal = new GregorianCalendar(Options.GMT);
             
             data = new DataTable();
             ArrayList<ColumnDescription> cd = new ArrayList<ColumnDescription>();
@@ -390,6 +387,18 @@ public class Servlet extends DataSourceServlet {
             return res;
         }
         
+        private int getTimestampParameter(String name,boolean isEnd,int def) {
+            int res = def;
+            String param = req.getParameter(name);
+            if(param!=null && param.length()>0) {
+                try {
+                    res = Options.timestampFromUserInput(param,isEnd);
+                }
+                catch(NumberFormatException e) { log.error("Error parsing " + name,e); }
+            }
+            return res;
+        }
+        
         public QueryParameters(HttpServletRequest req,int min,int max) throws DataSourceException {
             this.req = req;
             
@@ -413,10 +422,10 @@ public class Servlet extends DataSourceServlet {
 //                if(main.options.voltAmpereImportIntervalMS==0) throw new DataSourceException(ReasonType.INVALID_REQUEST, "Volt-amperage data not available");
 //            }
             
-            rangeStart = getIntParameter("rangeStart",min);
-            rangeEnd = getIntParameter("rangeEnd",max);
-            start = getIntParameter("start",rangeStart);
-            end = getIntParameter("end",rangeEnd);
+            rangeStart = getTimestampParameter("rangeStart",false,min);
+            rangeEnd = getTimestampParameter("rangeEnd",true,max);
+            start = getTimestampParameter("start",false,rangeStart);
+            end = getTimestampParameter("end",true,rangeEnd);
 
             boolean realTimeAdjust = req.getParameter("realTimeAdjust") != null;
             if(realTimeAdjust) {
