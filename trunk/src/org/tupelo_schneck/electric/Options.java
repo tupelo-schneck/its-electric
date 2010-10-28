@@ -6,7 +6,10 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Authenticator;
 import java.net.PasswordAuthentication;
+import java.util.GregorianCalendar;
 import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -50,8 +53,66 @@ public class Options extends org.apache.commons.cli.Options {
         } catch (Exception e) { } 
     }
 
-    public final TimeZone timeZone = TimeZone.getDefault();
-    public final int timeZoneRawOffset = timeZone.getRawOffset() / 1000;
+    public static final TimeZone timeZone = TimeZone.getDefault();
+    public static final int timeZoneRawOffset = timeZone.getRawOffset() / 1000;
+
+    public static final Pattern dateTimePattern = Pattern.compile("(\\d\\d\\d\\d)(?>-?+(\\d\\d)(?>-?+(\\d\\d)(?>[T\\s]*+(\\d\\d)(?>:?+(\\d\\d)(?>:?+(\\d\\d)(?>[.,]\\d*+)?+(Z|[+-](\\d\\d):?+(\\d\\d)?+)?+)?+)?+)?+)?+)?+");
+    
+    private static int parseInt(String s,int def) {
+        if(s==null) return def;
+        return Integer.parseInt(s);
+    }
+    
+    public static int timestampFromUserInput(String aInput,boolean isEnd) {
+        String input = aInput.trim();
+        Matcher matcher = dateTimePattern.matcher(input);
+        if(!matcher.matches()) {
+            return Integer.parseInt(input);
+        }
+        
+        int year = parseInt(matcher.group(1),1);
+        int month = parseInt(matcher.group(2),1);
+        int day = parseInt(matcher.group(3),1);
+        int hour = parseInt(matcher.group(4),0);
+        int minute = parseInt(matcher.group(5),0);
+        int second = parseInt(matcher.group(6),0);
+        
+        TimeZone thisTimeZone = timeZone;
+        int timeZoneHours = 0;
+        int timeZoneMinutes = 0;
+        if(matcher.group(7)!=null) {
+            thisTimeZone = TimeZone.getTimeZone("UTC");
+            char start = matcher.group(7).charAt(0);
+            if(start=='+' || start=='-') {
+                timeZoneHours = parseInt(matcher.group(8),0);
+                timeZoneMinutes = parseInt(matcher.group(9),0);
+                if(start=='-') {
+                    timeZoneHours = -timeZoneHours;
+                    timeZoneMinutes = -timeZoneMinutes;
+                }
+            }
+        }
+        
+        GregorianCalendar calendar = new GregorianCalendar(thisTimeZone);
+        calendar.set(year,month-1,day,hour,minute,second);
+        if(isEnd) {
+            boolean setting = matcher.group(2)==null;
+            if(setting) calendar.set(GregorianCalendar.MONTH,calendar.getActualMaximum(GregorianCalendar.MONTH)); 
+            setting = setting || matcher.group(3)==null;
+            if(setting) calendar.set(GregorianCalendar.DAY_OF_MONTH,calendar.getActualMaximum(GregorianCalendar.DAY_OF_MONTH)); 
+            setting = setting || matcher.group(4)==null;
+            if(setting) calendar.set(GregorianCalendar.HOUR,calendar.getActualMaximum(GregorianCalendar.HOUR)); 
+            setting = setting || matcher.group(5)==null;
+            if(setting) calendar.set(GregorianCalendar.MINUTE,calendar.getActualMaximum(GregorianCalendar.MINUTE)); 
+            setting = setting || matcher.group(6)==null;
+            if(setting) calendar.set(GregorianCalendar.SECOND,calendar.getActualMaximum(GregorianCalendar.SECOND)); 
+        }
+        calendar.add(GregorianCalendar.HOUR, -timeZoneHours);
+        calendar.add(GregorianCalendar.MINUTE, -timeZoneMinutes);
+        
+        return (int)(calendar.getTimeInMillis() / 1000);
+    }
+    
 
     public String dbFilename = null;
     public String gatewayURL = "http://TED5000";
