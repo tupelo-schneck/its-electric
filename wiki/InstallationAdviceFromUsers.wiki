@@ -1,6 +1,4 @@
-#summary Links to mailing list posts from users describing their setup.
-
-Links to mailing list posts from users with installation advice.
+#summary Links to mailing list posts from users with installation advice.
 
 [http://groups.google.com/group/its-electric-software/t/9360023c2e31d853 Quick Start Guide!]
 
