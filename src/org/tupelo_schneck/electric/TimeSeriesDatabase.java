@@ -261,7 +261,14 @@ public class TimeSeriesDatabase {
             throw new DatabaseException("Unexpected status " + status);
         }
     }
-    
+
+    public void delete(int timestamp, byte mtu) throws DatabaseException {
+        OperationStatus status = database.delete(null, keyEntry(timestamp, mtu));
+        if(status!=OperationStatus.SUCCESS) {
+            throw new DatabaseException("Unexpected status " + status);
+        }
+    }
+
     public Cursor openCursor() throws DatabaseException {
         return database.openCursor(null, CursorConfig.READ_UNCOMMITTED);
     }

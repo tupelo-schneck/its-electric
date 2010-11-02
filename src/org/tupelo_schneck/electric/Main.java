@@ -537,7 +537,6 @@ public class Main {
         }
     }
     
-
     public static final void main(String[] args) {
         final Main main = new Main();
 
@@ -580,7 +579,7 @@ public class Main {
                 
                 ReadIterator iter = database.read(main.options.startTime,main.options.endTime);
                 try {
-                    while(iter.hasNext()) {
+                    while(iter.hasNext() && main.isRunning) {
                         Triple triple = iter.next();
                         System.out.print(Main.dateString(triple.timestamp));
                         System.out.print(",");
