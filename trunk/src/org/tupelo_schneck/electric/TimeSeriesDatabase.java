@@ -39,6 +39,10 @@ import com.sleepycat.je.OperationStatus;
 public class TimeSeriesDatabase {
     Log log = LogFactory.getLog(TimeSeriesDatabase.class);
 
+    // Max number of seconds to look back, from latest data for any MTU, for data for a particular MTU.
+    // We assume that any data for that MTU prior to that time is properly caught-up at all resolutions.
+    private static final int MAX_RECHECK = 86400 + 7200;
+
     private Database database;
 
     public int resolution;
@@ -215,10 +219,40 @@ public class TimeSeriesDatabase {
 //            Arrays.fill(countVolts, 0);
 //            Arrays.fill(countVA, 0);
             
-            for(byte mtu = 0; mtu < mtus; mtu++) {
-                start[mtu] = maxStoredTimestampForMTU(mtu) + resolution;
-                maxForMTU[mtu] = start[mtu] - 1;
-                log.trace("   starting at " + Main.dateString(start[mtu]) + " for MTU " + mtu);
+            {
+                DatabaseEntry key = new DatabaseEntry();
+                DatabaseEntry data = new DatabaseEntry();
+                Cursor cursor = null;
+                int latestTimestamp = 0;
+                try {
+                    cursor = database.openCursor(null, CursorConfig.READ_UNCOMMITTED);
+                    OperationStatus status = cursor.getLast(key, data, LockMode.READ_UNCOMMITTED);
+                    int done = 0;
+                    int timestamp = 0;
+                    while(status == OperationStatus.SUCCESS && done < mtus && timestamp > (latestTimestamp - MAX_RECHECK)) {
+                        byte[] buf = key.getData();
+                        byte mtu = buf[4];
+                        timestamp = intOfBytes(buf,0);
+                        if(latestTimestamp==0) latestTimestamp = timestamp;
+                        if(mtu < mtus && start[mtu]==0) {
+                            start[mtu] = timestamp + resolution;
+                            maxForMTU[mtu] = start[mtu] - 1;
+                            log.trace("   starting at " + Main.dateString(start[mtu]) + " for MTU " + mtu);
+                            done++;
+                        }
+                        status = cursor.getPrev(key, data, LockMode.READ_UNCOMMITTED);
+                    }
+                }
+                finally {
+                    if(cursor!=null) try { cursor.close(); } catch (Throwable t) {}
+                }
+                for(byte mtu = 0; mtu < mtus; mtu++) {
+                    if(start[mtu]==0) {
+                        start[mtu] = ((latestTimestamp - MAX_RECHECK + Options.timeZoneRawOffset)/resolution)*resolution - Options.timeZoneRawOffset;
+                        maxForMTU[mtu] = start[mtu] - 1;
+                        log.trace("   starting at " + Main.dateString(start[mtu]) + " for not-found MTU " + mtu);
+                    }
+                }
             }
 
             // Delete everything before 2009; got some due to bug in its-electric 1.4
@@ -310,27 +344,6 @@ public class TimeSeriesDatabase {
             throw new DatabaseException("Unexpected status " + status);
         }
         return true;
-    }
-
-    private int maxStoredTimestampForMTU(byte mtu) throws DatabaseException {
-        DatabaseEntry key = new DatabaseEntry();
-        DatabaseEntry data = new DatabaseEntry();
-        Cursor cursor = null;
-        try {
-            cursor = database.openCursor(null, CursorConfig.READ_UNCOMMITTED);
-            OperationStatus status = cursor.getLast(key, data, LockMode.READ_UNCOMMITTED);
-            while(status == OperationStatus.SUCCESS) {
-                byte[] buf = key.getData();
-                if(buf[4]==mtu) {
-                    return intOfBytes(buf,0);
-                }
-                status = cursor.getPrev(key, data, LockMode.READ_UNCOMMITTED);
-            }
-            return 0;
-        }
-        finally {
-            if(cursor!=null) try { cursor.close(); } catch (Throwable t) {}
-        }
     }
 
     public int minimum() throws DatabaseException {
