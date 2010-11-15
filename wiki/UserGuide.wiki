@@ -1,0 +1,3 @@
+#summary "it's electric" User Guide.
+
+Coming soon.  See [http://code.google.com/p/its-electric/source/browse/trunk/README.txt the README file].  (This page will eventually be a Wikified version of same.)
