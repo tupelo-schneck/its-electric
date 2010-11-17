@@ -19,7 +19,7 @@ sed -e '/datasourceURL:/ s/localhost:8081/tupelo-schneck.org:8081/' \
     web/its-electric-config.js \
     > build/web/its-electric-config.js
 sed -e "/<\/body>/ i\\
-    <script type='text/javascript'>var val = document.getElementById('wmax').value;if(!val || val=='')document.getElementById('wmax').value = 10000;</script>" \
+    <script type='text/javascript'>var val = document.getElementById('wmax').value;if(!val || val=='')document.getElementById('wmax').value = 7000;</script>" \
     -e '/its-electric-config.js/ s/its-electric-config.js/its-electric-full-screen-config.js/' \
     web/its-electric-full-screen.html \
     > build/web/its-electric-full-screen.html
@@ -33,6 +33,10 @@ sed -e '/datasourceURL:/ s/localhost:8081/tupelo-schneck.org:8081/' \
 sed -e '/CHANGE URL HERE/ s/localhost:8081/tupelo-schneck.org:8081/' \
     web/its-electric-history.html \
     > build/web/its-electric-history.html
+sed -e "/INSERT DATA-ADJUSTING CODE/ i\\
+    for(var i = 0; i < numRows; i++) { data.setValue(i,3,Math.max(0,data.getValue(i,3)-Math.max(0,data.getValue(i,1)-280))); data.setValue(i,4,Math.max(0,data.getValue(i,4)-Math.max(0,data.getValue(i,2)-280))); }" \
+    web/its-electric.js \
+    > build/web/its-electric.js
 cp web/* /Library/WebServer/Documents/$where
 cp NEWS.txt /Library/WebServer/Documents/$where
 cp build/web/* /Library/WebServer/Documents/$where
