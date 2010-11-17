@@ -1,7 +1,5 @@
 #summary Links to mailing list posts from users with installation advice.
 
-[http://groups.google.com/group/its-electric-software/t/9360023c2e31d853 Quick Start Guide!]
-
 [http://groups.google.com/group/its-electric-software/t/d2a7563bf9b90dbb This post] has one user's experience installing on Windows 7.
 
 Also [http://groups.google.com/group/its-electric-software/t/89b6b51a310ce241 this post] has information about setting up as a Windows Service.
