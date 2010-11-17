@@ -103,13 +103,13 @@ public class Options extends org.apache.commons.cli.Options {
             setting = setting || matcher.group(3)==null;
             if(setting) calendar.set(GregorianCalendar.DAY_OF_MONTH,calendar.getActualMaximum(GregorianCalendar.DAY_OF_MONTH)); 
             setting = setting || matcher.group(4)==null;
-            if(setting) calendar.set(GregorianCalendar.HOUR,calendar.getActualMaximum(GregorianCalendar.HOUR)); 
+            if(setting) calendar.set(GregorianCalendar.HOUR_OF_DAY,calendar.getActualMaximum(GregorianCalendar.HOUR_OF_DAY)); 
             setting = setting || matcher.group(5)==null;
             if(setting) calendar.set(GregorianCalendar.MINUTE,calendar.getActualMaximum(GregorianCalendar.MINUTE)); 
             setting = setting || matcher.group(6)==null;
             if(setting) calendar.set(GregorianCalendar.SECOND,calendar.getActualMaximum(GregorianCalendar.SECOND)); 
         }
-        calendar.add(GregorianCalendar.HOUR, -timeZoneHours);
+        calendar.add(GregorianCalendar.HOUR_OF_DAY, -timeZoneHours);
         calendar.add(GregorianCalendar.MINUTE, -timeZoneMinutes);
         
         long time = calendar.getTimeInMillis() / 1000;
