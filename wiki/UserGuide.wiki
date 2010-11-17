@@ -1,4 +1,4 @@
-#summary {{{it's electric}}} User Guide.
+#summary "it's electric" User Guide.
 
 = {{{it's electric}}}: software for storing and viewing home energy monitoring data =
 
