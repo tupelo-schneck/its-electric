@@ -191,6 +191,8 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     var numRows = data.getNumberOfRows();
     var numCols = data.getNumberOfColumns();
 
+    // INSERT DATA-ADJUSTING CODE
+
     if(this.delta && numRows >= 2) {
         var prev = [];
         for(var i = 1; i < numCols; i++) {
