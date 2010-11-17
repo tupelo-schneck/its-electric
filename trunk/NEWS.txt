@@ -1,6 +1,9 @@
 "it's electric" news
 http://tupelo-schneck.org/its-electric
 
+Version 1.7 2010-11-16
+======================
+
 Version 1.6.3 2010-08-15
 ========================
 Display volt-amperes reactive.

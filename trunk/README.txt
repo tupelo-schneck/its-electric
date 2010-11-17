@@ -1,17 +1,41 @@
 "it's electric": software for storing and viewing home energy monitoring data
 
+"it's electric": what it does
+=============================
+
+"it's electric" has two components: (1) a Java program and (2) a collection of
+web pages with HTML, CSS, and Javascript.
+
+The "it's electric" Java program is designed to perform two simultaneous
+activities:
+(1) it records data from TED into a permanent database; and
+(2) it serves data from the database in Google Visualization API format.
+
+The "it's electric" web pages will then talk to the server set up by the Java
+program in order to display the data as an interactive chart.  You can simply
+view the web pages yourself as files on your computer, or serve them up using 
+a Web server for yourself or the general public to view over the network.
+
+Note that you can also design your own web pages using the Google Visualization
+API which talk to your "it's electric" datasource server.
+
+For those not interested in the interactive charts, the "it's electric" Java
+program can also export data from the "it's electric" database in CSV format, 
+which you can then import into other databases or spreadsheets for analysis.
+
+
 Quick Start Guide
 =================
 
 0) Install Java (Mac: automatic; Windows: visit java.com) and Adobe
 Flash Player ( http://get.adobe.com/flashplayer/ )
 
-1) Extract all files from its-electric-1.6.3.zip.
+1) Extract all files from its-electric-1.7.zip.
 
 2) Open the command prompt and cd to the extracted its-electric directory.
 
 3) Type the command:
-java -jar its-electric-1.6.3.jar -g http://192.168.1.99 -m 2 -d its-electric-db
+java -jar its-electric-1.7.jar -g http://192.168.1.99 -m 2 -d its-electric-db
 BUT CHANGE "192.168.1.99" to the IP address of your TED Gateway, and
 change "2" (in "-m 2") to the number of MTUs in your TED system.
 
@@ -29,7 +53,7 @@ click on "Add Location" in the "Edit Locations" dropdown, and
 5) Open its-electric/web/its-electric.html in your browser (for instance, 
 by double-clicking it). 
 
-6) (optional) If you want to monitor voltage, add "-v yes" to the command in 
+6) (optional) If you want to monitor voltage, add "-v" to the command in 
 step (3).  If you want to monitor kVA, add "-k 2" where 2 is the number of 
 seconds "it's electric" waits between polls for kVA data.  You'll also need 
 to edit "its-electric-config.js" and change "hasVoltage" and/or "hasKVA" to 
@@ -40,12 +64,13 @@ Installation advice from users
 ==============================
 
 I've highlighted a couple of posts by users, detailing installation on their
-platforms, on the entry page to our Google Group:
-http://groups.google.com/group/its-electric-software
+platforms, at 
+http://code.google.com/p/its-electric/wiki/InstallationAdviceFromUsers
 
 
-Running "it's electric": some more detail
-=========================================
+
+Running "it's electric": in detail
+==================================
 
 (1) You'll need to run the "it's electric" Java program, which polls 
 the TED 5000 for data, stores it in a database along with averages 
@@ -59,24 +84,36 @@ where the database will be stored.  Note: the database gets big, on
 the order of 1GB/month.  (More precisely, around 250MB/month/MTU.)
 
 You also may need to specify the -m option to tell "it's electric" how 
-many MTUs you have (if you have more than one), and the -g option to 
-specify the location of the gateway.  (The default is http://TED5000 
-but I don't know whether that works even on Windows.  If your TED 5000 
-has IP address 192.168.1.99 and port 1234, use -g http://192.168.1.99:1234.)
+many MTUs you have (if you have more than one).
 
-The -p option allows you to specify the port where the server listens.
-The default is 8081.  Note: -g specifies the URL (generally with IP address
-and port) where the its-electric server will contact TED; -p specifies the 
-port where the its-electric web pages will contact the its-electric server.
+For recording data, you may need the -g option to specify the location of the 
+gateway.  (The default is http://TED5000.  If your TED 5000 has IP address 
+192.168.1.99 and port 1234, use -g http://192.168.1.99:1234.)  If you include 
+option "-v", then its-electric will monitor the voltage data from TED as well 
+as power.  If you include "-k 2", its-electric will poll for kVA data every 
+2 seconds (unlike voltage and real power, kVA data is not included in the TED 
+history data).
 
-If you include "-v yes", then its-electric will monitor the voltage data
-from TED as well as power.  If you include "-k 2", its-electric will poll for 
-kVA data every 2 seconds (unlike voltage and real power, kVA data is not
-included in the TED history data).
+For serving data, the -p option allows you to specify the port where the server 
+listens.  The default is 8081.  Note: -g specifies the URL (generally with IP 
+address and port) where the its-electric server will contact TED; -p specifies 
+the port where the its-electric web pages will contact the its-electric server.
+
+You can specify to only record data using option --no-serve (e.g. for an
+unattended setup) and to only serve data using option --no-record (e.g. with a
+static copy of an its-electric database).
+
+To export data from <start> to <end> in resolution <res>, use
+  java -jar its-electric-*.jar -d <database-dir> --export <start> <end> <res>
+<start> and <end> are expected in ISO 8601 format, for example 
+  2010-11-05T22:09:37-0400
+You can leave off components and "it's electric" should behave sensibly, e.g.
+  java -jar its-electric-*.jar -d <database-dir> --export 2010-08 2010-10 1
+will export data for all seconds in August, September, and October.
 
 You can read about other options by using option "--help".
 
-You can also pass options to java (before the -jar option).  I use
+You can also pass options to java itself (before the -jar option).  I use
   -Dorg.apache.commons.logging.Log=org.apache.commons.logging.impl.SimpleLog 
   -Dorg.apache.commons.logging.simplelog.defaultlog=trace
 to have "it's electric" dump trace output.
@@ -118,12 +155,9 @@ the folder "its-electric/web".
 setting "noFlashEvents: true" in its-electric-config.js, and it should limp 
 along.  Not recommended.)
 
-If you do share your "it's electric" over the Web, make sure you 
-include a link to the source download.  You can either make 
-its-electric-{version}.zip available directly from your site, or 
-change the link in its-electric.html to point back to where you 
-downloaded it.  If you modify your source, you'll need to make your
-modified copy available for download, as specified by the 
+If you do share your "it's electric" over the Web, make sure you include 
+a link to the source download.  If you modify your source, you'll need 
+to make your modified copy available for download, as specified by the 
 GNU Affero General Public License (see legal/COPYING-agpl.txt).
 
 
