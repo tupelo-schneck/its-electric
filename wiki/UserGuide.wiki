@@ -107,7 +107,7 @@ To export data from {{{start}}} to {{{end}}} in resolution {{{res}}}, use
 {{{
   java -jar its-electric-*.jar -d <database-dir> --export <start> <end> <res>
 }}}
-{{{start}}} and {{{end}}} are expected in ISO 8601 format, for example 
+{{{<start>}}} and {{{<end>}}} are expected in ISO 8601 format, for example 
   2010-11-05T22:09:37-0400
 You can leave off components and {{{it's electric}}} should behave sensibly, e.g.
 {{{
@@ -141,7 +141,7 @@ to get the data and pass it to the chart.  Change the property
 Even if you're just looking at the data yourself, you may want to 
 access the files through a webserver.  (On a Mac, this just means 
 opening System Preferences to the Sharing pane, turning on Web 
-Sharing, and putting the files in /Library/WebServer/Documents; then 
+Sharing, and putting the files in /Library/!WebServer/Documents; then 
 you can point your browser at http://localhost/its-electric.html.)  
 
 *IMPORTANT:*
@@ -190,7 +190,7 @@ http://code.google.com/p/its-electric/
 == The Fine Print ==
 
 {{{it's electric}}}: software for storing and viewing home energy monitoring data
-Copyright (C) 2009--2010 Robert R. Tupelo-Schneck &lt;schneck@gmail.com&gt;
+Copyright (C) 2009--2010 Robert R. Tupelo-Schneck {{{<}}}schneck@gmail.com>
 http://tupelo-schneck.org/its-electric
 
 {{{it's electric}}} is free software: you can redistribute it and/or modify
