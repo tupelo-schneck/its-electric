@@ -31,8 +31,7 @@ import com.ibm.icu.util.GregorianCalendar;
 
 /**
  * I wrote this utility for when I had 2 MTUs hooked up to 2 water heaters.
- * It measures the total use, and attempts to measure standby loss in two ways:
- * first, by measuring the total use over various half-hours at night, and second,
+ * It measures the total use, and attempts to measure standby loss 
  * by creating a histogram of how much energy is used in each cycle (presumably 
  * a standby-loss-only cycle is the lowest commonly observed cycle).
  * 
@@ -62,8 +61,6 @@ public class WaterHeaterReader {
             
             double[] total = new double[2];
             double[] count = new double[2];
-            double[][] totalByHalfHour = new double[2][48]; // all 0
-            double[][] countByHalfHour = new double[2][48]; // all 0
             int max = 0;
             
             boolean[] on = new boolean[2];
@@ -71,7 +68,8 @@ public class WaterHeaterReader {
             double[] countSinceLastOff = new double[2];
             int[][] histo = new int[2][20];
             
-            ReadIterator iter = main.secondsDb.read((int)(new GregorianCalendar(2010,3,8,0,0,0).getTimeInMillis()/1000));
+            ReadIterator iter = main.secondsDb.read((int)(new GregorianCalendar(2010,10-1,1,0,0,0).getTimeInMillis()/1000),
+                    (int)(new GregorianCalendar(2010,11-1,1,0,0,0).getTimeInMillis()/1000));
             try {
                 while(iter.hasNext()) {
                     Triple t = iter.next();
@@ -80,8 +78,6 @@ public class WaterHeaterReader {
                     if(t.timestamp % 86400 == 0) System.out.println(Main.dateString(t.timestamp));
                     total[t.mtu]+=power;
                     count[t.mtu]++;
-                    totalByHalfHour[t.mtu][(t.timestamp % 86400) / 1800] += power;
-                    countByHalfHour[t.mtu][(t.timestamp % 86400) / 1800] ++;
                     if(power > max) max = power;
                     
                     if(on[t.mtu] && power < 20) {
@@ -106,11 +102,6 @@ public class WaterHeaterReader {
             out.println("Max: " + max);
             out.println("Av1: " + total[0]/count[0]);
             out.println("Av2: " + total[1]/count[1]);
-            out.println();
-            for(int i = 0; i < 48; i++) {
-                out.println("Av1(" + i + "): " + totalByHalfHour[0][i]/countByHalfHour[0][i]);
-                out.println("Av2(" + i + "): " + totalByHalfHour[1][i]/countByHalfHour[1][i]);            
-            }
             out.println();
             for(int i = 0; i < 20; i++) {
                 out.println("Cycles(0," + i + "): " + histo[0][i]);
