@@ -44,7 +44,7 @@ import com.sleepycat.je.EnvironmentConfig;
 import com.sleepycat.je.StatsConfig;
 
 public class Main {
-    public static final int KVA_LAG = 300;
+    public static final int LAG = 5;
     
     Log log = LogFactory.getLog(Main.class);
     
@@ -113,11 +113,14 @@ public class Main {
         minimum = secondsDb.minimum();
         maxSecondForMTU = secondsDb.maxForMTU.clone();
         log.trace("Minimum is " + dateString(minimum));
-        int newMax = 0;
+        int[] maxSeconds = maxSecondForMTU.clone();
+        Arrays.sort(maxSeconds);
         for(byte mtu = 0; mtu < options.mtus; mtu++) {
-            if(maxSecondForMTU[mtu] > newMax) newMax = maxSecondForMTU[mtu];
+            if(maxSeconds[mtu] + LAG > maxSeconds[options.mtus-1]) {
+                maximum = maxSeconds[mtu];
+                break;
+            }
         }
-        maximum = newMax;
         log.trace("Maximum is " + dateString(maximum));
     }
 
@@ -291,9 +294,16 @@ public class Main {
                 if(minAndMax==null) continue;
                 
                 if(minAndMax.min < newMin) newMin = minAndMax.min;
-                if(newMax < minAndMax.max) newMax = minAndMax.max;
                 newMaxForMTU[mtu] = minAndMax.max;
                 changes.add(new Pair(minAndMax.min,mtu));
+            }
+            int[] maxSeconds = newMaxForMTU.clone();
+            Arrays.sort(maxSeconds);
+            for(byte mtu = 0; mtu < options.mtus; mtu++) {
+                if(maxSeconds[mtu] + LAG > maxSeconds[options.mtus-1]) {
+                    newMax = maxSeconds[mtu];
+                    break;
+                }
             }
 
             reset(changes, false);
@@ -478,7 +488,7 @@ public class Main {
                     while(iter.hasNext() && !reset && isRunning) {
                         Triple triple = iter.next();
                         if(triple.timestamp > caughtUpTo[triple.mtu]) {
-                            if(triple.timestamp > maximum || (triple.timestamp > latestVoltAmperesTimestamp && triple.timestamp - KVA_LAG < latestVoltAmperesTimestamp)) break;
+                            if(triple.timestamp > maximum || (triple.timestamp > latestVoltAmperesTimestamp && triple.timestamp - LAG < latestVoltAmperesTimestamp)) break;
                             synchronized(resetLock) {
                                 for(int i = 1; i < numDurations; i++) {
                                     databases[i].accumulateForAverages(cursors[i],triple);

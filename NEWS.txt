@@ -3,6 +3,11 @@ http://tupelo-schneck.org/its-electric
 
 Version 1.7 2010-11-16
 ======================
+Bugfix preventing painfully slow startup when adding new MTUs to an existing system.
+Bugfix preventing shutdown under certain conditions when a network error occurs.
+Allow separate threads for kVA polling.
+Options to record data only or serve data only.
+Direct CSV export functionality via --export option.
 
 Version 1.6.3 2010-08-15
 ========================
