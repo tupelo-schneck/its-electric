@@ -547,7 +547,72 @@ public class Main {
         }
     }
     
-    public static final void main(String[] args) {
+    public void export() throws DatabaseException {
+        TimeSeriesDatabase database = databases[Main.numDurations - 1];
+        for(int i = Main.numDurations - 2; i >= 0; i--) {
+            if(database.resolution <= options.resolution) break;
+            database = databases[i];
+        }
+        
+        ReadIterator iter = database.read(options.startTime,options.endTime);
+        try {
+            if(options.exportByMTU) {
+                while(iter.hasNext() && isRunning) {
+                    Triple triple = iter.next();
+                    System.out.print(Main.dateString(triple.timestamp));
+                    System.out.print(",");
+                    System.out.print(triple.mtu + 1);
+                    System.out.print(",");
+                    if(triple.power!=null) System.out.print(triple.power);
+                    System.out.print(",");
+                    if(triple.voltage!=null) System.out.print((double)triple.voltage.intValue()/20);
+                    System.out.print(",");
+                    if(triple.voltAmperes!=null) System.out.print(triple.voltAmperes);
+                    System.out.println();
+                }
+            }
+            else {
+                int lastTime = 0;
+                int lastMTU = -1;
+                StringBuilder row = new StringBuilder();
+                while(iter.hasNext() && isRunning) {
+                    Triple triple = iter.next();
+                    if(triple.timestamp < lastTime) continue;
+                    if(triple.timestamp > lastTime) {
+                        if(row.length()>0) {
+                            for(int i = lastMTU + 1; i < options.mtus; i++) {
+                                row.append(",,,");
+                            }
+                            System.out.println(row);
+                            row.delete(0,row.length());
+                        }
+                        row.append(Main.dateString(triple.timestamp));
+                        lastTime = triple.timestamp;
+                        lastMTU = -1;
+                    }
+                    for(int i = lastMTU + 1; i < triple.mtu; i++) {
+                        row.append(",,,");
+                    }
+                    lastMTU = triple.mtu;
+                    row.append(",").append(triple.power);
+                    row.append(",").append((double)triple.voltage.intValue()/20);
+                    row.append(",").append(triple.voltAmperes);
+                }
+                if(row.length()>0) {
+                    for(int i = lastMTU + 1; i < options.mtus; i++) {
+                        row.append(",,,");
+                    }
+                    System.out.println(row);
+                    row.delete(0,row.length());
+                }
+            }
+        }
+        finally {
+            iter.close();
+        }
+    }
+    
+    public static void main(String[] args) {
         final Main main = new Main();
 
         try {
@@ -581,31 +646,7 @@ public class Main {
                 execServ.execute(main.new CatchUp());
             }
             if(main.options.export) {
-                TimeSeriesDatabase database = main.databases[Main.numDurations - 1];
-                for(int i = Main.numDurations - 2; i >= 0; i--) {
-                    if(database.resolution <= main.options.resolution) break;
-                    database = main.databases[i];
-                }
-                
-                ReadIterator iter = database.read(main.options.startTime,main.options.endTime);
-                try {
-                    while(iter.hasNext() && main.isRunning) {
-                        Triple triple = iter.next();
-                        System.out.print(Main.dateString(triple.timestamp));
-                        System.out.print(",");
-                        System.out.print(triple.mtu + 1);
-                        System.out.print(",");
-                        if(triple.power!=null) System.out.print(triple.power);
-                        System.out.print(",");
-                        if(triple.voltage!=null) System.out.print((double)triple.voltage.intValue()/20);
-                        System.out.print(",");
-                        if(triple.voltAmperes!=null) System.out.print(triple.voltAmperes);
-                        System.out.println();
-                    }
-                }
-                finally {
-                    iter.close();
-                }
+                main.export();
             }
         }
         catch(Throwable e) {

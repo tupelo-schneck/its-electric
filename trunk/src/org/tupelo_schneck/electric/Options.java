@@ -140,6 +140,7 @@ public class Options extends org.apache.commons.cli.Options {
     public int startTime;
     public int endTime;
     public int resolution;
+    public boolean exportByMTU = true;
     
     @SuppressWarnings("static-access")
     public Options() {
@@ -157,6 +158,11 @@ public class Options extends org.apache.commons.cli.Options {
         .withDescription("export CSV for existing data from <start> to <end> of resolution <res>; implies --no-serve --no-record")
         .hasArgs(3).withArgName("start> <end> <res").create();
         this.addOption(exportOpt);
+
+        Option exportStyleOpt = OptionBuilder.withLongOpt("export-style")
+        .withDescription("if 'timestamp', export data is one line per timestamp; otherwise one line per timestamp/mtu pair")
+        .hasArg().create();
+        this.addOption(exportStyleOpt);
 
         this.addOption("d","database-directory",true,"database directory (required)");
         this.addOption("p","port",true,"port served by datasource server (\"none\" same as --no-serve; default 8081)");
@@ -240,6 +246,9 @@ public class Options extends org.apache.commons.cli.Options {
                     startTime = timestampFromUserInput(vals[0],false);
                     endTime = timestampFromUserInput(vals[1],true);
                     resolution = Integer.parseInt(vals[2]);
+                }
+                if(cmd.hasOption("export-style")) {
+                    exportByMTU = !cmd.getOptionValue("export-style").trim().toLowerCase().equals("timestamp");
                 }
                 
                 if(cmd.hasOption("p")) {
