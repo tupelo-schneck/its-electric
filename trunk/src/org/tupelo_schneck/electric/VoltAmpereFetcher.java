@@ -7,8 +7,8 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.GregorianCalendar;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Matcher;
@@ -111,7 +111,7 @@ public class VoltAmpereFetcher {
     }
     
     public List<Triple> doImport() {
-        List<Triple> res = new LinkedList<Triple>();
+        List<Triple> res = new ArrayList<Triple>();
         try {
             connect();
         }

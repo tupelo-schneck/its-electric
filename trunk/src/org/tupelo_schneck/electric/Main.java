@@ -23,8 +23,8 @@ package org.tupelo_schneck.electric;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -284,7 +284,7 @@ public class Main {
             int newMin = Integer.MAX_VALUE;
             int newMax = 0;
             int[] newMaxForMTU = new int[options.mtus];
-            List<Pair> changes = new LinkedList<Pair>();
+            List<Pair> changes = new ArrayList<Pair>();
 
             for(byte mtu = 0; mtu < options.mtus; mtu++) {
                 if(!isRunning) return;
@@ -351,7 +351,7 @@ public class Main {
         
         public void runReal() {
             int[] newMaxForMTU = new int[options.mtus];
-            List<Pair> changes = new LinkedList<Pair>();
+            List<Pair> changes = new ArrayList<Pair>();
             boolean changed = false;
 
             VoltAmpereFetcher fetcher = new VoltAmpereFetcher(options);
