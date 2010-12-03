@@ -90,7 +90,7 @@ public class Main {
     
     public void openEnvironment(File envHome) throws DatabaseException {
         EnvironmentConfig configuration = new EnvironmentConfig();
-        configuration.setTransactional(true);
+        configuration.setTransactional(false);
         // this seems to help with memory issues
         configuration.setCachePercent(40);
         long maxMem = Runtime.getRuntime().maxMemory();
