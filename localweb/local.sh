@@ -10,7 +10,7 @@ ant clean
 
 mkdir -p build/web
 sed -e '/<!--INSERT PERSONAL TEXT HERE-->/ rlocalweb/local.html' \
-    -e '/>v1.7.1</ s/v1.7.1/<a href="NEWS.txt">v1.7.1<\/a>/' \
+    -e '/>v1.7.2</ s/v1.7.2/<a href="NEWS.txt">v1.7.2<\/a>/' \
     web/its-electric.html \
     > build/web/its-electric.html
 sed -e '/datasourceURL:/ s/localhost:8081/tupelo-schneck.org:8081/' \

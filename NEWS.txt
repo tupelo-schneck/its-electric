@@ -1,6 +1,11 @@
 "it's electric" news
 http://tupelo-schneck.org/its-electric
 
+Version 1.7.2 2010-12-04
+========================
+New option "--export-style timestamp" for use with --export to export one line of data per timestamp.
+New option --time-zone to allow setting a TED Gateway time zone different from the time zone of Java on the machine running its-electric.
+
 Version 1.7.1 2010-11-17
 ========================
 Bugfix to date/time parsing.
