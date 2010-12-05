@@ -45,6 +45,8 @@ public class TimeSeriesDatabase {
 
     private Database database;
 
+    private int timeZoneRawOffset;
+    
     public int resolution;
     public String resolutionString;
 
@@ -189,8 +191,9 @@ public class TimeSeriesDatabase {
         return new DatabaseEntry(buf);
     }
 
-    public TimeSeriesDatabase(Main main, Environment environment, String name, byte mtus, int resolution, String resolutionString) {
+    public TimeSeriesDatabase(Main main, Environment environment, String name, byte mtus, int resolution, String resolutionString, int timeZoneRawOffset) {
         try {
+            this.timeZoneRawOffset = timeZoneRawOffset;
             this.resolution = resolution;
             this.resolutionString = resolutionString;
             synchronized(TimeSeriesDatabase.class) {
@@ -248,7 +251,7 @@ public class TimeSeriesDatabase {
                 }
                 for(byte mtu = 0; mtu < mtus; mtu++) {
                     if(start[mtu]==0) {
-                        start[mtu] = ((latestTimestamp - MAX_RECHECK + Options.timeZoneRawOffset)/resolution)*resolution - Options.timeZoneRawOffset;
+                        start[mtu] = ((latestTimestamp - MAX_RECHECK + timeZoneRawOffset)/resolution)*resolution - timeZoneRawOffset;
                         maxForMTU[mtu] = start[mtu] - 1;
                         log.trace("   starting at " + Main.dateString(start[mtu]) + " for not-found MTU " + mtu);
                     }
@@ -467,7 +470,7 @@ public class TimeSeriesDatabase {
                 sumVA[mtu] = 0;
                 countVA[mtu] = 0;
                 // start at day boundaries, but not dealing with daylight savings time...
-                start[mtu] = ((timestamp+Options.timeZoneRawOffset)/resolution)*resolution - Options.timeZoneRawOffset;
+                start[mtu] = ((timestamp+timeZoneRawOffset)/resolution)*resolution - timeZoneRawOffset;
             }
             if(triple.power!=null) {
                 sum[mtu] += triple.power.intValue();
@@ -488,7 +491,7 @@ public class TimeSeriesDatabase {
     // not relevant for resolution=1
     public void resetForNewData(int timestamp, byte mtu) {
         if(maxForMTU[mtu] >= timestamp) {
-            start[mtu] = ((timestamp+Options.timeZoneRawOffset)/resolution)*resolution - Options.timeZoneRawOffset;
+            start[mtu] = ((timestamp+timeZoneRawOffset)/resolution)*resolution - timeZoneRawOffset;
             maxForMTU[mtu] = start[mtu] - 1;
             sum[mtu] = 0;
             count[mtu] = 0;

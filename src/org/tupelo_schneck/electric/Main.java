@@ -106,7 +106,7 @@ public class Main {
 
     public void openDatabases() throws DatabaseException {
         for(int i = 0; i < numDurations; i++) {
-            databases[i] = new TimeSeriesDatabase(this, environment, String.valueOf(durations[i]), options.mtus, durations[i], durationStrings[i]);
+            databases[i] = new TimeSeriesDatabase(this, environment, String.valueOf(durations[i]), options.mtus, durations[i], durationStrings[i], options.timeZoneRawOffset);
             log.trace("Database " + i + " opened");
         }
         secondsDb = databases[0];

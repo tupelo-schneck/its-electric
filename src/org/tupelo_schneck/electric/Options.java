@@ -23,11 +23,15 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.ibm.icu.util.GregorianCalendar;
 import com.ibm.icu.util.TimeZone;
 
 public class Options extends org.apache.commons.cli.Options {
+    Log log = LogFactory.getLog(Options.class);
+    
     static {
         System.setProperty("org.apache.commons.logging.simplelog.showdatetime", "true");
         
@@ -55,8 +59,6 @@ public class Options extends org.apache.commons.cli.Options {
     }
 
     public static final TimeZone GMT = TimeZone.getTimeZone("GMT");
-    public static final TimeZone timeZone = TimeZone.getDefault();
-    public static final int timeZoneRawOffset = timeZone.getRawOffset() / 1000;
 
     public static final Pattern dateTimePattern = Pattern.compile("(\\d\\d\\d\\d)(?:-?+(\\d\\d?+)(?:-?+(\\d\\d?+)(?:[T\\s]++(\\d\\d??)(?>:?+(\\d\\d)(?>:?+(\\d\\d)(?>[.,]\\d*+)?+)?+)?+)?)?)?(Z|[+-](\\d\\d):?+(\\d\\d)?+)?+");
     
@@ -65,7 +67,7 @@ public class Options extends org.apache.commons.cli.Options {
         return Integer.parseInt(s);
     }
     
-    public static int timestampFromUserInput(String aInput,boolean isEnd) {
+    public static int timestampFromUserInput(String aInput, boolean isEnd, TimeZone aTimeZone) {
         String input = aInput.trim();
         Matcher matcher = dateTimePattern.matcher(input);
         if(!matcher.matches()) {
@@ -79,7 +81,7 @@ public class Options extends org.apache.commons.cli.Options {
         int minute = parseInt(matcher.group(5),0);
         int second = parseInt(matcher.group(6),0);
         
-        TimeZone thisTimeZone = timeZone;
+        TimeZone thisTimeZone = aTimeZone;
         int timeZoneHours = 0;
         int timeZoneMinutes = 0;
         if(matcher.group(7)!=null) {
@@ -136,6 +138,9 @@ public class Options extends org.apache.commons.cli.Options {
     public boolean record = true;
     public boolean serve = true;
     
+    public TimeZone timeZone = TimeZone.getDefault();
+    public int timeZoneRawOffset = timeZone.getRawOffset() / 1000;
+
     public boolean export = false;
     public int startTime;
     public int endTime;
@@ -192,7 +197,13 @@ public class Options extends org.apache.commons.cli.Options {
         .withArgName("arg")
         .hasArg().create(); 
         this.addOption(kvaThreadsOpt);
-        
+
+        Option timeZoneOpt = OptionBuilder.withLongOpt("time-zone")
+        .withDescription("time zone for TED Gateway as ISO8601 offset or tz/zoneinfo name (default use time zone of its-electric install)")
+        .withArgName("arg")
+        .hasArg().create(); 
+        this.addOption(timeZoneOpt);
+
         this.addOption("h","help",false,"print this help text");
     }
 
@@ -238,13 +249,25 @@ public class Options extends org.apache.commons.cli.Options {
                 if(cmd.hasOption("no-record")) {
                     record = !optionalBoolean(cmd,"no-record",false);
                 }
+                
+                if(cmd.hasOption("time-zone")) {
+                    String input = cmd.getOptionValue("time-zone");
+                    Matcher m = Pattern.compile("([+-]\\d{2}):?+(\\d{2})").matcher(input);
+                    if(m.matches()) {
+                        input = "GMT" + m.group(1) + m.group(2);
+                    }
+                    timeZone = TimeZone.getTimeZone(input);
+                    timeZoneRawOffset = timeZone.getRawOffset() / 1000;
+                    log.info("TED Gateway Time Zone: " + TimeZone.getCanonicalID(timeZone.getID()) + ", " + timeZone.getDisplayName());
+                }
+                
                 if(cmd.hasOption("export")) {
                     serve = false;
                     record = false;
                     export = true;
                     String[] vals = cmd.getOptionValues("export");
-                    startTime = timestampFromUserInput(vals[0],false);
-                    endTime = timestampFromUserInput(vals[1],true);
+                    startTime = timestampFromUserInput(vals[0],false,timeZone);
+                    endTime = timestampFromUserInput(vals[1],true,timeZone);
                     resolution = Integer.parseInt(vals[2]);
                 }
                 if(cmd.hasOption("export-style")) {
