@@ -238,7 +238,7 @@ public class Servlet extends DataSourceServlet {
                 
                 // note have to add in the time zone offset
                 // this because we want it to show our local time.
-                cal.setTimeInMillis((long)triple.timestamp * 1000 + Options.timeZone.getOffset((long)triple.timestamp*1000));
+                cal.setTimeInMillis((long)triple.timestamp * 1000 + main.options.timeZone.getOffset((long)triple.timestamp*1000));
                 row.addCell(new DateTimeValue(cal));
                 lastMTU = -1;
             }
@@ -392,7 +392,7 @@ public class Servlet extends DataSourceServlet {
             String param = req.getParameter(name);
             if(param!=null && param.length()>0) {
                 try {
-                    res = Options.timestampFromUserInput(param,isEnd);
+                    res = Options.timestampFromUserInput(param,isEnd,main.options.timeZone);
                 }
                 catch(NumberFormatException e) { log.error("Error parsing " + name,e); }
             }
@@ -564,7 +564,7 @@ public class Servlet extends DataSourceServlet {
         // the bug is about the client's time zone.
         // We'll still send this in case it's useful.  Whether it says standard or daylight time
         // is determined by the highest date in the visible range.
-        builder.setCustomProperty(TIME_ZONE_OFFSET, String.valueOf(Options.timeZone.getOffset(1000L*params.end) / 1000));
+        builder.setCustomProperty(TIME_ZONE_OFFSET, String.valueOf(main.options.timeZone.getOffset(1000L*params.end) / 1000));
         log.trace("Query complete.");
         return builder.dataTable();
     }
