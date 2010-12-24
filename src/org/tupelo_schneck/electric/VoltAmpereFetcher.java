@@ -8,16 +8,19 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
-import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.ibm.icu.util.GregorianCalendar;
+import com.ibm.icu.util.TimeZone;
+
 public class VoltAmpereFetcher {
     String gatewayURL;
     Scanner scanner;
     byte mtus;
+    TimeZone timeZone;
     
     static Pattern skipPattern = Pattern.compile("(?>" + "<[^PG][^>]*+>" + "|" + "<P[^>]{5,}+>" + "|" + "[^<]++" + ")*+");
     static Pattern skipToMTUPattern = Pattern.compile("(?>" + "<[^M][^>]*+>" + "|" + "<M[^T][^>]*+>" + "|" + "[^<]++" + ")*+");
@@ -35,6 +38,7 @@ public class VoltAmpereFetcher {
     public VoltAmpereFetcher(Options options) {
         this.gatewayURL = options.gatewayURL;
         this.mtus = options.mtus;
+        this.timeZone = options.timeZone;
     }
     
     private void connect() throws IOException {
@@ -88,7 +92,8 @@ public class VoltAmpereFetcher {
             return 0;
         }
             
-        GregorianCalendar cal = new GregorianCalendar(2000+year,month-1,day,hour,minute,second);
+        GregorianCalendar cal = new GregorianCalendar(timeZone);
+        cal.set(2000+year,month-1,day,hour,minute,second);
         return (int)(cal.getTimeInMillis() / 1000);
     }
     
