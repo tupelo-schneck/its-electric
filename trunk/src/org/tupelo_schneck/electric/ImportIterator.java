@@ -26,14 +26,15 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.GregorianCalendar;
 import java.util.Iterator;
 
 import org.apache.commons.codec.binary.Base64;
 
+import com.ibm.icu.util.GregorianCalendar;
+
 public class ImportIterator implements Iterator<Triple> {
     InputStream urlStream;
-    GregorianCalendar cal = new GregorianCalendar();
+    GregorianCalendar cal;
     Base64 base64 = new Base64();
     byte mtu;
     byte[] line = new byte[25];
@@ -43,6 +44,7 @@ public class ImportIterator implements Iterator<Triple> {
     final boolean useVoltage;
 
     public ImportIterator(final Options options, final byte mtu, final int count) throws IOException {
+        this.cal = new GregorianCalendar(options.timeZone); 
         this.mtu = mtu;
         this.useVoltage = options.voltage;
         URL url;

@@ -1,6 +1,10 @@
 "it's electric" news
 http://tupelo-schneck.org/its-electric
 
+Version 1.7.3 2010-12-23
+========================
+Bug fix to time-zone option.
+
 Version 1.7.2 2010-12-04
 ========================
 New option "--export-style timestamp" for use with --export to export one line of data per timestamp.
