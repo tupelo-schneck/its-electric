@@ -68,12 +68,13 @@ public class WaterHeaterReader {
             double[] countSinceLastOff = new double[2];
             int[][] histo = new int[2][20];
             
-            ReadIterator iter = main.secondsDb.read((int)(new GregorianCalendar(2010,10-1,1,0,0,0).getTimeInMillis()/1000),
-                    (int)(new GregorianCalendar(2010,11-1,1,0,0,0).getTimeInMillis()/1000));
+            ReadIterator iter = main.secondsDb.read((int)(new GregorianCalendar(2011,1-1,1,0,0,0).getTimeInMillis()/1000),
+                    (int)(new GregorianCalendar(2011,2-1,1,0,0,0).getTimeInMillis()/1000));
             try {
                 while(iter.hasNext()) {
                     Triple t = iter.next();
                     if(t.power==null) continue;
+                    if(t.mtu >= 2) continue;
                     int power = t.power.intValue();
                     if(t.timestamp % 86400 == 0) System.out.println(Main.dateString(t.timestamp));
                     total[t.mtu]+=power;
