@@ -1,7 +1,7 @@
 /*
 This file is part of
 "it's electric": software for storing and viewing home energy monitoring data
-Copyright (C) 2009--2010 Robert R. Tupelo-Schneck <schneck@gmail.com>
+Copyright (C) 2009--2011 Robert R. Tupelo-Schneck <schneck@gmail.com>
 http://tupelo-schneck.org/its-electric
 
 "it's electric" is free software: you can redistribute it and/or modify
@@ -65,21 +65,21 @@ public class TimeSeriesDatabase {
 
     public static DatabaseConfig ALLOW_CREATE_CONFIG = null;
 
-    //	public static long longOfBytes(byte[] buf, int offset) {
-    //		long res = 0;
-    //		res |= (((long)buf[offset+0] & 0xFF) << 56); 
-    //		res |= (((long)buf[offset+1] & 0xFF) << 48); 
-    //		res |= (((long)buf[offset+2] & 0xFF) << 40); 
-    //		res |= (((long)buf[offset+3] & 0xFF) << 32);		
-    //		res |= (((long)buf[offset+4] & 0xFF) << 24); 
-    //		res |= (((long)buf[offset+5] & 0xFF) << 16); 
-    //		res |= (((long)buf[offset+6] & 0xFF) << 8); 
-    //		res |= (((long)buf[offset+7] & 0xFF));
-    //		return res;
-    //	}
+    //  public static long longOfBytes(byte[] buf, int offset) {
+    //          long res = 0;
+    //          res |= (((long)buf[offset+0] & 0xFF) << 56); 
+    //          res |= (((long)buf[offset+1] & 0xFF) << 48); 
+    //          res |= (((long)buf[offset+2] & 0xFF) << 40); 
+    //          res |= (((long)buf[offset+3] & 0xFF) << 32);            
+    //          res |= (((long)buf[offset+4] & 0xFF) << 24); 
+    //          res |= (((long)buf[offset+5] & 0xFF) << 16); 
+    //          res |= (((long)buf[offset+6] & 0xFF) << 8); 
+    //          res |= (((long)buf[offset+7] & 0xFF));
+    //          return res;
+    //  }
 
     public static int intOfBytes(byte[] buf, int offset) {
-        int res = 0;	
+        int res = 0;
         res |= ((buf[offset+0] & 0xFF) << 24); 
         res |= ((buf[offset+1] & 0xFF) << 16); 
         res |= ((buf[offset+2] & 0xFF) << 8); 
@@ -258,23 +258,34 @@ public class TimeSeriesDatabase {
                 }
             }
 
-            // Delete everything before 2009; got some due to bug in its-electric 1.4
             Cursor cursor = openCursor();
             try {
+                // Delete everything before 2009; got some due to bug in its-electric 1.4
                 DatabaseEntry key = new DatabaseEntry();
                 DatabaseEntry readDataEntry = new DatabaseEntry();
-                while(true) {
-                    key = keyEntry(0,(byte)0);
-                    OperationStatus status = cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
-                    if(status!=OperationStatus.SUCCESS) break;
+                key = keyEntry(0,(byte)0);
+                OperationStatus status = cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
+                while(status==OperationStatus.SUCCESS) {
                     byte[] buf = key.getData();
                     int timestamp = intOfBytes(buf,0);
                     if(timestamp<1230000000) {
                         log.info("Deleting " + Main.dateString(timestamp));
-                        database.delete(null,key);
+                        status = cursor.delete();
+                        if(status==OperationStatus.SUCCESS) status = cursor.getNext(key, readDataEntry, LockMode.READ_UNCOMMITTED);
                     }
                     else break;
                 }
+
+                // Delete everything after 2030
+//                key = keyEntry(1894000000,(byte)0);
+//                status = cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
+//                while(status==OperationStatus.SUCCESS) {
+//                    byte[] buf = key.getData();
+//                    int timestamp = intOfBytes(buf,0);
+//                    log.info("Deleting " + Main.dateString(timestamp));
+//                    status = cursor.delete();
+//                    if(status==OperationStatus.SUCCESS) status = cursor.getNext(key, readDataEntry, LockMode.READ_UNCOMMITTED);
+//                }
             }
             finally {
                 cursor.close();
