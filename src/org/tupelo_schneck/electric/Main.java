@@ -1,7 +1,7 @@
 /*
 This file is part of
 "it's electric": software for storing and viewing home energy monitoring data
-Copyright (C) 2009--2010 Robert R. Tupelo-Schneck <schneck@gmail.com>
+Copyright (C) 2009--2011 Robert R. Tupelo-Schneck <schneck@gmail.com>
 http://tupelo-schneck.org/its-electric
 
 "it's electric" is free software: you can redistribute it and/or modify
@@ -594,9 +594,12 @@ public class Main {
                         row.append(",,,");
                     }
                     lastMTU = triple.mtu;
-                    row.append(",").append(triple.power);
-                    row.append(",").append((double)triple.voltage.intValue()/20);
-                    row.append(",").append(triple.voltAmperes);
+                    row.append(",");
+                    if(triple.power!=null) row.append(triple.power);
+                    row.append(",");
+                    if(triple.voltage!=null) row.append((double)triple.voltage.intValue()/20);
+                    row.append(",");
+                    if(triple.voltAmperes!=null) row.append(triple.voltAmperes);
                 }
                 if(row.length()>0) {
                     for(int i = lastMTU + 1; i < options.mtus; i++) {
