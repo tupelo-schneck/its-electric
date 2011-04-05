@@ -38,10 +38,13 @@ public class Options extends org.apache.commons.cli.Options {
         // The following allows you can access an https URL without having the certificate in the truststore 
         TrustManager[] trustAllCerts = new TrustManager[] { 
             new X509TrustManager() { 
+                @Override
                 public java.security.cert.X509Certificate[] getAcceptedIssuers() { 
                     return null; 
                 } 
+                @Override
                 public void checkClientTrusted( java.security.cert.X509Certificate[] certs, String authType) { } 
+                @Override
                 public void checkServerTrusted( java.security.cert.X509Certificate[] certs, String authType) { } 
             } 
         }; 
@@ -51,6 +54,7 @@ public class Options extends org.apache.commons.cli.Options {
             sc.init(null, trustAllCerts, new java.security.SecureRandom()); 
             HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory()); 
             HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
+                @Override
                 public boolean verify(String hostname, SSLSession session) {
                     return true;
                 }

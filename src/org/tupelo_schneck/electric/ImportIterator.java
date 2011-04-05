@@ -151,6 +151,7 @@ public class ImportIterator implements Iterator<Triple> {
         return null;
     }
     
+    @Override
     public Triple next() {
         Triple first = privateNext();
         if(first==null) return null;

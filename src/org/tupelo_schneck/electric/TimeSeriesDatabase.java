@@ -416,14 +416,17 @@ public class TimeSeriesDatabase {
             closed = true;
         }
 
+        @Override
         public void remove() {
             throw new UnsupportedOperationException();
         }
 
+        @Override
         public boolean hasNext() {
             return status == OperationStatus.SUCCESS;
         }
 
+        @Override
         public Triple next() {
             byte[] buf = key.getData();
             int timestamp = intOfBytes(buf,0);
