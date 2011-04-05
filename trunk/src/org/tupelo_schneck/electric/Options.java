@@ -181,9 +181,9 @@ public class Options extends org.apache.commons.cli.Options {
         this.addOption("n","num-points",true,"target number of data points returned over the zoom region (default 1000)");
         this.addOption("x","max-points",true,"number of data points beyond which server will not go (default 5000)");
         this.addOption("l","server-log",true,"server request log filename; include string \"yyyy_mm_dd\" for automatic rollover; or use \"stderr\" (default no log)");
-        this.addOption("i","import-interval",true,"seconds between imports of data (default 4)");
-        this.addOption("o","import-overlap",true,"extra seconds imported each time for good measure (default 4)");        
-        this.addOption("e","long-import-interval",true,"seconds between imports of whole hours (default 300)");
+        this.addOption("i","import-interval",true,"seconds between imports of data, or 0 for only hour-long imports (default 4)");
+        this.addOption("o","import-overlap",true,"extra seconds imported each time for good measure (default 8)");        
+        this.addOption("e","long-import-interval",true,"seconds between imports of whole hours, or 0 for only short imports (default 300)");
         
         Option voltageOpt = OptionBuilder.withLongOpt("voltage")
         .withDescription("whether to include voltage data (default no)")
@@ -309,7 +309,7 @@ public class Options extends org.apache.commons.cli.Options {
                 }
                 if(cmd.hasOption("i")) {
                     importInterval = Integer.parseInt(cmd.getOptionValue("i"));
-                    if(importInterval<=0) showUsageAndExit = true;
+                    if(importInterval<0) showUsageAndExit = true;
                 }
                 if(cmd.hasOption("o")) {
                     importOverlap = Integer.parseInt(cmd.getOptionValue("o"));
@@ -317,7 +317,7 @@ public class Options extends org.apache.commons.cli.Options {
                 }
                 if(cmd.hasOption("e")) {
                     longImportInterval = Integer.parseInt(cmd.getOptionValue("e"));
-                    if(longImportInterval<=0) showUsageAndExit = true;
+                    if(longImportInterval<0) showUsageAndExit = true;
                 }
                 if(cmd.hasOption("l")) {
                     serverLogFilename = cmd.getOptionValue("l");

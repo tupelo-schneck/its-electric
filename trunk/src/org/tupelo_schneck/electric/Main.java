@@ -270,7 +270,7 @@ public class Main {
         }
         
         private void runReal() {
-            if(longImport) {
+            if(longImport && options.importInterval > 0) {
                 importInterleaver = new CountDownLatch(1);
                 try {
                     importInterleaver.await();
@@ -289,7 +289,7 @@ public class Main {
             for(byte mtu = 0; mtu < options.mtus; mtu++) {
                 if(!isRunning) return;
                 
-                MinAndMax minAndMax = changesFromImport(count,mtu,longImport);
+                MinAndMax minAndMax = changesFromImport(count,mtu,longImport && options.importInterval > 0);
 
                 if(minAndMax==null) continue;
                 
@@ -319,7 +319,7 @@ public class Main {
                 maxSecondForMTU = newMaxForMTU;
             }
             
-            if(longImport) {
+            if(longImport || options.longImportInterval==0) {
                 try {
                     environment.sync();
                     log.trace("Environment synced.");
@@ -637,16 +637,28 @@ public class Main {
                 main.server = Servlet.setupServlet(main);
                 main.server.start();
             }
-            if(main.options.record) { 
-                main.longImportTask = main.repeatedlyImport(3600, true, main.options.longImportInterval);
-                main.shortImportTask = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
-                ExecutorService voltAmpereExecServ;
-                if(main.options.kvaThreads==0) voltAmpereExecServ = main.shortImportTask;
-                else voltAmpereExecServ = Executors.newScheduledThreadPool(main.options.kvaThreads);
-                if(main.options.voltAmpereImportIntervalMS>0) main.voltAmpereImportTask = main.voltAmpereImporter(voltAmpereExecServ, main.options.voltAmpereImportIntervalMS);
-                ExecutorService execServ = Executors.newSingleThreadExecutor();
-                main.catchUpTask = execServ;
-                execServ.execute(main.new CatchUp());
+            if(main.options.record) {
+                boolean needCatchUp = false;
+                if(main.options.longImportInterval>0) {
+                    needCatchUp = true;
+                    main.longImportTask = main.repeatedlyImport(3600, true, main.options.longImportInterval);
+                }
+                if(main.options.importInterval>0) {
+                    needCatchUp = true;
+                    main.shortImportTask = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
+                }
+                if(main.options.voltAmpereImportIntervalMS>0) {
+                    needCatchUp = true;
+                    ExecutorService voltAmpereExecServ;
+                    if(main.options.kvaThreads==0) voltAmpereExecServ = main.shortImportTask;
+                    else voltAmpereExecServ = Executors.newScheduledThreadPool(main.options.kvaThreads);
+                    main.voltAmpereImportTask = main.voltAmpereImporter(voltAmpereExecServ, main.options.voltAmpereImportIntervalMS);
+                }
+                if(needCatchUp) {
+                    ExecutorService execServ = Executors.newSingleThreadExecutor();
+                    main.catchUpTask = execServ;
+                    execServ.execute(main.new CatchUp());
+                }
             }
             if(main.options.export) {
                 main.export();
