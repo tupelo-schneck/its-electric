@@ -459,8 +459,9 @@ public class Servlet extends DataSourceServlet {
         
         // Create a data table,
         DataTableBuilder builder = new DataTableBuilder(params);
-        builder.setCustomProperty(MINIMUM_STRING, String.valueOf(min));
-        builder.setCustomProperty(MAXIMUM_STRING, String.valueOf(max));
+        // These return the timestamp where UTC clock shows what would be local time
+        builder.setCustomProperty(MINIMUM_STRING, String.valueOf(min + main.options.timeZone.getOffset(1000L*min)/1000));
+        builder.setCustomProperty(MAXIMUM_STRING, String.valueOf(max + main.options.timeZone.getOffset(1000L*max)/1000));
 
         // Fill the data table.
         try {
