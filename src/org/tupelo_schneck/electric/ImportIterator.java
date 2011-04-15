@@ -163,6 +163,11 @@ public class ImportIterator implements Iterator<Triple> {
             Triple next = privateNext();
             if(next==null || next.timestamp != timestamp) {
                 pushback = next;
+                // skip the last timestamp, in case we see only part of multiple values
+                if(next==null) {
+                    close();
+                    return null;
+                }
                 break;
             }
             else {
