@@ -31,8 +31,10 @@ import java.util.Iterator;
 import org.apache.commons.codec.binary.Base64;
 
 import com.ibm.icu.util.GregorianCalendar;
+import com.ibm.icu.util.TimeZone;
 
 public class ImportIterator implements Iterator<Triple> {
+    final TimeZone timeZone;
     InputStream urlStream;
     GregorianCalendar cal;
     Base64 base64 = new Base64();
@@ -40,11 +42,14 @@ public class ImportIterator implements Iterator<Triple> {
     byte[] line = new byte[25];
     volatile boolean closed;
     Triple pushback;
+    int inDSTOverlap; // 0 not, 1 first part, 2 second part
+    int previousTimestamp;
     
     final boolean useVoltage;
 
     public ImportIterator(final Options options, final byte mtu, final int count) throws IOException {
-        this.cal = new GregorianCalendar(options.timeZone); 
+        this.timeZone = options.recordTimeZone;
+        this.cal = new GregorianCalendar(this.timeZone); 
         this.mtu = mtu;
         this.useVoltage = options.voltage;
         URL url;
@@ -70,6 +75,13 @@ public class ImportIterator implements Iterator<Triple> {
                 next = nextFromLine();
             }
             pushback = next;
+            
+            if(inDSTOverlap(timeZone, first.timestamp)) {
+                int now = (int)(System.currentTimeMillis()/1000);
+                if(now < first.timestamp - 1800) inDSTOverlap = 1;
+                else inDSTOverlap = 2;
+            }
+            previousTimestamp = first.timestamp;
         }
     }
 
@@ -136,7 +148,14 @@ public class ImportIterator implements Iterator<Triple> {
         cal.set(2000+(0x00FF & decoded[0]), decoded[1]-1, decoded[2], decoded[3], decoded[4], decoded[5]);
         Integer power = Integer.valueOf(intOfBytes(decoded,6));
         Integer voltage = useVoltage ? Integer.valueOf(unsignedShortOfBytes(decoded,14)) : null;
-        Triple res = new Triple((int)(cal.getTimeInMillis() / 1000),mtu,power,voltage,null);
+        int timestamp = (int)(cal.getTimeInMillis() / 1000);
+        if(inDSTOverlap==2 && timestamp > previousTimestamp) inDSTOverlap = 1;
+        if(inDSTOverlap==1) {
+            if(inDSTOverlap(timeZone, timestamp)) timestamp -= 3600;
+            else inDSTOverlap = 0;
+        }
+        previousTimestamp = timestamp;
+        Triple res = new Triple(timestamp,mtu,power,voltage,null);
         getNextLine();
         return res;
     }
@@ -178,5 +197,11 @@ public class ImportIterator implements Iterator<Triple> {
         }
         if(count==1) return first;
         else return new Triple(timestamp, first.mtu, Integer.valueOf(power/count), useVoltage ? Integer.valueOf(voltage/count) : null, null);
+    }
+    
+    public static boolean inDSTOverlap(TimeZone timeZone, int timestamp) {
+        int offsetNow = timeZone.getOffset(1000L*timestamp);
+        int offsetHourAgo = timeZone.getOffset(1000L*(timestamp-3600));
+        return offsetHourAgo > offsetNow;
     }
 }
