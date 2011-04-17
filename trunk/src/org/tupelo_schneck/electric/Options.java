@@ -215,7 +215,7 @@ public class Options extends org.apache.commons.cli.Options {
         this.addOption(timeZoneOpt);
 
         timeZoneOpt = OptionBuilder.withLongOpt("time-zone")
-        .withDescription("legacy parameter combining serve-time-zone and record-time-zone")
+        .withDescription("convenience parameter combining serve-time-zone and record-time-zone")
         .withArgName("arg")
         .hasArg().create(); 
         this.addOption(timeZoneOpt);
