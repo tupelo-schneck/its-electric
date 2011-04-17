@@ -142,8 +142,8 @@ public class Options extends org.apache.commons.cli.Options {
     public boolean record = true;
     public boolean serve = true;
     
-    public TimeZone timeZone = TimeZone.getDefault();
-    public int timeZoneRawOffset = timeZone.getRawOffset() / 1000;
+    public TimeZone recordTimeZone = TimeZone.getDefault();
+    public TimeZone serveTimeZone = TimeZone.getDefault();
 
     public boolean export = false;
     public int startTime;
@@ -202,10 +202,27 @@ public class Options extends org.apache.commons.cli.Options {
         .hasArg().create(); 
         this.addOption(kvaThreadsOpt);
 
-        Option timeZoneOpt = OptionBuilder.withLongOpt("time-zone")
+        Option timeZoneOpt = OptionBuilder.withLongOpt("record-time-zone")
         .withDescription("time zone for TED Gateway as ISO8601 offset or tz/zoneinfo name (default use time zone of its-electric install)")
         .withArgName("arg")
         .hasArg().create(); 
+        this.addOption(timeZoneOpt);
+
+        timeZoneOpt = OptionBuilder.withLongOpt("serve-time-zone")
+        .withDescription("time zone for data service output as ISO8601 offset or tz/zoneinfo name (default use time zone of its-electric install)")
+        .withArgName("arg")
+        .hasArg().create(); 
+        this.addOption(timeZoneOpt);
+
+        timeZoneOpt = OptionBuilder.withLongOpt("time-zone")
+        .withDescription("legacy parameter combining serve-time-zone and record-time-zone")
+        .withArgName("arg")
+        .hasArg().create(); 
+        this.addOption(timeZoneOpt);
+
+        timeZoneOpt = OptionBuilder.withLongOpt("ted-no-dst")
+        .withDescription("convenience parameter; if set, record-time-zone is set to serve-time-zone with no DST")
+        .hasOptionalArg().withArgName(null).create(); 
         this.addOption(timeZoneOpt);
 
         this.addOption("h","help",false,"print this help text");
@@ -254,24 +271,65 @@ public class Options extends org.apache.commons.cli.Options {
                     record = !optionalBoolean(cmd,"no-record",false);
                 }
                 
+                boolean recordChanged = false;
+                boolean serveChanged = false;
+                
                 if(cmd.hasOption("time-zone")) {
                     String input = cmd.getOptionValue("time-zone");
                     Matcher m = Pattern.compile("([+-]\\d{2}):?+(\\d{2})").matcher(input);
                     if(m.matches()) {
                         input = "GMT" + m.group(1) + m.group(2);
                     }
-                    timeZone = TimeZone.getTimeZone(input);
-                    timeZoneRawOffset = timeZone.getRawOffset() / 1000;
-                    log.info("TED Gateway Time Zone: " + TimeZone.getCanonicalID(timeZone.getID()) + ", " + timeZone.getDisplayName());
+                    recordTimeZone = TimeZone.getTimeZone(input);
+                    serveTimeZone = TimeZone.getTimeZone(input);
+                    recordChanged = true;
+                    serveChanged = true;
+                }
+
+                if(cmd.hasOption("serve-time-zone")) {
+                    String input = cmd.getOptionValue("serve-time-zone");
+                    Matcher m = Pattern.compile("([+-]\\d{2}):?+(\\d{2})").matcher(input);
+                    if(m.matches()) {
+                        input = "GMT" + m.group(1) + m.group(2);
+                    }
+                    serveTimeZone = TimeZone.getTimeZone(input);
+                    serveChanged = true;
+                }
+
+                if(cmd.hasOption("ted-no-dst")) {
+                    if(optionalBoolean(cmd, "ted-no-dst", false)) {
+                        int offset = serveTimeZone.getRawOffset();
+                        boolean negative = offset < 0;
+                        if(negative) offset = -offset;
+                        int hours = offset/3600000;
+                        offset = offset - 3600000 * hours;
+                        int minutes = offset/60000;
+                        String input = "GMT" + (negative ? "-" : "+") + (hours<10 ? "0" : "") + hours + (minutes<10 ? "0" : "") + minutes;
+                        recordTimeZone = TimeZone.getTimeZone(input);
+                        recordChanged = true;
+                    }
+                }
+
+                if(cmd.hasOption("record-time-zone")) {
+                    String input = cmd.getOptionValue("record-time-zone");
+                    Matcher m = Pattern.compile("([+-]\\d{2}):?+(\\d{2})").matcher(input);
+                    if(m.matches()) {
+                        input = "GMT" + m.group(1) + m.group(2);
+                    }
+                    recordTimeZone = TimeZone.getTimeZone(input);
+                    recordChanged = true;
                 }
                 
+                if(recordChanged) log.info("Record Time Zone: " + TimeZone.getCanonicalID(recordTimeZone.getID()) + ", " + recordTimeZone.getDisplayName());
+                if(serveChanged) log.info("Serve Time Zone: " + TimeZone.getCanonicalID(serveTimeZone.getID()) + ", " + serveTimeZone.getDisplayName());
+
                 if(cmd.hasOption("export")) {
                     serve = false;
                     record = false;
                     export = true;
                     String[] vals = cmd.getOptionValues("export");
-                    startTime = timestampFromUserInput(vals[0],false,timeZone);
-                    endTime = timestampFromUserInput(vals[1],true,timeZone);
+                    startTime = timestampFromUserInput(vals[0],false,serveTimeZone);
+                    endTime = timestampFromUserInput(vals[1],true,serveTimeZone);
                     resolution = Integer.parseInt(vals[2]);
                 }
                 if(cmd.hasOption("export-style")) {
