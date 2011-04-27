@@ -293,13 +293,25 @@ public class Servlet extends DataSourceServlet {
         
         /* returns whether any rows were in fact added */
         public boolean addRowsFromIterator(ReadIterator iter) {
+            return addRowsFromIterator(iter,0);
+        }
+        
+        /* returns whether any rows were in fact added */
+        public boolean addRowsFromIterator(ReadIterator iter, int limit) {
             boolean res = false;
             int priorMin = min;
             int priorMax = max;
+            int time = 0;
+            int count = 0;
             try {
                 while(iter.hasNext()) {
                     Triple triple = iter.next();
                     if(triple.timestamp >= priorMin && triple.timestamp <= priorMax) continue;
+                    if(limit > 0) {
+                        if(time!=triple.timestamp) count++;
+                        if(count > limit) break;
+                        time = triple.timestamp;
+                    }
                     addTriple(triple);
                     res = true;
                 }
@@ -309,27 +321,6 @@ public class Servlet extends DataSourceServlet {
             }
             finishRow();
             return res;
-        }
-        
-        public void addOneRowFromIterator(ReadIterator iter) {
-            int priorMin = min;
-            int priorMax = max;
-            int time = 0;
-            try {
-                while(iter.hasNext()) {
-                    Triple triple = iter.next();
-                    if(time == 0) {
-                        time = triple.timestamp;
-                    }
-                    else if (triple.timestamp!=time) break;
-                    if(triple.timestamp >= priorMin && triple.timestamp <= priorMax) break;
-                    addTriple(iter.next());
-                }
-            }
-            finally {
-                iter.close();
-            }
-            finishRow();
         }
         
         public int min() {
@@ -526,7 +517,7 @@ public class Servlet extends DataSourceServlet {
             
             if(params.extraPoints > 0) {
                 if(builder.min() > params.start) {
-                    builder.addOneRowFromIterator(main.secondsDb.read(params.start));
+                    builder.addRowsFromIterator(main.secondsDb.read(params.start),1);
                 }
 
                 if(params.end == max && builder.max()>0) {
@@ -539,19 +530,19 @@ public class Servlet extends DataSourceServlet {
                         log.debug("After resolution " + main.databases[zoomDbIndex].resolution + " max = " + Main.dateString(builder.max()) + " nextTime = " + Main.dateString(nextTime));
                         for(int i = zoomDbIndex - 1; i >= 1; i--) {
                             if(nextTime>=max) break;
-                            if (builder.addRowsFromIterator(main.databases[i].read(nextTime,max))) {
+                            if (builder.addRowsFromIterator(main.databases[i].read(nextTime,max),10)) {
                                 nextTime = builder.max() + main.databases[i].resolution - main.databases[i-1].resolution + 1;
                                 log.debug("After resolution " + main.databases[i].resolution + " max = " + Main.dateString(builder.max()) + " nextTime = " + Main.dateString(nextTime));
                             }
                         }
                         if(builder.max() < max) {
                             nextTime = Math.min(nextTime, max);
-                            builder.addRowsFromIterator(main.databases[0].read(nextTime,max));
+                            builder.addRowsFromIterator(main.databases[0].read(nextTime,max),10);
                         }
                     }
                 }
                 else if(builder.max() < params.end) {
-                    builder.addOneRowFromIterator(main.secondsDb.read(params.end));
+                    builder.addRowsFromIterator(main.secondsDb.read(params.end),1);
                 }
             }
         }
