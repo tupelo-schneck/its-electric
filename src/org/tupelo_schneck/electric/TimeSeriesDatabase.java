@@ -131,7 +131,7 @@ public class TimeSeriesDatabase {
     }
 
     // 4-byte timestamp, 1-byte mtu
-    private DatabaseEntry keyEntry(int timestamp, byte mtu) {
+    private static DatabaseEntry keyEntry(int timestamp, byte mtu) {
         byte[] buf = new byte[5];
         buf[0] = (byte) ((timestamp >> 24) & 0xFF);
         buf[1] = (byte) ((timestamp >> 16) & 0xFF);
@@ -257,39 +257,6 @@ public class TimeSeriesDatabase {
                     }
                 }
             }
-
-            Cursor cursor = openCursor();
-            try {
-                // Delete everything before 2009; got some due to bug in its-electric 1.4
-                DatabaseEntry key = new DatabaseEntry();
-                DatabaseEntry readDataEntry = new DatabaseEntry();
-                key = keyEntry(0,(byte)0);
-                OperationStatus status = cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
-                while(status==OperationStatus.SUCCESS) {
-                    byte[] buf = key.getData();
-                    int timestamp = intOfBytes(buf,0);
-                    if(timestamp<1230000000) {
-                        log.info("Deleting " + Main.dateString(timestamp));
-                        status = cursor.delete();
-                        if(status==OperationStatus.SUCCESS) status = cursor.getNext(key, readDataEntry, LockMode.READ_UNCOMMITTED);
-                    }
-                    else break;
-                }
-
-                // Delete everything after 2030
-//                key = keyEntry(1894000000,(byte)0);
-//                status = cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
-//                while(status==OperationStatus.SUCCESS) {
-//                    byte[] buf = key.getData();
-//                    int timestamp = intOfBytes(buf,0);
-//                    log.info("Deleting " + Main.dateString(timestamp));
-//                    status = cursor.delete();
-//                    if(status==OperationStatus.SUCCESS) status = cursor.getNext(key, readDataEntry, LockMode.READ_UNCOMMITTED);
-//                }
-            }
-            finally {
-                cursor.close();
-            }
         }
         catch(Throwable e) {
             e.printStackTrace();
@@ -360,8 +327,8 @@ public class TimeSeriesDatabase {
         return true;
     }
 
-    public int minimum() throws DatabaseException {
-        ReadIterator iter = read(0);
+    public int minimumAfter(int startTime) throws DatabaseException {
+        ReadIterator iter = read(startTime);
         if(!iter.hasNext()) return 0;
         int res = iter.next().timestamp;
         iter.close();
@@ -513,6 +480,64 @@ public class TimeSeriesDatabase {
             countVolts[mtu] = 0;
             sumVA[mtu] = 0;
             countVA[mtu] = 0;
+        }
+    }
+    
+    class DeleteUntil implements Runnable {
+        private int until;
+        
+        DeleteUntil(int until) {
+            this.until = until;
+        }
+        
+        @Override
+        public void run() {
+            if(!Main.isRunning) return; 
+            try {
+                Cursor cursor = openCursor();
+                try {
+                    DatabaseEntry key = new DatabaseEntry();
+                    DatabaseEntry readDataEntry = new DatabaseEntry();
+                    key = keyEntry(0,(byte)0);
+                    OperationStatus status = cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
+                    int lastPrintedTimestamp = 0;
+                    int interval = 86400;
+                    if(resolution >= 3600) interval = 864000;
+                    while(Main.isRunning && status==OperationStatus.SUCCESS) {
+                        byte[] buf = key.getData();
+                        int timestamp = intOfBytes(buf,0);
+                        if(timestamp<=until) {
+                            //log.info("Deleting " + Main.dateString(timestamp));
+                            status = cursor.delete();
+                            if(lastPrintedTimestamp==0) lastPrintedTimestamp = timestamp;
+                            else if(timestamp / interval > lastPrintedTimestamp / interval) {
+                                lastPrintedTimestamp = timestamp;
+                                log.trace("Deleted until " + Main.dateString(timestamp) + " in database " + resolution);
+                            }
+                            if(status==OperationStatus.SUCCESS) status = cursor.getNext(key, readDataEntry, LockMode.READ_UNCOMMITTED);
+                        }
+                        else break;
+                    }
+
+                    // Delete everything after 2030
+                    //                key = keyEntry(1894000000,(byte)0);
+                    //                status = cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
+                    //                while(status==OperationStatus.SUCCESS) {
+                    //                    byte[] buf = key.getData();
+                    //                    int timestamp = intOfBytes(buf,0);
+                    //                    log.info("Deleting " + Main.dateString(timestamp));
+                    //                    status = cursor.delete();
+                    //                    if(status==OperationStatus.SUCCESS) status = cursor.getNext(key, readDataEntry, LockMode.READ_UNCOMMITTED);
+                    //                }
+                }
+                finally {
+                    cursor.close();
+                }
+            }
+            catch (DatabaseException e) {
+                log.error("Error deleting",e);
+            }
+            log.trace("Finished deleting in database " + resolution);
         }
     }
 }

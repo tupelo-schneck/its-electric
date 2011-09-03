@@ -21,7 +21,10 @@ If not, see <http://www.gnu.org/licenses/>.
 
 package org.tupelo_schneck.electric;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,6 +48,8 @@ import com.sleepycat.je.StatsConfig;
 
 public class Main {
     public static final int LAG = 5;
+    
+    public static final BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
     
     Log log = LogFactory.getLog(Main.class);
     
@@ -77,7 +82,7 @@ public class Main {
     private volatile int[] maxSecondForMTU;
     private Object minMaxLock = new Object();
         
-    private volatile boolean isRunning = true;
+    public static volatile boolean isRunning = true;
         
     private int[] resetTimestamp;
     private volatile boolean reset;
@@ -110,7 +115,7 @@ public class Main {
             log.trace("Database " + i + " opened");
         }
         secondsDb = databases[0];
-        minimum = secondsDb.minimum();
+        minimum = secondsDb.minimumAfter(0);
         maxSecondForMTU = secondsDb.maxForMTU.clone();
         log.trace("Minimum is " + dateString(minimum));
         int[] maxSeconds = maxSecondForMTU.clone();
@@ -122,6 +127,35 @@ public class Main {
             }
         }
         log.trace("Maximum is " + dateString(maximum));
+        
+        if(options.deleteUntil > maximum) {
+            System.err.println("delete-until option would delete everything, ignoring");
+        }
+        else {
+            // Always delete everything before 2009; got some due to bug in its-electric 1.4
+            if(options.deleteUntil < 1230000000) options.deleteUntil = 1230000000;
+            if(options.deleteUntil >= minimum) {
+                boolean doit = true;
+                if(options.deleteUntil > 1230000000) {
+                    System.err.print("Irrevocably delete all data up to " + dateString(options.deleteUntil) + "? (yes/no [no]) ");
+                    try {
+                        String input = Main.reader.readLine();
+                        doit = input!=null && input.toLowerCase().trim().equals("yes");
+                    }
+                    catch(IOException e) {
+                        doit = false;
+                    }
+                }
+                if(doit) {
+                    minimum = secondsDb.minimumAfter(options.deleteUntil);
+                    ExecutorService execServ = Executors.newSingleThreadExecutor();
+                    for(final TimeSeriesDatabase db : databases) {
+                        execServ.execute(db.new DeleteUntil(options.deleteUntil));
+                    }
+                    execServ.shutdown();
+                }
+            }
+        }
     }
 
     private boolean closed;

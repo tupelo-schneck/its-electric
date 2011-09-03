@@ -1,8 +1,6 @@
 package org.tupelo_schneck.electric;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Authenticator;
 import java.net.PasswordAuthentication;
@@ -151,6 +149,8 @@ public class Options extends org.apache.commons.cli.Options {
     public int resolution;
     public boolean exportByMTU = true;
     
+    public int deleteUntil;
+    
     @SuppressWarnings("static-access")
     public Options() {
         Option noServeOpt = OptionBuilder.withLongOpt("no-serve")
@@ -225,6 +225,12 @@ public class Options extends org.apache.commons.cli.Options {
         .hasOptionalArg().withArgName(null).create(); 
         this.addOption(timeZoneOpt);
 
+        Option deleteUntilOpt = OptionBuilder.withLongOpt("delete-until")
+        .withDescription("if present, delete all entries in database up to this time; confirmation required")
+        .withArgName("arg")
+        .hasArg().create(); 
+        this.addOption(deleteUntilOpt);
+        
         this.addOption("h","help",false,"print this help text");
     }
 
@@ -334,6 +340,10 @@ public class Options extends org.apache.commons.cli.Options {
                 }
                 if(cmd.hasOption("export-style")) {
                     exportByMTU = !cmd.getOptionValue("export-style").trim().toLowerCase().equals("timestamp");
+                }
+                
+                if(cmd.hasOption("delete-until")) {
+                    deleteUntil = timestampFromUserInput(cmd.getOptionValue("delete-until"),false,serveTimeZone);
                 }
                 
                 if(cmd.hasOption("p")) {
@@ -452,8 +462,7 @@ public class Options extends org.apache.commons.cli.Options {
         else {
             if(record && username!=null) {
                 System.err.print("Please enter password for username '" + username + "': ");
-                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-                password = reader.readLine();
+                password = Main.reader.readLine();
                 Authenticator.setDefault(new Authenticator() {
                     @Override
                     protected PasswordAuthentication getPasswordAuthentication() {
