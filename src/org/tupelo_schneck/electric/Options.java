@@ -470,6 +470,19 @@ public class Options extends org.apache.commons.cli.Options {
                     }
                 });
             }
+            if(deleteUntil > 1230000000) {
+                boolean doit;
+                System.err.print("Irrevocably delete all data up to " + Main.dateString(deleteUntil) + "? (yes/no [no]) ");
+                try {
+                    String input = Main.reader.readLine();
+                    doit = input!=null && input.toLowerCase().trim().equals("yes");
+                }
+                catch(IOException e) {
+                    doit = false;
+                }
+                if(!doit) deleteUntil = 0;
+            }
+
             return true;
         }
     }
