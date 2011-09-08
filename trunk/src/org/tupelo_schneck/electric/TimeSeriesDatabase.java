@@ -493,20 +493,23 @@ public class TimeSeriesDatabase {
         @Override
         public void run() {
             if(!Main.isRunning) return; 
+            log.trace("Deleting in database " + resolution);
             try {
                 Cursor cursor = openCursor();
                 try {
                     DatabaseEntry key = new DatabaseEntry();
                     DatabaseEntry readDataEntry = new DatabaseEntry();
+                    readDataEntry.setPartial(0,0,true);
                     key = keyEntry(0,(byte)0);
                     OperationStatus status = cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
                     int lastPrintedTimestamp = 0;
                     int interval = 86400;
                     if(resolution >= 3600) interval = 864000;
+                    int timestamp = 0;
                     while(Main.isRunning && status==OperationStatus.SUCCESS) {
                         byte[] buf = key.getData();
-                        int timestamp = intOfBytes(buf,0);
-                        if(timestamp<=until) {
+                        timestamp = intOfBytes(buf,0);
+                        if(timestamp<until) {
                             //log.info("Deleting " + Main.dateString(timestamp));
                             status = cursor.delete();
                             if(lastPrintedTimestamp==0) lastPrintedTimestamp = timestamp;
@@ -517,6 +520,9 @@ public class TimeSeriesDatabase {
                             if(status==OperationStatus.SUCCESS) status = cursor.getNext(key, readDataEntry, LockMode.READ_UNCOMMITTED);
                         }
                         else break;
+                    }
+                    if(status!=OperationStatus.SUCCESS) {
+                        log.error("Unexpected status around " + Main.dateString(timestamp) + " in database " + resolution);
                     }
 
                     // Delete everything after 2030

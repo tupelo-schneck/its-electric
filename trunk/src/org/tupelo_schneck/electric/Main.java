@@ -23,7 +23,6 @@ package org.tupelo_schneck.electric;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -135,25 +134,11 @@ public class Main {
             // Always delete everything before 2009; got some due to bug in its-electric 1.4
             if(options.deleteUntil < 1230000000) options.deleteUntil = 1230000000;
             if(options.deleteUntil >= minimum) {
-                boolean doit = true;
-                if(options.deleteUntil > 1230000000) {
-                    System.err.print("Irrevocably delete all data up to " + dateString(options.deleteUntil) + "? (yes/no [no]) ");
-                    try {
-                        String input = Main.reader.readLine();
-                        doit = input!=null && input.toLowerCase().trim().equals("yes");
-                    }
-                    catch(IOException e) {
-                        doit = false;
-                    }
-                }
-                if(doit) {
-                    minimum = secondsDb.minimumAfter(options.deleteUntil);
-                    ExecutorService execServ = Executors.newSingleThreadExecutor();
-                    for(final TimeSeriesDatabase db : databases) {
-                        execServ.execute(db.new DeleteUntil(options.deleteUntil));
-                    }
-                    execServ.shutdown();
-                }
+                minimum = secondsDb.minimumAfter(options.deleteUntil);
+                deleteTask = Executors.newSingleThreadExecutor();
+                for(final TimeSeriesDatabase db : databases) {
+                    deleteTask.execute(db.new DeleteUntil(options.deleteUntil));
+                }                    
             }
         }
     }
@@ -562,7 +547,8 @@ public class Main {
     private ExecutorService longImportTask;
     private ExecutorService shortImportTask;
     private ExecutorService voltAmpereImportTask;
-    private ExecutorService catchUpTask;    
+    private ExecutorService catchUpTask;
+    private ExecutorService deleteTask;
     
     public void shutdown() {
         if(isRunning) {
@@ -571,10 +557,14 @@ public class Main {
             try { longImportTask.shutdownNow(); } catch (Throwable e) {}
             try { shortImportTask.shutdownNow(); } catch (Throwable e) {}
             try { voltAmpereImportTask.shutdownNow(); } catch (Throwable e) {}
+            try { deleteTask.shutdownNow(); } catch (Throwable e) {}
             try { catchUpTask.shutdownNow(); } catch (Throwable e) {}
+            //try { if(importInterleaver!=null) importInterleaver.countDown(); } catch (Throwable e) {}
             try { longImportTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
             try { shortImportTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
             try { voltAmpereImportTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
+            try { deleteTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
+            //try { synchronized(newDataLock) { newDataLock.notifyAll(); } } catch (Throwable e) {}
             try { catchUpTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
             try { server.stop(); } catch (Throwable e) {}
             try { close(); } catch (Throwable e) {}
@@ -658,14 +648,16 @@ public class Main {
             File dbFile = new File(main.options.dbFilename);
             dbFile.mkdirs();
             main.openEnvironment(dbFile);
-            main.openDatabases();
-
+            
             Runtime.getRuntime().addShutdownHook(new Thread(){
                 @Override
                 public void run() {
                     main.shutdown();
                 }
             });
+
+            main.openDatabases();
+
 
             if(main.options.serve) { 
                 main.server = Servlet.setupServlet(main);
