@@ -543,7 +543,7 @@ public class TimeSeriesDatabase {
             catch (DatabaseException e) {
                 log.error("Error deleting",e);
             }
-            log.trace("Finished deleting in database " + resolution);
+            if(Main.isRunning) log.trace("Finished deleting in database " + resolution);
         }
     }
 }
