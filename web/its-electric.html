@@ -24,7 +24,7 @@ If not, see <http://www.gnu.org/licenses/>.
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
     <script type="text/javascript" src="its-electric.js"></script>
     <script type="text/javascript">
-        var itsElectric = new ItsElectric('timeline','busy','resolutionId','toolbarId');
+        var itsElectric = new ItsElectric('timeline','busy','resolutionId','toolbarId','columnCheckboxesId');
     </script>
     <script type="text/javascript" src="its-electric-config.js"></script>
     <title>it's electric</title>
@@ -198,7 +198,12 @@ If not, see <http://www.gnu.org/licenses/>.
         </div>
         <div id="timeline" style="width:1000px;height:600px;position:absolute;top:0px;z-index:0"></div>        
     </div>
-    <div style="margin-top:6px;font-size:11px;font-family:sans-serif" id="toolbarId"></div>
+    <div style="margin-top:6px;font-size:11px;font-family:sans-serif">
+      <span id="toolbarId"></span>
+      &nbsp;
+      &nbsp;
+      <span id="columnCheckboxesId"></span>
+    </div>
     <p style="font-size:11px;font-family:sans-serif;margin-top:6px">
         <a href="its-electric-history.html">History</a> | <a href="its-electric-full-screen.html">Fullscreen timeline view</a>
     </p>

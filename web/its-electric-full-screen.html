@@ -24,7 +24,7 @@ If not, see <http://www.gnu.org/licenses/>.
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
     <script type="text/javascript" src="its-electric.js"></script>
     <script type="text/javascript">
-        var itsElectric = new ItsElectric('timeline','busy','resolutionId','toolbarId');
+        var itsElectric = new ItsElectric('timeline','busy','resolutionId','toolbarId','columnCheckboxesId');
         itsElectric.options.displayZoomButtons = false;
         itsElectric.options.legendPosition = 'newRow';
         itsElectric.options.displayRangeSelector = false;
@@ -207,6 +207,9 @@ If not, see <http://www.gnu.org/licenses/>.
                     <br/>
                     <a id="showRangeSelector" href="#" onclick="show('hideRangeSelector');hide('showRangeSelector');itsElectric.options.displayRangeSelector=true;itsElectric.redraw();return false;">Show range selector</a>
                     <a id="hideRangeSelector" style="display:none" href="#" onclick="hide('hideRangeSelector');show('showRangeSelector');itsElectric.options.displayRangeSelector=false;itsElectric.redraw();return false;">Hide range selector</a>
+                    &nbsp;
+                    &nbsp;
+                    <span id="columnCheckboxesId"></span>
                     <br/>
                     
                     <b>Resolution:</b>
