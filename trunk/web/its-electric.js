@@ -19,12 +19,13 @@ along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
 */
 
-function ItsElectric(timelineId,busyId,resolutionId,toolbarId) {
+function ItsElectric(timelineId,busyId,resolutionId,toolbarId,columnCheckboxesId) {
     this.queryPath = "/power";
     this.timelineId = timelineId;
     this.busyId = busyId;
     this.resolutionId = resolutionId;
     this.toolbarId = toolbarId;
+    this.columnCheckboxesId = columnCheckboxesId;
 
     this.div1 = null;
     this.div2 = null;
@@ -36,7 +37,8 @@ function ItsElectric(timelineId,busyId,resolutionId,toolbarId) {
     this.resolutionString = "";
     this.minimum = 0;
     this.maximum = 0;
-
+    this.columnChecked = [];
+    
     this.realTimeUpdater = null;
 }
 
@@ -62,13 +64,11 @@ ItsElectric.prototype.init = function() {
     this.div1.style.width = '100%';
     this.div1.style.height = '100%';
     this.div1.style.zIndex = '1';
-    this.div1.style.visibility = 'visible';
     this.div2 = document.createElement('div');
     this.div2.style.position = 'absolute';
     this.div2.style.width = '100%';
     this.div2.style.height = '100%';
     this.div2.style.zIndex = '0';
-    this.div2.style.visibility = 'hidden';
     document.getElementById(this.timelineId).appendChild(div0);
     div0.appendChild(this.div1);
     div0.appendChild(this.div2);
@@ -193,6 +193,29 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
 
     // INSERT DATA-ADJUSTING CODE
 
+    if(this.columnCheckboxesId!=null) {
+        var obj = document.getElementById(this.columnCheckboxesId);
+        while(obj.firstChild) obj.removeChild(obj.firstChild);
+        var setOnclick = function(self,index,node) {
+    	    node.onclick=function(){self.showOrHideColumn(index,node.checked);};
+        };
+        for(var i = 1; i < numCols; i++) {
+    	    if(obj.firstChild) {
+    		    obj.appendChild(document.createTextNode("\u00a0"));
+        	}
+        	var node = document.createElement("input");
+    	    node.type = 'checkbox';
+        	if(this.columnChecked.length<i || this.columnChecked[i-1]) {
+        		node.checked = true;
+    	    }
+        	var self = this;
+        	var index = i - 1;
+    	    setOnclick(self,index,node);
+        	obj.appendChild(node);
+        	obj.appendChild(document.createTextNode(" " + data.getColumnLabel(i)));
+        }
+    }
+    
     if(this.delta && numRows >= 2) {
         var prev = [];
         for(var i = 1; i < numCols; i++) {
@@ -309,7 +332,16 @@ ItsElectric.prototype.redraw = function() {
     if(this.busyId) document.getElementById(this.busyId).style.display="";
 
     this.div2.style.visibility = 'visible'; // workaround to odd behavior in Windows, see http://code.google.com/p/google-visualization-api-issues/issues/detail?id=319
+    
     this.annotatedtimeline2.draw(this.data, this.options);
+    var hiddenColumns = [];
+    for(var i = 0; i < this.columnChecked.length; i++) {
+    	if(!this.columnChecked[i]) hiddenColumns.push(i);
+    }
+    if(hiddenColumns.length>0) {
+	    this.annotatedtimeline2.hideDataColumns([]);
+	    this.annotatedtimeline2.hideDataColumns(hiddenColumns);
+	}
 
     if(this.noFlashEvents) this.readyHandler(null);
 };
@@ -336,9 +368,7 @@ ItsElectric.prototype.readyHandler = function(e) {
     temp = this.div2;
     this.div2 = this.div1;
     this.div1 = temp;
-    this.div1.style.visibility = 'visible';
     this.div1.style.zIndex = '1';
-    this.div2.style.visibility = 'hidden';
     this.div2.style.zIndex = '0';
 
     this.ready = true;
@@ -399,6 +429,31 @@ ItsElectric.prototype.scrollToPresent = function() {
     var self = this;
     setTimeout(function(){self.requery();},500);
 };
+
+ItsElectric.prototype.showOrHideColumn = function(col,show) {
+	if(show && this.columnChecked.length<=col) return;
+	this.columnChecked[col] = show;
+	if(!this.ready || !this.data) return;
+	var self = this;
+	setTimeout(function(){
+		if(show) {
+			var tohide = [];
+			for(var i = 0; i < col && i < self.columnChecked.length; i++) {
+				if(false!==self.columnChecked[i]) tohide.push(i);
+			}
+			if(tohide.length>0) {
+				self.annotatedtimeline.hideDataColumns([]);
+				self.annotatedtimeline.hideDataColumns(tohide);
+			}
+			tohide.push(col);
+			self.annotatedtimeline.showDataColumns(tohide.reverse());
+		}
+		else {
+			self.annotatedtimeline.hideDataColumns([]);
+			self.annotatedtimeline.hideDataColumns(col);
+		}
+	},1);
+}
 
 ItsElectric.prototype.setResolution = function(t) {
     if(!this.ready) return;
