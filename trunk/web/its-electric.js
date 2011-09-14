@@ -40,6 +40,8 @@ function ItsElectric(timelineId,busyId,resolutionId,toolbarId,columnCheckboxesId
     this.columnChecked = [];
     
     this.realTimeUpdater = null;
+    this.querying = false;
+    this.pendingQuery = false;
 }
 
 ItsElectric.prototype.configure = function(config) {
@@ -166,8 +168,15 @@ ItsElectric.prototype.toolbarQueryURL = function() {
 }
 
 ItsElectric.prototype.requery = function() {
+    if(this.querying) {
+        this.pendingQuery = true;
+        return;
+    }
+    this.querying = true;
+    this.pendingQuery = false;
     var query = new google.visualization.Query(this.queryURL());
     if(this.busyId) document.getElementById(this.busyId).style.display="";
+    query.setTimeout(120);
     var self = this;
     query.send(function(response) {self.handleQueryResponse(response);});
 };
@@ -182,6 +191,8 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     if (response.isError()) {
         if(this.busyId) document.getElementById(this.busyId).style.display="none";
         alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+        this.querying = false;
+        if(this.pendingQuery) setTimeout(this.requery,1);
         return;
     }
     
@@ -192,7 +203,7 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     var numCols = data.getNumberOfColumns();
 
     // INSERT DATA-ADJUSTING CODE
-
+    
     if(this.columnCheckboxesId!=null) {
         var obj = document.getElementById(this.columnCheckboxesId);
         while(obj.firstChild) obj.removeChild(obj.firstChild);
@@ -215,7 +226,7 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
         	obj.appendChild(document.createTextNode(" " + data.getColumnLabel(i)));
         }
     }
-    
+
     if(this.delta && numRows >= 2) {
         var prev = [];
         for(var i = 1; i < numCols; i++) {
@@ -331,8 +342,6 @@ ItsElectric.prototype.redraw = function() {
     if(!this.data) return;
     if(this.busyId) document.getElementById(this.busyId).style.display="";
 
-    this.div2.style.visibility = 'visible'; // workaround to odd behavior in Windows, see http://code.google.com/p/google-visualization-api-issues/issues/detail?id=319
-    
     this.annotatedtimeline2.draw(this.data, this.options);
     var hiddenColumns = [];
     for(var i = 0; i < this.columnChecked.length; i++) {
@@ -372,10 +381,12 @@ ItsElectric.prototype.readyHandler = function(e) {
     this.div2.style.zIndex = '0';
 
     this.ready = true;
+    this.querying = false;
     if(this.firstTime && !this.noFlashEvents) {
         this.firstTime = false;
         this.zoom(this.initialZoom);
     }
+    if(this.pendingQuery) setTimeout(this.requery,1);
 };
 
 ItsElectric.prototype.rangeChangeHandler = function(e) {
