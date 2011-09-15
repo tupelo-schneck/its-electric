@@ -27,6 +27,7 @@ function ItsElectric(timelineId,busyId,resolutionId,toolbarId,columnCheckboxesId
     this.toolbarId = toolbarId;
     this.columnCheckboxesId = columnCheckboxesId;
 
+    this.div0 = null;
     this.div1 = null;
     this.div2 = null;
 
@@ -57,25 +58,26 @@ ItsElectric.prototype.configure = function(config) {
 }
 
 ItsElectric.prototype.init = function() {
-    var div0 = document.createElement('div');
-    div0.style.position = 'relative';
-    div0.style.width = '100%';
-    div0.style.height = '100%';
+    this.div0 = document.createElement('div');
+    this.div0.style.position = 'relative';
+    this.div0.style.width = '100%';
+    this.div0.style.height = '100%';
+    document.getElementById(this.timelineId).appendChild(this.div0);
+
     this.div1 = document.createElement('div');
     this.div1.style.position = 'absolute';
     this.div1.style.width = '100%';
     this.div1.style.height = '100%';
-    this.div1.style.zIndex = '1';
+    this.div1.style.zIndex = 1;
+    this.div0.appendChild(this.div1);
+    this.annotatedtimeline = new google.visualization.AnnotatedTimeLine(this.div1);
+
     this.div2 = document.createElement('div');
     this.div2.style.position = 'absolute';
     this.div2.style.width = '100%';
     this.div2.style.height = '100%';
-    this.div2.style.zIndex = '0';
-    document.getElementById(this.timelineId).appendChild(div0);
-    div0.appendChild(this.div1);
-    div0.appendChild(this.div2);
-
-    this.annotatedtimeline = new google.visualization.AnnotatedTimeLine(this.div1);
+    this.div2.style.zIndex = 0;
+    this.div0.appendChild(this.div2);
     this.annotatedtimeline2 = new google.visualization.AnnotatedTimeLine(this.div2);
 
     var self = this;
@@ -138,7 +140,7 @@ ItsElectric.prototype.queryURL = function() {
         extendChar = '&';
     }
     return queryURL;
-}
+};
 
 ItsElectric.prototype.toolbarQueryURL = function() {
     var queryURL = this.datasourceURL;
@@ -165,7 +167,7 @@ ItsElectric.prototype.toolbarQueryURL = function() {
         extendChar = '&';
     }
     return queryURL;
-}
+};
 
 ItsElectric.prototype.requery = function() {
     if(this.querying) {
@@ -181,18 +183,32 @@ ItsElectric.prototype.requery = function() {
     query.send(function(response) {self.handleQueryResponse(response);});
 };
 
+ItsElectric.prototype.requeryAfter = function(n) {
+	var self = this;
+	setTimeout(function(){self.requery();},n);
+};
+
 ItsElectric.prototype.options = {displayAnnotations: false, 
                                  displayExactValues: true,
                                  allValuesSuffix: 'W',
                                  dateFormat: 'yyyy-MM-dd HH:mm:ss',
                                  wmode: 'opaque'};
 
+ItsElectric.prototype.setRealTimeUpdater = function() {
+    var self = this;
+    this.realTimeUpdater = setInterval(function(){self.realTimeUpdate();},Math.max(this.currentResolution*1000,this.realTimeUpdateInterval));
+}
+
 ItsElectric.prototype.handleQueryResponse = function(response) {
+    var setOnclick = function(self,index,node) {
+	    node.onclick=function(){self.showOrHideColumn(index,node.checked);};
+    };
+    
     if (response.isError()) {
         if(this.busyId) document.getElementById(this.busyId).style.display="none";
         alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
         this.querying = false;
-        if(this.pendingQuery) setTimeout(this.requery,1);
+        if(this.pendingQuery) this.requeryAfter(1);
         return;
     }
     
@@ -207,9 +223,6 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     if(this.columnCheckboxesId!=null) {
         var obj = document.getElementById(this.columnCheckboxesId);
         while(obj.firstChild) obj.removeChild(obj.firstChild);
-        var setOnclick = function(self,index,node) {
-    	    node.onclick=function(){self.showOrHideColumn(index,node.checked);};
-        };
         for(var i = 1; i < numCols; i++) {
     	    if(obj.firstChild) {
     		    obj.appendChild(document.createTextNode("\u00a0"));
@@ -219,8 +232,8 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
         	if(this.columnChecked.length<i || this.columnChecked[i-1]) {
         		node.checked = true;
     	    }
-        	var self = this;
         	var index = i - 1;
+        	var self = this;
     	    setOnclick(self,index,node);
         	obj.appendChild(node);
         	obj.appendChild(document.createTextNode(" " + data.getColumnLabel(i)));
@@ -311,8 +324,7 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
         if(this.realTimeUpdater) {
            clearInterval(this.realTimeUpdater);
         }
-        var self = this;
-        this.realTimeUpdater = setInterval(function(){self.realTimeUpdate();},Math.max(this.currentResolution*1000,this.realTimeUpdateInterval));
+        this.setRealTimeUpdater();
     }
     
     this.data = data;
@@ -342,14 +354,17 @@ ItsElectric.prototype.redraw = function() {
     if(!this.data) return;
     if(this.busyId) document.getElementById(this.busyId).style.display="";
 
-    this.annotatedtimeline2.draw(this.data, this.options);
+    var temp = this.annotatedtimeline;
+    this.annotatedtimeline = this.annotatedtimeline2;
+    this.annotatedtimeline2 = temp;
+    this.annotatedtimeline.draw(this.data, this.options);
     var hiddenColumns = [];
     for(var i = 0; i < this.columnChecked.length; i++) {
     	if(!this.columnChecked[i]) hiddenColumns.push(i);
     }
     if(hiddenColumns.length>0) {
-	    this.annotatedtimeline2.hideDataColumns([]);
-	    this.annotatedtimeline2.hideDataColumns(hiddenColumns);
+	    this.annotatedtimeline.hideDataColumns([]);
+	    this.annotatedtimeline.hideDataColumns(hiddenColumns);
 	}
 
     if(this.noFlashEvents) this.readyHandler(null);
@@ -371,22 +386,55 @@ ItsElectric.prototype.readyHandler = function(e) {
         obj.appendChild(document.createTextNode(this.resolutionString));
     }
 
-    var temp = this.annotatedtimeline2;
-    this.annotatedtimeline2 = this.annotatedtimeline;
-    this.annotatedtimeline = temp;
-    temp = this.div2;
+    var temp = this.div2;
     this.div2 = this.div1;
     this.div1 = temp;
-    this.div1.style.zIndex = '1';
-    this.div2.style.zIndex = '0';
+    this.div1.style.zIndex = 1;
+    this.div2.style.zIndex = 0;
 
+//    var start = this.minimum;
+//    var end = this.maximum;
+//    if(this.range) {
+//    	start = this.range.start.getTime();
+//    	end = this.range.end.getTime();
+//    }
+//    var numRows = this.data.getNumberOfRows();
+//    var numCols = this.data.getNumberOfColumns();
+//    var watts = [];
+//	for(var j = 1; j < numCols; j++) {
+//		watts[j] = 0;
+//		var lastWatts = 0;
+//		var lastTime = start;
+//		var first = false;
+//		var second = false;
+//		for(var i = 0; i < numRows; i++) {
+//			var thisTime = this.data.getValue(i,0).getTime();
+//			if(thisTime < start || thisTime > end) continue;
+//			if(this)
+//			if(this.data.getValue(i,j)!=null) {
+//				if(first) second = true;
+//				first = true;
+//				if(lastWatts!=0) {
+//					if(this.resolutionString=="1h" && j==4) alert("" + lastWatts + " " + thisTime + " " + lastTime);
+//	    			watts[j] += lastWatts * ((thisTime - lastTime)/1000);
+//				}
+//	    		lastWatts = this.data.getValue(i,j);
+//			}
+//    		if(second) {
+//    			lastTime = thisTime;
+//    		}
+//    	}
+//		watts[j] = (watts[j]/3600000).toFixed(3);
+//		if(j==4) alert("" + j + " "  + watts[j]);
+//    }
+    
     this.ready = true;
     this.querying = false;
     if(this.firstTime && !this.noFlashEvents) {
         this.firstTime = false;
         this.zoom(this.initialZoom);
     }
-    if(this.pendingQuery) setTimeout(this.requery,1);
+    if(this.pendingQuery) this.requeryAfter(1);
 };
 
 ItsElectric.prototype.rangeChangeHandler = function(e) {
@@ -421,8 +469,7 @@ ItsElectric.prototype.zoom = function(t) {
         newEnd.setTime(this.range.end.getTime());
     }
     this.annotatedtimeline.setVisibleChartRange(newStart,newEnd);
-    var self = this;
-    setTimeout(function(){self.requery();},500);
+    this.requeryAfter(500);
 };
 
 ItsElectric.prototype.scrollToPresent = function() {
@@ -437,14 +484,13 @@ ItsElectric.prototype.scrollToPresent = function() {
     newStart.setTime(this.maximum - size);
     this.range.start.setTime(this.maximum - size);
     this.annotatedtimeline.setVisibleChartRange(newStart,newEnd);
-    var self = this;
-    setTimeout(function(){self.requery();},500);
+    this.requeryAfter(500);
 };
 
 ItsElectric.prototype.showOrHideColumn = function(col,show) {
 	if(show && this.columnChecked.length<=col) return;
 	this.columnChecked[col] = show;
-	if(!this.ready || !this.data) return;
+	if(!this.ready) return;
 	var self = this;
 	setTimeout(function(){
 		if(show) {
@@ -464,7 +510,7 @@ ItsElectric.prototype.showOrHideColumn = function(col,show) {
 			self.annotatedtimeline.hideDataColumns(col);
 		}
 	},1);
-}
+};
 
 ItsElectric.prototype.setResolution = function(t) {
     if(!this.ready) return;
