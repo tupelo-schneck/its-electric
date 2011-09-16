@@ -40,7 +40,6 @@ function ItsElectric(timelineId,busyId,resolutionId,toolbarId,columnCheckboxesId
     this.maximum = 0;
     this.columnChecked = [];
     
-    this.realTimeUpdater = null;
     this.querying = false;
     this.pendingQuery = false;
 }
@@ -194,16 +193,11 @@ ItsElectric.prototype.options = {displayAnnotations: false,
                                  dateFormat: 'yyyy-MM-dd HH:mm:ss',
                                  wmode: 'opaque'};
 
-ItsElectric.prototype.setRealTimeUpdater = function() {
-    var self = this;
-    this.realTimeUpdater = setInterval(function(){self.realTimeUpdate();},Math.max(this.currentResolution*1000,this.realTimeUpdateInterval));
-}
+ItsElectric.setOnclick = function(self,index,node) {
+    node.onclick=function(){self.showOrHideColumn(index,node.checked);};
+};
 
 ItsElectric.prototype.handleQueryResponse = function(response) {
-    var setOnclick = function(self,index,node) {
-	    node.onclick=function(){self.showOrHideColumn(index,node.checked);};
-    };
-    
     if (response.isError()) {
         if(this.busyId) document.getElementById(this.busyId).style.display="none";
         alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
@@ -234,7 +228,7 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     	    }
         	var index = i - 1;
         	var self = this;
-    	    setOnclick(self,index,node);
+    	    ItsElectric.setOnclick(self,index,node);
         	obj.appendChild(node);
         	obj.appendChild(document.createTextNode(" " + data.getColumnLabel(i)));
         }
@@ -263,7 +257,7 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
 
     // Make this.maximum be the time at which client's local time is the same clock time as the server's maximum
     this.timeZoneOffset = parseInt(data.getTableProperty('timeZoneOffset'));
-    this.maximum = parseInt(data.getTableProperty('maximum'))*1000;
+    this.maximum = parseInt(data.getTableProperty('maximum'))*1000; // + this.timeZoneOffset*1000;
     if(isNaN(this.maximum) || this.maximum==0) {
         this.maximum = rangeEnd;
     }
@@ -316,16 +310,6 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     this.resolutionString = data.getTableProperty('resolutionString');
     
     this.currentResolution = parseInt(data.getTableProperty('resolution'));
-    if(this.realTimeUpdateInterval) {
-        if(isNaN(this.currentResolution)) {
-           if(this.resolution!=null) this.currentResolution = this.resolution;
-           else this.currentResolution = 1;     
-        }
-        if(this.realTimeUpdater) {
-           clearInterval(this.realTimeUpdater);
-        }
-        this.setRealTimeUpdater();
-    }
     
     this.data = data;
     this.redraw();
@@ -435,7 +419,19 @@ ItsElectric.prototype.readyHandler = function(e) {
         this.zoom(this.initialZoom);
     }
     if(this.pendingQuery) this.requeryAfter(1);
+    else if(this.realTimeUpdateInterval) {
+        if(isNaN(this.currentResolution)) {
+           if(this.resolution!=null) this.currentResolution = this.resolution;
+           else this.currentResolution = 1;     
+        }
+        this.setRealTimeUpdater();
+    }
 };
+
+ItsElectric.prototype.setRealTimeUpdater = function() {
+    var self = this;
+    setTimeout(function(){self.realTimeUpdate();},Math.max(this.currentResolution*1000,this.realTimeUpdateInterval));
+}
 
 ItsElectric.prototype.rangeChangeHandler = function(e) {
     var oldRange = 0;
