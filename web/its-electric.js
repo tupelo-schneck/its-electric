@@ -175,11 +175,12 @@ ItsElectric.prototype.requery = function() {
     }
     this.querying = true;
     this.pendingQuery = false;
-    var query = new google.visualization.Query(this.queryURL());
+    this.query = new google.visualization.Query(this.queryURL());
     if(this.busyId) document.getElementById(this.busyId).style.display="";
-    query.setTimeout(120);
+    this.query.setTimeout(120);
     var self = this;
-    query.send(function(response) {self.handleQueryResponse(response);});
+    this.query.send(function(response) {self.handleQueryResponse(response);});
+    delete this.query;
 };
 
 ItsElectric.prototype.requeryAfter = function(n) {
