@@ -1,9 +1,6 @@
 Remember I have a TODO file
 
 blocking actions on ATL while not ready?
-fix up allowRedraw with larger resolutions...
-problem if atl2 has allowRedraw:true and atl1 is realtime
-
 
 
 Check multi-browser

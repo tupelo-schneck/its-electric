@@ -70,6 +70,7 @@ ItsElectric.prototype.init = function() {
     this.div1.style.zIndex = 1;
     this.div0.appendChild(this.div1);
     this.annotatedtimeline = new google.visualization.AnnotatedTimeLine(this.div1);
+    this.allowRedraw = false;
 
     this.div2 = document.createElement('div');
     this.div2.style.position = 'absolute';
@@ -78,7 +79,8 @@ ItsElectric.prototype.init = function() {
     this.div2.style.zIndex = 0;
     this.div0.appendChild(this.div2);
     this.annotatedtimeline2 = new google.visualization.AnnotatedTimeLine(this.div2);
-
+    this.allowRedraw2 = false;
+    
     var self = this;
     google.visualization.events.addListener(this.annotatedtimeline,
                                             'ready',
@@ -105,7 +107,7 @@ ItsElectric.prototype.queryURL = function() {
       queryURL = queryURL + this.queryPath;
     } 
     var extendChar = '?';
-    if(!this.isRedraw || !this.canRedraw) { 
+    if(!this.isRedraw || !this.allowRedraw) { 
         queryURL = queryURL + extendChar + 'extraPoints=2';
         extendChar = '&';
     }
@@ -115,7 +117,7 @@ ItsElectric.prototype.queryURL = function() {
     }
     if(this.ready) {
         if(this.range && (this.range.start.getTime() != this.minimum || this.range.end.getTime() != this.maximum)) {
-            if(this.isRedraw && this.canRedraw) {
+            if(this.isRedraw && this.allowRedraw) {
                 var start = Math.floor(this.range.start.getTime()/1000);
                 var end = Math.floor(this.range.end.getTime()/1000);
                 queryURL = queryURL + extendChar +
@@ -305,6 +307,8 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     this.resolutionString = data.getTableProperty('resolutionString');
     this.currentResolution = parseInt(data.getTableProperty('resolution'));
     
+    if(this.currentResolution > 60 && !this.allowRedraw) this.isRedraw = false;
+    
     this.data = data;
     this.redraw();
     if(this.toolbarId) {
@@ -332,21 +336,27 @@ ItsElectric.prototype.redraw = function() {
     if(!this.data) return;
     if(this.busyId) document.getElementById(this.busyId).style.display="";
 
+    this.canRedraw = this.allowRedraw;
     if(!this.isRedraw || !this.canRedraw) {
         var temp = this.annotatedtimeline;
         this.annotatedtimeline = this.annotatedtimeline2;
         this.annotatedtimeline2 = temp;
+        temp = this.allowRedraw;
+        this.allowRedraw = this.allowRedraw2;
+        this.allowRedraw2 = temp;
     }
-    if(!this.isRedraw) {
+    if(this.isRedraw && (this.canRedraw || !this.allowRedraw)) {
+        this.options.allowRedraw = true;
+        this.allowRedraw = true;
+    }
+    else {
+        this.allowRedraw = false;
         var startDate = new Date();
         var endDate = new Date();
         setDateAdjusted(startDate, this.range.start.getTime());
         setDateAdjusted(endDate, this.range.end.getTime());
         this.options.zoomStartTime = startDate;
         this.options.zoomEndTime = endDate;
-    }
-    else {
-        this.options.allowRedraw = true;
     }
     
     this.annotatedtimeline.draw(this.data, this.options);
@@ -369,7 +379,7 @@ ItsElectric.prototype.redraw = function() {
         this.annotatedtimeline.hideDataColumns([]);
     }
     
-    if(this.isRedraw) {
+    if(this.allowRedraw) {
         this.annotatedtimeline.setVisibleChartRange(new Date(this.range.start.getTime()),new Date(this.range.end.getTime()));
     }
 
@@ -385,7 +395,7 @@ function setDateAdjusted(date,time) {
 }
 
 ItsElectric.prototype.readyHandler = function(e) {
-    if(this.isRedraw) {
+    if(this.allowRedraw) {
         var self = this;
         setTimeout(function(){self.realReadyHandler(e);},500);
     }
@@ -409,7 +419,6 @@ ItsElectric.prototype.realReadyHandler = function(e) {
         this.div1.style.zIndex = 1;
         this.div2.style.zIndex = 0;
     }
-    this.canRedraw = this.isRedraw;
     this.isRedraw = false;
     
 //    var start = this.minimum;
