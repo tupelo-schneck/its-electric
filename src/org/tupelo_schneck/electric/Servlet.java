@@ -445,23 +445,21 @@ public class Servlet extends DataSourceServlet {
         int max = main.maximum;
         
         QueryParameters params = new QueryParameters(req,min,max);
-
+        
         log.trace("Begin query for " + params.queryType);
         
         // Create a data table,
         DataTableBuilder builder = new DataTableBuilder(params);
-        // These return the timestamp where UTC clock shows what would be local time
-        builder.setCustomProperty(MINIMUM_STRING, String.valueOf(min + main.options.serveTimeZone.getOffset(1000L*min)/1000));
-        builder.setCustomProperty(MAXIMUM_STRING, String.valueOf(max + main.options.serveTimeZone.getOffset(1000L*max)/1000));
 
         // Fill the data table.
+        boolean possibleRedraw = false; 
         try {
             TimeSeriesDatabase zoomDb = zoomDb(params);
             TimeSeriesDatabase rangeDb = rangeDb(params);
             if(rangeDb.resolution < zoomDb.resolution) rangeDb = zoomDb; 
-
-            boolean possibleRedraw = params.end == max && zoomDb.resolution <= 60;
             
+            possibleRedraw = params.end == max && zoomDb.resolution <= 60;
+
             String resolutionString = zoomDb.resolutionString;
             if(params.resolution<0) resolutionString += " (auto)";
             else if(params.resolution<zoomDb.resolution) resolutionString += " (capped)";
@@ -553,6 +551,11 @@ public class Servlet extends DataSourceServlet {
             throw new DataSourceException(ReasonType.INTERNAL_ERROR, e.getMessage());
         }
 
+        // These return the timestamp where UTC clock shows what would be local time
+        builder.setCustomProperty(MINIMUM_STRING, String.valueOf(min + main.options.serveTimeZone.getOffset(1000L*min)/1000));
+        int sentMax = possibleRedraw ? builder.max() : max;
+        builder.setCustomProperty(MAXIMUM_STRING, String.valueOf(sentMax + main.options.serveTimeZone.getOffset(1000L*sentMax)/1000));
+        
         // send time zone info 
         // used to say "so that client can adjust (Annotated Time Line bug)" but that was wrong;
         // the bug is about the client's time zone.
