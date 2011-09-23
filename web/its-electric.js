@@ -105,7 +105,7 @@ ItsElectric.prototype.queryURL = function() {
       queryURL = queryURL + this.queryPath;
     } 
     var extendChar = '?';
-    if(true) { 
+    if(!this.isRedraw || !this.canRedraw) { 
         queryURL = queryURL + extendChar + 'extraPoints=2';
         extendChar = '&';
     }
@@ -115,21 +115,31 @@ ItsElectric.prototype.queryURL = function() {
     }
     if(this.ready) {
         if(this.range && (this.range.start.getTime() != this.minimum || this.range.end.getTime() != this.maximum)) {
-            var start = Math.floor(this.range.start.getTime()/1000);
-            var end = Math.floor(this.range.end.getTime()/1000);
-            queryURL = queryURL + extendChar +
-                       'start='+ start +
-                       '&end=' + end;
-            extendChar = '&';
-            if(this.partialRange) {
-                var rangeStart = start - (end - start);
-                rangeStart = Math.floor(Math.max(this.minimum/1000, rangeStart));
-                var rangeEnd = end + (end - start);
-                rangeEnd = Math.floor(Math.min(this.maximum/1000, rangeEnd));
+            if(this.isRedraw && this.canRedraw) {
+                var start = Math.floor(this.range.start.getTime()/1000);
+                var end = Math.floor(this.range.end.getTime()/1000);
                 queryURL = queryURL + extendChar +
-                        'rangeStart=' + rangeStart +
-                        '&rangeEnd=' + rangeEnd;
+                           'rangeStart='+ start +
+                           '&rangeEnd=' + end;
                 extendChar = '&';
+            }
+            else {
+                var start = Math.floor(this.range.start.getTime()/1000);
+                var end = Math.floor(this.range.end.getTime()/1000);
+                queryURL = queryURL + extendChar +
+                           'start='+ start +
+                           '&end=' + end;
+                extendChar = '&';
+                if(this.partialRange) {
+                    var rangeStart = start - (end - start);
+                    rangeStart = Math.floor(Math.max(this.minimum/1000, rangeStart));
+                    var rangeEnd = end + (end - start);
+                    rangeEnd = Math.floor(Math.min(this.maximum/1000, rangeEnd));
+                    queryURL = queryURL + extendChar +
+                            'rangeStart=' + rangeStart +
+                            '&rangeEnd=' + rangeEnd;
+                    extendChar = '&';
+                }
             }
         }
     }
@@ -184,8 +194,8 @@ ItsElectric.prototype.requery = function() {
 };
 
 ItsElectric.prototype.requeryAfter = function(n) {
-	var self = this;
-	setTimeout(function(){self.requery();},n);
+    var self = this;
+    setTimeout(function(){self.requery();},n);
 };
 
 ItsElectric.prototype.options = {displayAnnotations: false, 
@@ -219,19 +229,19 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
         var obj = document.getElementById(this.columnCheckboxesId);
         while(obj.firstChild) obj.removeChild(obj.firstChild);
         for(var i = 1; i < numCols; i++) {
-    	    if(obj.firstChild) {
-    		    obj.appendChild(document.createTextNode("\u00a0"));
-        	}
-        	var node = document.createElement("input");
-    	    node.type = 'checkbox';
-        	if(this.columnChecked.length<i || this.columnChecked[i-1]) {
-        		node.checked = true;
-    	    }
-        	var index = i - 1;
-        	var self = this;
-    	    ItsElectric.setOnclick(self,index,node);
-        	obj.appendChild(node);
-        	obj.appendChild(document.createTextNode(" " + data.getColumnLabel(i)));
+            if(obj.firstChild) {
+                obj.appendChild(document.createTextNode("\u00a0"));
+            }
+            var node = document.createElement("input");
+            node.type = 'checkbox';
+            if(this.columnChecked.length<i || this.columnChecked[i-1]!=false) {
+                node.checked = true;
+            }
+            var index = i - 1;
+            var self = this;
+            ItsElectric.setOnclick(self,index,node);
+            obj.appendChild(node);
+            obj.appendChild(document.createTextNode(" " + data.getColumnLabel(i)));
         }
     }
 
@@ -283,33 +293,16 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
             data.setValue(newRow,i,numRows==0 ? 0 : data.getValue(newRow-1,i));
         }
     }
-
-    var startDate = new Date();
-    var endDate = new Date();
-    var start;
-    var end;
-    if(this.range) {
-        if(realTimeNeedsAdjust) {
-            start = this.maximum - (this.range.end.getTime() - this.range.start.getTime());
-            end = this.maximum;
-            this.range.start.setTime(start);
-            this.range.end.setTime(end);
-        }
-        else {
-            start = this.range.start.getTime();
-            end = this.range.end.getTime();
-        }
-    }
-    else {
-        start = this.minimum;
-        end = this.maximum;
-    }
-    setDateAdjusted(startDate,start);
-    setDateAdjusted(endDate,end);
-    this.options.zoomStartTime = startDate;
-    this.options.zoomEndTime = endDate;
-    this.resolutionString = data.getTableProperty('resolutionString');
     
+    if(this.range==null) this.range = { start: new Date(this.minimum), end: new Date(this.maximum) };
+
+    if(realTimeNeedsAdjust) {
+        var start = this.maximum - (this.range.end.getTime() - this.range.start.getTime());
+        var end = this.maximum;
+        this.range.start.setTime(start);
+        this.range.end.setTime(end);
+    }
+    this.resolutionString = data.getTableProperty('resolutionString');
     this.currentResolution = parseInt(data.getTableProperty('resolution'));
     
     this.data = data;
@@ -339,18 +332,46 @@ ItsElectric.prototype.redraw = function() {
     if(!this.data) return;
     if(this.busyId) document.getElementById(this.busyId).style.display="";
 
-    var temp = this.annotatedtimeline;
-    this.annotatedtimeline = this.annotatedtimeline2;
-    this.annotatedtimeline2 = temp;
-    this.annotatedtimeline.draw(this.data, this.options);
-    var hiddenColumns = [];
-    for(var i = 0; i < this.columnChecked.length; i++) {
-    	if(!this.columnChecked[i]) hiddenColumns.push(i);
+    if(!this.isRedraw || !this.canRedraw) {
+        var temp = this.annotatedtimeline;
+        this.annotatedtimeline = this.annotatedtimeline2;
+        this.annotatedtimeline2 = temp;
     }
-    if(hiddenColumns.length>0) {
-	    this.annotatedtimeline.hideDataColumns([]);
-	    this.annotatedtimeline.hideDataColumns(hiddenColumns);
-	}
+    if(!this.isRedraw) {
+        var startDate = new Date();
+        var endDate = new Date();
+        setDateAdjusted(startDate, this.range.start.getTime());
+        setDateAdjusted(endDate, this.range.end.getTime());
+        this.options.zoomStartTime = startDate;
+        this.options.zoomEndTime = endDate;
+    }
+    else {
+        this.options.allowRedraw = true;
+    }
+    
+    this.annotatedtimeline.draw(this.data, this.options);
+    
+    delete this.options.zoomStartTime;
+    delete this.options.zoomEndTime;
+    delete this.options.allowRedraw;
+    
+    if(!this.isRedraw || !this.canRedraw) {
+        var hiddenColumns = [];
+        for(var i = 0; i < this.columnChecked.length; i++) {
+            if(this.columnChecked[i]==false) hiddenColumns.push(i);
+        }
+        if(hiddenColumns.length>0) {
+            this.annotatedtimeline.hideDataColumns([]);
+            this.annotatedtimeline.hideDataColumns(hiddenColumns);
+        }
+    }
+    else {
+        this.annotatedtimeline.hideDataColumns([]);
+    }
+    
+    if(this.isRedraw) {
+        this.annotatedtimeline.setVisibleChartRange(new Date(this.range.start.getTime()),new Date(this.range.end.getTime()));
+    }
 
     if(this.noFlashEvents) this.readyHandler(null);
 };
@@ -364,6 +385,16 @@ function setDateAdjusted(date,time) {
 }
 
 ItsElectric.prototype.readyHandler = function(e) {
+    if(this.isRedraw) {
+        var self = this;
+        setTimeout(function(){self.realReadyHandler(e);},500);
+    }
+    else {
+        this.realReadyHandler(e);
+    }
+};
+
+ItsElectric.prototype.realReadyHandler = function(e) {
     if(this.busyId) document.getElementById(this.busyId).style.display="none";
     if(this.resolutionId) {
         var obj = document.getElementById(this.resolutionId);
@@ -371,46 +402,50 @@ ItsElectric.prototype.readyHandler = function(e) {
         obj.appendChild(document.createTextNode(this.resolutionString));
     }
 
-    var temp = this.div2;
-    this.div2 = this.div1;
-    this.div1 = temp;
-    this.div1.style.zIndex = 1;
-    this.div2.style.zIndex = 0;
-
+    if(!this.isRedraw || !this.canRedraw) {
+        var temp = this.div2;
+        this.div2 = this.div1;
+        this.div1 = temp;
+        this.div1.style.zIndex = 1;
+        this.div2.style.zIndex = 0;
+    }
+    this.canRedraw = this.isRedraw;
+    this.isRedraw = false;
+    
 //    var start = this.minimum;
 //    var end = this.maximum;
 //    if(this.range) {
-//    	start = this.range.start.getTime();
-//    	end = this.range.end.getTime();
+//        start = this.range.start.getTime();
+//        end = this.range.end.getTime();
 //    }
 //    var numRows = this.data.getNumberOfRows();
 //    var numCols = this.data.getNumberOfColumns();
 //    var watts = [];
-//	for(var j = 1; j < numCols; j++) {
-//		watts[j] = 0;
-//		var lastWatts = 0;
-//		var lastTime = start;
-//		var first = false;
-//		var second = false;
-//		for(var i = 0; i < numRows; i++) {
-//			var thisTime = this.data.getValue(i,0).getTime();
-//			if(thisTime < start || thisTime > end) continue;
-//			if(this)
-//			if(this.data.getValue(i,j)!=null) {
-//				if(first) second = true;
-//				first = true;
-//				if(lastWatts!=0) {
-//					if(this.resolutionString=="1h" && j==4) alert("" + lastWatts + " " + thisTime + " " + lastTime);
-//	    			watts[j] += lastWatts * ((thisTime - lastTime)/1000);
-//				}
-//	    		lastWatts = this.data.getValue(i,j);
-//			}
-//    		if(second) {
-//    			lastTime = thisTime;
-//    		}
-//    	}
-//		watts[j] = (watts[j]/3600000).toFixed(3);
-//		if(j==4) alert("" + j + " "  + watts[j]);
+//    for(var j = 1; j < numCols; j++) {
+//        watts[j] = 0;
+//        var lastWatts = 0;
+//        var lastTime = start;
+//        var first = false;
+//        var second = false;
+//        for(var i = 0; i < numRows; i++) {
+//            var thisTime = this.data.getValue(i,0).getTime();
+//            if(thisTime < start || thisTime > end) continue;
+//            if(this)
+//            if(this.data.getValue(i,j)!=null) {
+//                if(first) second = true;
+//                first = true;
+//                if(lastWatts!=0) {
+//                    if(this.resolutionString=="1h" && j==4) alert("" + lastWatts + " " + thisTime + " " + lastTime);
+//                    watts[j] += lastWatts * ((thisTime - lastTime)/1000);
+//                }
+//                lastWatts = this.data.getValue(i,j);
+//            }
+//            if(second) {
+//                lastTime = thisTime;
+//            }
+//        }
+//        watts[j] = (watts[j]/3600000).toFixed(3);
+//        if(j==4) alert("" + j + " "  + watts[j]);
 //    }
     
     this.ready = true;
@@ -449,7 +484,8 @@ ItsElectric.prototype.rangeChangeHandler = function(e) {
 ItsElectric.prototype.zoom = function(t) {
     if(this.noFlashEvents) alert("This won't work with noFlashEvents=true.");
     if(!this.ready || this.noFlashEvents) return;
-    this.range = this.annotatedtimeline.getVisibleChartRange();
+    var range = this.annotatedtimeline.getVisibleChartRange();
+    if(range) this.range = range;
     this.resolution = null;
     var newStart = new Date();
     var newEnd = new Date();
@@ -472,7 +508,8 @@ ItsElectric.prototype.zoom = function(t) {
 ItsElectric.prototype.scrollToPresent = function() {
     if(this.noFlashEvents) alert("This won't work with noFlashEvents=true.");
     if(!this.ready || this.noFlashEvents) return;
-    this.range = this.annotatedtimeline.getVisibleChartRange();
+    var range = this.annotatedtimeline.getVisibleChartRange();
+    if(range) this.range = range;
     var size = this.range.end.getTime() - this.range.start.getTime();
     var newStart = new Date();
     var newEnd = new Date();
@@ -485,28 +522,28 @@ ItsElectric.prototype.scrollToPresent = function() {
 };
 
 ItsElectric.prototype.showOrHideColumn = function(col,show) {
-	if(show && this.columnChecked.length<=col) return;
-	this.columnChecked[col] = show;
-	if(!this.ready) return;
-	var self = this;
-	setTimeout(function(){
-		if(show) {
-			var tohide = [];
-			for(var i = 0; i < col && i < self.columnChecked.length; i++) {
-				if(false!==self.columnChecked[i]) tohide.push(i);
-			}
-			if(tohide.length>0) {
-				self.annotatedtimeline.hideDataColumns([]);
-				self.annotatedtimeline.hideDataColumns(tohide);
-			}
-			tohide.push(col);
-			self.annotatedtimeline.showDataColumns(tohide.reverse());
-		}
-		else {
-			self.annotatedtimeline.hideDataColumns([]);
-			self.annotatedtimeline.hideDataColumns(col);
-		}
-	},1);
+    if(show && this.columnChecked.length<=col) return;
+    this.columnChecked[col] = show;
+    if(!this.ready) return;
+    var self = this;
+    setTimeout(function(){
+        if(show) {
+            var tohide = [];
+            for(var i = 0; i < col && i < self.columnChecked.length; i++) {
+                if(false!==self.columnChecked[i]) tohide.push(i);
+            }
+            if(tohide.length>0) {
+                self.annotatedtimeline.hideDataColumns([]);
+                self.annotatedtimeline.hideDataColumns(tohide);
+            }
+            tohide.push(col);
+            self.annotatedtimeline.showDataColumns(tohide.reverse());
+        }
+        else {
+            self.annotatedtimeline.hideDataColumns([]);
+            self.annotatedtimeline.hideDataColumns(col);
+        }
+    },1);
 };
 
 ItsElectric.prototype.setResolution = function(t) {
@@ -518,5 +555,8 @@ ItsElectric.prototype.setResolution = function(t) {
 ItsElectric.prototype.realTimeUpdate = function() {
     if(!this.ready || !this.realTime || this.noFlashEvents) return;
     if(this.range && this.range.end.getTime() < this.maximum) return;
-    this.requery();
+    if(!this.querying) {
+        this.isRedraw = true;
+        this.requery();
+    }
 };

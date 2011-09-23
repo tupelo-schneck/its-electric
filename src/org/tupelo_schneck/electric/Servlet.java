@@ -460,6 +460,8 @@ public class Servlet extends DataSourceServlet {
             TimeSeriesDatabase rangeDb = rangeDb(params);
             if(rangeDb.resolution < zoomDb.resolution) rangeDb = zoomDb; 
 
+            boolean possibleRedraw = params.end == max && zoomDb.resolution <= 60;
+            
             String resolutionString = zoomDb.resolutionString;
             if(params.resolution<0) resolutionString += " (auto)";
             else if(params.resolution<zoomDb.resolution) resolutionString += " (capped)";
@@ -520,7 +522,7 @@ public class Servlet extends DataSourceServlet {
                     builder.addRowsFromIterator(main.secondsDb.read(params.start),1);
                 }
 
-                if(params.end == max && builder.max()>0) {
+                if(params.end == max && builder.max()>0 && !possibleRedraw) {
                     int zoomDbIndex;
                     for(zoomDbIndex = Main.numDurations - 1; zoomDbIndex >= 0; zoomDbIndex--) {
                         if(main.databases[zoomDbIndex].resolution == zoomDb.resolution) break;
