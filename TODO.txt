@@ -1,6 +1,7 @@
 Remember I have a TODO file
 
 blocking actions on ATL while not ready?
+ATL allowRedraw:true remembers old size if size of containing div changes
 
 
 Check multi-browser
