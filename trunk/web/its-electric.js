@@ -42,6 +42,7 @@ function ItsElectric(timelineId,busyId,resolutionId,toolbarId,columnCheckboxesId
     
     this.querying = false;
     this.pendingQuery = false;
+    this.pendingDraw = false;
 }
 
 ItsElectric.prototype.configure = function(config) {
@@ -200,6 +201,11 @@ ItsElectric.prototype.requeryAfter = function(n) {
     setTimeout(function(){self.requery();},n);
 };
 
+ItsElectric.prototype.redrawAfter = function(n) {
+    var self = this;
+    setTimeout(function(){self.redraw();},n);
+};
+
 ItsElectric.prototype.options = {displayAnnotations: false, 
                                  displayExactValues: true,
                                  allValuesSuffix: 'W',
@@ -216,6 +222,7 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
         alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
         this.querying = false;
         if(this.pendingQuery) this.requeryAfter(1);
+        else if(this.pendingDraw) this.redrawAfter(1);
         return;
     }
     
@@ -310,6 +317,7 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     if(this.currentResolution > 60 && !this.allowRedraw) this.isRedraw = false;
     
     this.data = data;
+    this.querying = false; // fake reentrant lock
     this.redraw();
     if(this.toolbarId) {
         var toolbarElement = document.getElementById(this.toolbarId);
@@ -333,6 +341,13 @@ ItsElectric.prototype.renameChartOptions = function(element) {
 };
 
 ItsElectric.prototype.redraw = function() {
+    if(this.querying) {
+        this.pendingDraw = true;
+        return;
+    }
+    this.querying = true;
+    this.pendingDraw = false;
+
     if(!this.data) return;
     if(this.busyId) document.getElementById(this.busyId).style.display="";
 
@@ -464,6 +479,7 @@ ItsElectric.prototype.realReadyHandler = function(e) {
         this.zoom(this.initialZoom);
     }
     if(this.pendingQuery) this.requeryAfter(1);
+    else if(this.pendingDraw) this.redrawAfter(1);
     else if(this.realTimeUpdateInterval) {
         if(isNaN(this.currentResolution)) {
            if(this.resolution!=null) this.currentResolution = this.resolution;
