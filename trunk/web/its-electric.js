@@ -43,6 +43,8 @@ function ItsElectric(timelineId,busyId,resolutionId,toolbarId,columnCheckboxesId
     this.querying = false;
     this.pendingQuery = false;
     this.pendingDraw = false;
+    
+    this.lastTouched = new Date().getTime();
 }
 
 ItsElectric.prototype.configure = function(config) {
@@ -325,22 +327,25 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
         google.visualization.drawToolbar(toolbarElement,
          [{type: 'html', datasource: toolbarQueryURL},
           {type: 'csv', datasource: toolbarQueryURL}])
-        this.renameChartOptions(toolbarElement);
+        ItsElectric.renameChartOptions(toolbarElement);
     }
 };
 
-ItsElectric.prototype.renameChartOptions = function(element) {
+ItsElectric.renameChartOptions = function(element) {
     if(element.nodeType==3 && element.nodeValue=="Chart options") {
         element.nodeValue = "Export data";
         return true;
     }
     for(var i = 0; i < element.childNodes.length; i++) {
-        if (this.renameChartOptions(element.childNodes[i])) return true;
+        if (ItsElectric.renameChartOptions(element.childNodes[i])) return true;
     }
     return false;
 };
 
 ItsElectric.prototype.redraw = function() {
+    if(!this.isRedraw) {
+        this.lastTouched = new Date().getTime();
+    }
     if(this.querying) {
         this.pendingDraw = true;
         return;
@@ -368,8 +373,8 @@ ItsElectric.prototype.redraw = function() {
         this.allowRedraw = false;
         var startDate = new Date();
         var endDate = new Date();
-        setDateAdjusted(startDate, this.range.start.getTime());
-        setDateAdjusted(endDate, this.range.end.getTime());
+        ItsElectric.setDateAdjusted(startDate, this.range.start.getTime());
+        ItsElectric.setDateAdjusted(endDate, this.range.end.getTime());
         this.options.zoomStartTime = startDate;
         this.options.zoomEndTime = endDate;
     }
@@ -402,12 +407,12 @@ ItsElectric.prototype.redraw = function() {
 };
 
 // this horribleness makes things behave close to daylight saving time change
-function setDateAdjusted(date,time) {
+ItsElectric.setDateAdjusted = function(date,time) {
     date.setTime(time);
     date.setTime(time - date.getTimezoneOffset()*60000);
     // yes, again, in case we are close to DST
     date.setTime(time - date.getTimezoneOffset()*60000);
-}
+};
 
 ItsElectric.prototype.readyHandler = function(e) {
     if(this.allowRedraw) {
@@ -580,6 +585,13 @@ ItsElectric.prototype.setResolution = function(t) {
 ItsElectric.prototype.realTimeUpdate = function() {
     if(!this.ready || !this.realTime || this.noFlashEvents) return;
     if(this.range && this.range.end.getTime() < this.maximum) return;
+    if(this.range && this.range.end.getTime() - this.range.start.getTime() == this.initialZoom*1000) {
+        var now = new Date().getTime();
+        if(now - this.lastTouched > 60*60*1000) {
+            history.go(0);
+            return;
+        }
+    }
     if(!this.querying) {
         this.isRedraw = true;
         this.requery();
