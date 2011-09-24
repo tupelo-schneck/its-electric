@@ -39,11 +39,11 @@ function ItsElectric(timelineId,busyId,resolutionId,toolbarId,columnCheckboxesId
     this.minimum = 0;
     this.maximum = 0;
     this.columnChecked = [];
-    
+
     this.querying = false;
     this.pendingQuery = false;
     this.pendingDraw = false;
-    
+
     this.lastTouched = new Date().getTime();
 }
 
@@ -83,7 +83,7 @@ ItsElectric.prototype.init = function() {
     this.div0.appendChild(this.div2);
     this.annotatedtimeline2 = new google.visualization.AnnotatedTimeLine(this.div2);
     this.allowRedraw2 = false;
-    
+
     var self = this;
     google.visualization.events.addListener(this.annotatedtimeline,
                                             'ready',
@@ -108,9 +108,9 @@ ItsElectric.prototype.queryURL = function() {
     }
     else {
       queryURL = queryURL + this.queryPath;
-    } 
+    }
     var extendChar = '?';
-    if(!this.isRedraw || !this.allowRedraw) { 
+    if(!this.isRedraw || !this.allowRedraw) {
         queryURL = queryURL + extendChar + 'extraPoints=2';
         extendChar = '&';
     }
@@ -148,6 +148,16 @@ ItsElectric.prototype.queryURL = function() {
             }
         }
     }
+    else if(this.firstTime) {
+    	queryURL = queryURL + extendChar +
+            'start='+ 100000000 +
+            '&end=' + (100000000 + this.initialZoom) +
+            '&realTimeAdjust=yes';
+        extendChar = '&';
+        this.firstTime = false;
+        this.range = { start:new Date(100000000*1000), end:new Date((100000000+this.initialZoom)*1000) };
+        this.maximum = (100000000 + this.initialZoom)*1000;
+    }
     if(this.resolution) {
         queryURL = queryURL + extendChar +
                    'resolution=' + this.resolution;
@@ -163,7 +173,7 @@ ItsElectric.prototype.toolbarQueryURL = function() {
     }
     else {
       queryURL = queryURL + this.queryPath;
-    } 
+    }
     var extendChar = '?';
     if(this.ready) {
         if(this.range && (this.range.start.getTime() != this.minimum || this.range.end.getTime() != this.maximum)) {
@@ -208,7 +218,7 @@ ItsElectric.prototype.redrawAfter = function(n) {
     setTimeout(function(){self.redraw();},n);
 };
 
-ItsElectric.prototype.options = {displayAnnotations: false, 
+ItsElectric.prototype.options = {displayAnnotations: false,
                                  displayExactValues: true,
                                  allValuesSuffix: 'W',
                                  dateFormat: 'yyyy-MM-dd HH:mm:ss',
@@ -227,7 +237,7 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
         else if(this.pendingDraw) this.redrawAfter(1);
         return;
     }
-    
+
     var realTimeNeedsAdjust = this.realTime && this.range && this.range.end.getTime() == this.maximum;
 
     var data = response.getDataTable();
@@ -235,7 +245,7 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     var numCols = data.getNumberOfColumns();
 
     // INSERT DATA-ADJUSTING CODE
-    
+
     if(this.columnCheckboxesId!=null) {
         var obj = document.getElementById(this.columnCheckboxesId);
         while(obj.firstChild) obj.removeChild(obj.firstChild);
@@ -304,7 +314,7 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
             data.setValue(newRow,i,numRows==0 ? 0 : data.getValue(newRow-1,i));
         }
     }
-    
+
     if(this.range==null) this.range = { start: new Date(this.minimum), end: new Date(this.maximum) };
 
     if(realTimeNeedsAdjust) {
@@ -315,9 +325,9 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     }
     this.resolutionString = data.getTableProperty('resolutionString');
     this.currentResolution = parseInt(data.getTableProperty('resolution'));
-    
+
     if(this.currentResolution > 60 && !this.allowRedraw) this.isRedraw = false;
-    
+
     this.data = data;
     this.querying = false; // fake reentrant lock
     this.redraw();
@@ -378,13 +388,13 @@ ItsElectric.prototype.redraw = function() {
         this.options.zoomStartTime = startDate;
         this.options.zoomEndTime = endDate;
     }
-    
+
     this.annotatedtimeline.draw(this.data, this.options);
-    
+
     delete this.options.zoomStartTime;
     delete this.options.zoomEndTime;
     delete this.options.allowRedraw;
-    
+
     if(!this.isRedraw || !this.canRedraw) {
         var hiddenColumns = [];
         for(var i = 0; i < this.columnChecked.length; i++) {
@@ -398,7 +408,7 @@ ItsElectric.prototype.redraw = function() {
     else {
         this.annotatedtimeline.hideDataColumns([]);
     }
-    
+
     if(this.allowRedraw) {
         this.annotatedtimeline.setVisibleChartRange(new Date(this.range.start.getTime()),new Date(this.range.end.getTime()));
     }
@@ -440,7 +450,7 @@ ItsElectric.prototype.realReadyHandler = function(e) {
         this.div2.style.zIndex = 0;
     }
     this.isRedraw = false;
-    
+
 //    var start = this.minimum;
 //    var end = this.maximum;
 //    if(this.range) {
@@ -476,7 +486,7 @@ ItsElectric.prototype.realReadyHandler = function(e) {
 //        watts[j] = (watts[j]/3600000).toFixed(3);
 //        if(j==4) alert("" + j + " "  + watts[j]);
 //    }
-    
+
     this.ready = true;
     this.querying = false;
     if(this.firstTime && !this.noFlashEvents) {
@@ -488,7 +498,7 @@ ItsElectric.prototype.realReadyHandler = function(e) {
     else if(this.realTimeUpdateInterval) {
         if(isNaN(this.currentResolution)) {
            if(this.resolution!=null) this.currentResolution = this.resolution;
-           else this.currentResolution = 1;     
+           else this.currentResolution = 1;
         }
         this.setRealTimeUpdater();
     }
@@ -523,7 +533,7 @@ ItsElectric.prototype.zoom = function(t) {
         newStart.setTime(this.minimum);
         this.range.start.setTime(this.minimum);
         newEnd.setTime(this.maximum);
-        this.range.end.setTime(this.maximum);        
+        this.range.end.setTime(this.maximum);
     }
     else {
         newStart.setTime(this.range.end.getTime() - t*1000);
