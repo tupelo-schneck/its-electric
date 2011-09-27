@@ -391,6 +391,18 @@ ItsElectric.prototype.redraw = function() {
 
     this.annotatedtimeline.draw(this.data, this.options);
 
+    if(this.noFlashEvents) this.readyHandler(null);
+};
+
+// this horribleness makes things behave close to daylight saving time change
+ItsElectric.setDateAdjusted = function(date,time) {
+    date.setTime(time);
+    date.setTime(time - date.getTimezoneOffset()*60000);
+    // yes, again, in case we are close to DST
+    date.setTime(time - date.getTimezoneOffset()*60000);
+};
+
+ItsElectric.prototype.readyHandler = function(e) {
     delete this.options.zoomStartTime;
     delete this.options.zoomEndTime;
     delete this.options.allowRedraw;
@@ -413,19 +425,7 @@ ItsElectric.prototype.redraw = function() {
         this.annotatedtimeline.setVisibleChartRange(new Date(this.range.start.getTime()),new Date(this.range.end.getTime()));
     }
 
-    if(this.noFlashEvents) this.readyHandler(null);
-};
-
-// this horribleness makes things behave close to daylight saving time change
-ItsElectric.setDateAdjusted = function(date,time) {
-    date.setTime(time);
-    date.setTime(time - date.getTimezoneOffset()*60000);
-    // yes, again, in case we are close to DST
-    date.setTime(time - date.getTimezoneOffset()*60000);
-};
-
-ItsElectric.prototype.readyHandler = function(e) {
-    if(this.allowRedraw) {
+    if(this.allowRedraw && (!this.isRedraw || !this.canRedraw)) {
         var self = this;
         setTimeout(function(){self.realReadyHandler(e);},500);
     }
@@ -435,7 +435,6 @@ ItsElectric.prototype.readyHandler = function(e) {
 };
 
 ItsElectric.prototype.realReadyHandler = function(e) {
-    if(this.busyId) document.getElementById(this.busyId).style.display="none";
     if(this.resolutionId) {
         var obj = document.getElementById(this.resolutionId);
         while(obj.firstChild) obj.removeChild(obj.firstChild);
@@ -486,6 +485,8 @@ ItsElectric.prototype.realReadyHandler = function(e) {
 //        watts[j] = (watts[j]/3600000).toFixed(3);
 //        if(j==4) alert("" + j + " "  + watts[j]);
 //    }
+
+    if(this.busyId) document.getElementById(this.busyId).style.display="none";
 
     this.ready = true;
     this.querying = false;
