@@ -1,6 +1,17 @@
 "it's electric" news
 http://tupelo-schneck.org/its-electric
 
+Version 1.8 2011-09-26
+======================
+Datasource server: better handling of DST.
+Datasource server: options --record-time-zone, --serve-time-zone, and --ted-no-dst to allow different time zones for TED Gateway and for the served data.
+(Can use this to turn off DST at the TED Gateway in order to have foolproof handling of DST.)
+Datasource server: allow to have either only short (few seconds) imports and only long (full hour) imports.
+Datasource server: --delete-until option to delete parts of the database.
+Web page client: checkboxes to hide/show individual MTUs.
+Web page client: try to eliminate memory leaks so a display can be left running indefinitely.  
+(In general this requires setting the initialZoom configuration so the page can reload hourly.)
+
 Version 1.7.4 2011-02-11
 ========================
 Bug fix to "--export-style timestamp".
