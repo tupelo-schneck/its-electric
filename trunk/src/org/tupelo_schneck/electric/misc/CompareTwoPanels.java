@@ -30,11 +30,6 @@ import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
 import com.ibm.icu.util.GregorianCalendar;
 
 /**
- * I wrote this utility for when I had 2 MTUs hooked up to 2 water heaters.
- * It measures the total use, and attempts to measure standby loss 
- * by creating a histogram of how much energy is used in each cycle (presumably 
- * a standby-loss-only cycle is the lowest commonly observed cycle).
- * 
  * This is an example of writing a separate program to use the its-electric database.
  */
 public class CompareTwoPanels {
