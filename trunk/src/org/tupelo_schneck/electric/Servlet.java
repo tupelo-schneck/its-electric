@@ -541,7 +541,7 @@ public class Servlet extends DataSourceServlet {
                         }
                     }
                 }
-                else if(builder.max() < params.end) {
+                else if(builder.max() < params.end && !possibleRedraw) {
                     builder.addRowsFromIterator(main.secondsDb.read(params.end),1);
                 }
             }
