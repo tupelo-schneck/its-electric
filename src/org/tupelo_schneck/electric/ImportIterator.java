@@ -34,18 +34,18 @@ import com.ibm.icu.util.GregorianCalendar;
 import com.ibm.icu.util.TimeZone;
 
 public class ImportIterator implements Iterator<Triple> {
-    final TimeZone timeZone;
-    InputStream urlStream;
-    GregorianCalendar cal;
-    Base64 base64 = new Base64();
-    byte mtu;
-    byte[] line = new byte[25];
-    volatile boolean closed;
-    Triple pushback;
-    int inDSTOverlap; // 0 not, 1 first part, 2 second part
-    int previousTimestamp;
-    
-    final boolean useVoltage;
+    private final TimeZone timeZone;
+    private final boolean useVoltage;
+    private final byte mtu;
+    private final InputStream urlStream;
+    private final Base64 base64 = new Base64();
+    private final GregorianCalendar cal;
+
+    private byte[] line = new byte[25];
+    private volatile boolean closed;
+    private Triple pushback;
+    private int inDSTOverlap; // 0 not, 1 first part, 2 second part
+    private int previousTimestamp;
 
     public ImportIterator(final Options options, final byte mtu, final int count) throws IOException {
         this.timeZone = options.recordTimeZone;
@@ -76,7 +76,7 @@ public class ImportIterator implements Iterator<Triple> {
             }
             pushback = next;
             
-            if(inDSTOverlap(timeZone, first.timestamp)) {
+            if(Util.inDSTOverlap(timeZone, first.timestamp)) {
                 int now = (int)(System.currentTimeMillis()/1000);
                 if(now < first.timestamp - 1800) inDSTOverlap = 1;
                 else inDSTOverlap = 2;
@@ -90,7 +90,7 @@ public class ImportIterator implements Iterator<Triple> {
         if(urlStream!=null) try { urlStream.close(); } catch (Exception e) { e.printStackTrace(); }
     }
 
-    public void getNextLine() {
+    private void getNextLine() {
         try {
             int n = 0;
             while(n < 25) {
@@ -119,7 +119,7 @@ public class ImportIterator implements Iterator<Triple> {
     }
 
     /** The opposite of TimeSeriesDatabase.intOfBytes */
-    public static int intOfBytes(byte[] buf, int offset) {
+    private static int intOfBytes(byte[] buf, int offset) {
         int res = 0;    
         res |= ((buf[offset+3] & 0xFF) << 24); 
         res |= ((buf[offset+2] & 0xFF) << 16); 
@@ -128,7 +128,7 @@ public class ImportIterator implements Iterator<Triple> {
         return res;
     }
 
-    public static int unsignedShortOfBytes(byte[] buf, int offset) {
+    private static int unsignedShortOfBytes(byte[] buf, int offset) {
         int res = 0;    
         res |= ((buf[offset+1] & 0xFF) << 8); 
         res |= ((buf[offset+0] & 0xFF));
@@ -151,7 +151,7 @@ public class ImportIterator implements Iterator<Triple> {
         int timestamp = (int)(cal.getTimeInMillis() / 1000);
         if(inDSTOverlap==2 && timestamp > previousTimestamp) inDSTOverlap = 1;
         if(inDSTOverlap==1) {
-            if(inDSTOverlap(timeZone, timestamp)) timestamp -= 3600;
+            if(Util.inDSTOverlap(timeZone, timestamp)) timestamp -= 3600;
             else inDSTOverlap = 0;
         }
         previousTimestamp = timestamp;
@@ -197,11 +197,5 @@ public class ImportIterator implements Iterator<Triple> {
         }
         if(count==1) return first;
         else return new Triple(timestamp, first.mtu, Integer.valueOf(power/count), useVoltage ? Integer.valueOf(voltage/count) : null, null);
-    }
-    
-    public static boolean inDSTOverlap(TimeZone timeZone, int timestamp) {
-        int offsetNow = timeZone.getOffset(1000L*timestamp);
-        int offsetHourAgo = timeZone.getOffset(1000L*(timestamp-3600));
-        return offsetHourAgo > offsetNow;
     }
 }
