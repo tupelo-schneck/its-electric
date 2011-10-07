@@ -37,18 +37,20 @@ import com.sleepycat.je.LockMode;
 import com.sleepycat.je.OperationStatus;
 
 public class TimeSeriesDatabase {
-    Log log = LogFactory.getLog(TimeSeriesDatabase.class);
+    private final Log log = LogFactory.getLog(TimeSeriesDatabase.class);
 
     // Max number of seconds to look back, from latest data for any MTU, for data for a particular MTU.
     // We assume that any data for that MTU prior to that time is properly caught-up at all resolutions.
     private static final int MAX_RECHECK = 86400 + 7200;
 
-    private Database database;
+    private static DatabaseConfig ALLOW_CREATE_CONFIG = null; // set once
 
-    private int timeZoneRawOffset;
+    private Database database; // set once
+
+    private final int timeZoneRawOffset;
     
-    public int resolution;
-    public String resolutionString;
+    public final int resolution;
+    public final String resolutionString;
 
     // start[mtu] is the next entry that the database will get;
     // sum[mtu] and count[mtu] are accumulated to find the average.
@@ -62,8 +64,6 @@ public class TimeSeriesDatabase {
     private int[] countVolts;
     private int[] countVA;
     public int[] maxForMTU;
-
-    public static DatabaseConfig ALLOW_CREATE_CONFIG = null;
 
     //  public static long longOfBytes(byte[] buf, int offset) {
     //          long res = 0;
@@ -160,7 +160,7 @@ public class TimeSeriesDatabase {
     
     // if size<=4, all is power (and empty means 0)
     // otherwise first byte denotes sizes of power, voltage, kva (as base 5); for each, empty means missing
-    private DatabaseEntry dataEntry(Integer powerObj,Integer voltageObj,Integer voltAmperesObj) {
+    private static DatabaseEntry dataEntry(Integer powerObj,Integer voltageObj,Integer voltAmperesObj) {
         int power = powerObj==null?0:powerObj.intValue();
         int voltage = voltageObj==null?0:voltageObj.intValue();
         int voltAmperes = voltAmperesObj==null?0:voltAmperesObj.intValue();
@@ -192,10 +192,10 @@ public class TimeSeriesDatabase {
     }
 
     public TimeSeriesDatabase(Main main, Environment environment, String name, byte mtus, int resolution, String resolutionString, int timeZoneRawOffset) {
+        this.timeZoneRawOffset = timeZoneRawOffset;
+        this.resolution = resolution;
+        this.resolutionString = resolutionString;
         try {
-            this.timeZoneRawOffset = timeZoneRawOffset;
-            this.resolution = resolution;
-            this.resolutionString = resolutionString;
             synchronized(TimeSeriesDatabase.class) {
                 if(ALLOW_CREATE_CONFIG==null) {
                     DatabaseConfig config = new DatabaseConfig();
@@ -215,13 +215,6 @@ public class TimeSeriesDatabase {
             countVolts = new int[mtus];
             countVA = new int[mtus];
 
-//            Arrays.fill(sum, 0);
-//            Arrays.fill(sumVolts, 0);
-//            Arrays.fill(sumVA, 0);
-//            Arrays.fill(count, 0);
-//            Arrays.fill(countVolts, 0);
-//            Arrays.fill(countVA, 0);
-            
             {
                 DatabaseEntry key = new DatabaseEntry();
                 DatabaseEntry data = new DatabaseEntry();
@@ -344,12 +337,12 @@ public class TimeSeriesDatabase {
     }
 
     public class ReadIterator implements Iterator<Triple> {
-        Cursor readCursor;
-        DatabaseEntry key;
-        DatabaseEntry data;
-        OperationStatus status;
-        int end;
-        boolean closed;
+        private Cursor readCursor;
+        private DatabaseEntry key;
+        private DatabaseEntry data;
+        private OperationStatus status;
+        private int end;
+        private boolean closed;
 
         public ReadIterator (int start, int end) throws DatabaseException {
             if(end<0 || end>=start) {

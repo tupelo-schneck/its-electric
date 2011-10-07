@@ -95,7 +95,7 @@ public class VoltAmpereFetcher {
         GregorianCalendar cal = new GregorianCalendar(timeZone);
         cal.set(2000+year,month-1,day,hour,minute,second);
         int timestamp = (int)(cal.getTimeInMillis() / 1000);
-        if(ImportIterator.inDSTOverlap(timeZone, timestamp)) {
+        if(Util.inDSTOverlap(timeZone, timestamp)) {
             int now = (int)(System.currentTimeMillis()/1000);
             if(now < timestamp - 1800) timestamp -= 3600;
         }

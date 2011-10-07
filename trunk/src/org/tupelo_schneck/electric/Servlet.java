@@ -159,7 +159,7 @@ public class Servlet extends DataSourceServlet {
         public DataTableBuilder(QueryParameters params) {
             this.params = params;
             rows = new PriorityQueue<TableRow>(100,TABLE_ROW_COMPARATOR);
-            cal = new GregorianCalendar(Options.GMT);
+            cal = new GregorianCalendar(Util.GMT);
             
             data = new DataTable();
             ArrayList<ColumnDescription> cd = new ArrayList<ColumnDescription>();
@@ -383,7 +383,7 @@ public class Servlet extends DataSourceServlet {
             String param = req.getParameter(name);
             if(param!=null && param.length()>0) {
                 try {
-                    res = Options.timestampFromUserInput(param,isEnd,main.options.serveTimeZone);
+                    res = Util.timestampFromUserInput(param,isEnd,main.options.serveTimeZone);
                 }
                 catch(NumberFormatException e) { log.error("Error parsing " + name,e); }
             }
