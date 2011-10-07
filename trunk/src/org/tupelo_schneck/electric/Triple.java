@@ -48,6 +48,6 @@ public class Triple {
 
     @Override
     public String toString() {
-        return Main.dateString(timestamp) + ", MTU" + mtu + ", " + power + "W" + ", " + voltage + "dV" + ", " + voltAmperes + "VA";
+        return Util.dateString(timestamp) + ", MTU" + mtu + ", " + power + "W" + ", " + voltage + "dV" + ", " + voltAmperes + "VA";
     }
 }

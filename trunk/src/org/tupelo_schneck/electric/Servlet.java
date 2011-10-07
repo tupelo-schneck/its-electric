@@ -527,12 +527,12 @@ public class Servlet extends DataSourceServlet {
                     }
                     if(zoomDbIndex > 0) {
                         int nextTime = builder.max() + main.databases[zoomDbIndex].resolution - main.databases[zoomDbIndex-1].resolution + 1;
-                        log.debug("After resolution " + main.databases[zoomDbIndex].resolution + " max = " + Main.dateString(builder.max()) + " nextTime = " + Main.dateString(nextTime));
+                        log.debug("After resolution " + main.databases[zoomDbIndex].resolution + " max = " + Util.dateString(builder.max()) + " nextTime = " + Util.dateString(nextTime));
                         for(int i = zoomDbIndex - 1; i >= 1; i--) {
                             if(nextTime>=max) break;
                             if (builder.addRowsFromIterator(main.databases[i].read(nextTime,max),10)) {
                                 nextTime = builder.max() + main.databases[i].resolution - main.databases[i-1].resolution + 1;
-                                log.debug("After resolution " + main.databases[i].resolution + " max = " + Main.dateString(builder.max()) + " nextTime = " + Main.dateString(nextTime));
+                                log.debug("After resolution " + main.databases[i].resolution + " max = " + Util.dateString(builder.max()) + " nextTime = " + Util.dateString(nextTime));
                             }
                         }
                         if(builder.max() < max) {

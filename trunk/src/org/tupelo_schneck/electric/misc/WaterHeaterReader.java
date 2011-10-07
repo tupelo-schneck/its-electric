@@ -26,6 +26,7 @@ import java.io.PrintStream;
 import org.tupelo_schneck.electric.Main;
 import org.tupelo_schneck.electric.Triple;
 import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
+import org.tupelo_schneck.electric.Util;
 
 import com.ibm.icu.util.GregorianCalendar;
 
@@ -76,7 +77,7 @@ public class WaterHeaterReader {
                     if(t.power==null) continue;
                     if(t.mtu >= 2) continue;
                     int power = t.power.intValue();
-                    if(t.timestamp % 86400 == 0) System.out.println(Main.dateString(t.timestamp));
+                    if(t.timestamp % 86400 == 0) System.out.println(Util.dateString(t.timestamp));
                     total[t.mtu]+=power;
                     count[t.mtu]++;
                     if(power > max) max = power;
