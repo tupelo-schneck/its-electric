@@ -1,5 +1,6 @@
 package org.tupelo_schneck.electric;
 
+import java.text.SimpleDateFormat;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -7,6 +8,14 @@ import com.ibm.icu.util.GregorianCalendar;
 import com.ibm.icu.util.TimeZone;
 
 public class Util {
+    private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
+
+    public static String dateString(int seconds) {
+        synchronized(dateFormat) {
+            return dateFormat.format(Long.valueOf(1000L * seconds));
+        }
+    }
+
     public static final TimeZone GMT = TimeZone.getTimeZone("GMT");
 
     private static int parseInt(String s,int def) {
@@ -74,5 +83,4 @@ public class Util {
         int offsetHourAgo = timeZone.getOffset(1000L*(timestamp-3600));
         return offsetHourAgo > offsetNow;
     }
-
 }

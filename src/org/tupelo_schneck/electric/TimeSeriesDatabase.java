@@ -233,7 +233,7 @@ public class TimeSeriesDatabase {
                         if(mtu < mtus && start[mtu]==0) {
                             start[mtu] = timestamp + resolution;
                             maxForMTU[mtu] = start[mtu] - 1;
-                            log.trace("   starting at " + Main.dateString(start[mtu]) + " for MTU " + mtu);
+                            log.trace("   starting at " + Util.dateString(start[mtu]) + " for MTU " + mtu);
                             done++;
                         }
                         status = cursor.getPrev(key, data, LockMode.READ_UNCOMMITTED);
@@ -246,7 +246,7 @@ public class TimeSeriesDatabase {
                     if(start[mtu]==0) {
                         start[mtu] = ((latestTimestamp - MAX_RECHECK + timeZoneRawOffset)/resolution)*resolution - timeZoneRawOffset;
                         maxForMTU[mtu] = start[mtu] - 1;
-                        log.trace("   starting at " + Main.dateString(start[mtu]) + " for not-found MTU " + mtu);
+                        log.trace("   starting at " + Util.dateString(start[mtu]) + " for not-found MTU " + mtu);
                     }
                 }
             }
@@ -508,14 +508,14 @@ public class TimeSeriesDatabase {
                             if(lastPrintedTimestamp==0) lastPrintedTimestamp = timestamp;
                             else if(timestamp / interval > lastPrintedTimestamp / interval) {
                                 lastPrintedTimestamp = timestamp;
-                                log.trace("Deleted until " + Main.dateString(timestamp) + " in database " + resolution);
+                                log.trace("Deleted until " + Util.dateString(timestamp) + " in database " + resolution);
                             }
                             if(status==OperationStatus.SUCCESS) status = cursor.getNext(key, readDataEntry, LockMode.READ_UNCOMMITTED);
                         }
                         else break;
                     }
                     if(status!=OperationStatus.SUCCESS) {
-                        log.error("Unexpected status around " + Main.dateString(timestamp) + " in database " + resolution);
+                        log.error("Unexpected status around " + Util.dateString(timestamp) + " in database " + resolution);
                     }
 
                     // Delete everything after 2030

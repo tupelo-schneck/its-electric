@@ -24,7 +24,6 @@ package org.tupelo_schneck.electric;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -62,13 +61,6 @@ public class Main {
         "1\"","4\"","15\"","1'","4'","15'","1h","3h","8h","1d"
     };
 
-    private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
-    public static String dateString(int seconds) {
-        synchronized(dateFormat) {
-            return dateFormat.format(Long.valueOf(1000L * seconds));
-        }
-    }
-    
     private Environment environment;
     public TimeSeriesDatabase[] databases = new TimeSeriesDatabase[numDurations];
     public TimeSeriesDatabase secondsDb;
@@ -116,7 +108,7 @@ public class Main {
         secondsDb = databases[0];
         minimum = secondsDb.minimumAfter(0);
         maxSecondForMTU = secondsDb.maxForMTU.clone();
-        log.trace("Minimum is " + dateString(minimum));
+        log.trace("Minimum is " + Util.dateString(minimum));
         int[] maxSeconds = maxSecondForMTU.clone();
         Arrays.sort(maxSeconds);
         for(byte mtu = 0; mtu < options.mtus; mtu++) {
@@ -125,7 +117,7 @@ public class Main {
                 break;
             }
         }
-        log.trace("Maximum is " + dateString(maximum));
+        log.trace("Maximum is " + Util.dateString(maximum));
         
         if(options.deleteUntil > maximum) {
             System.err.println("delete-until option would delete everything, ignoring");
@@ -201,7 +193,7 @@ public class Main {
                 }
 
                 if(needed) {
-                    log.trace("Reset needed at " + dateString(timestamp) + " for MTU " + mtu);
+                    log.trace("Reset needed at " + Util.dateString(timestamp) + " for MTU " + mtu);
                     resetTimestamp[mtu] = timestamp;
                     setReset = true;
                 }
@@ -257,7 +249,7 @@ public class Main {
         }
 
         if(changed) {
-            log.trace("Put from " + dateString(minChange) + " to " + dateString(maxChange) + ".");
+            log.trace("Put from " + Util.dateString(minChange) + " to " + Util.dateString(maxChange) + ".");
             return new MinAndMax(minChange, maxChange);
         }
         else {
@@ -401,7 +393,7 @@ public class Main {
             }
             
             if(changed) {
-                log.trace("kVA data at " + Main.dateString(timestamp));
+                log.trace("kVA data at " + Util.dateString(timestamp));
                 latestVoltAmperesTimestamp = timestamp;
                 reset(changes, true);
             }
@@ -494,7 +486,7 @@ public class Main {
                 }
             }
             // read the values
-            log.trace("Catching up from " + dateString(catchupStart));
+            log.trace("Catching up from " + Util.dateString(catchupStart));
             try {
                 ReadIterator iter = null;
                 Cursor[] cursors = new Cursor[numDurations];
@@ -583,7 +575,7 @@ public class Main {
             if(options.exportByMTU) {
                 while(iter.hasNext() && isRunning) {
                     Triple triple = iter.next();
-                    System.out.print(Main.dateString(triple.timestamp));
+                    System.out.print(Util.dateString(triple.timestamp));
                     System.out.print(",");
                     System.out.print(triple.mtu + 1);
                     System.out.print(",");
@@ -610,7 +602,7 @@ public class Main {
                             System.out.println(row);
                             row.delete(0,row.length());
                         }
-                        row.append(Main.dateString(triple.timestamp));
+                        row.append(Util.dateString(triple.timestamp));
                         lastTime = triple.timestamp;
                         lastMTU = -1;
                     }
