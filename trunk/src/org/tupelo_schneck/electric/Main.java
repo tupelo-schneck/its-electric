@@ -62,10 +62,10 @@ public class Main {
     };
 
     private Environment environment;
-    public TimeSeriesDatabase[] databases = new TimeSeriesDatabase[numDurations];
-    public TimeSeriesDatabase secondsDb;
+    public final TimeSeriesDatabase[] databases = new TimeSeriesDatabase[numDurations];
+    public final TimeSeriesDatabase secondsDb = databases[0];
     
-    public Options options = new Options();
+    public final Options options = new Options();
     
     public volatile int minimum;
     public volatile int maximum;
@@ -105,7 +105,6 @@ public class Main {
             databases[i] = new TimeSeriesDatabase(this, environment, String.valueOf(durations[i]), options.mtus, durations[i], durationStrings[i], options.serveTimeZone.getRawOffset() / 1000);
             log.trace("Database " + i + " opened");
         }
-        secondsDb = databases[0];
         minimum = secondsDb.minimumAfter(0);
         maxSecondForMTU = secondsDb.maxForMTU.clone();
         log.trace("Minimum is " + Util.dateString(minimum));
