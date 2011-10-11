@@ -78,13 +78,6 @@ public class Main {
         
     public static volatile boolean isRunning = true;
         
-    private int[] resetTimestamp;
-    private volatile boolean reset;
-    private Object resetLock = new Object();
-    
-    private volatile boolean newData;
-    private Object newDataLock = new Object();
-    
     private volatile int latestVoltAmperesTimestamp;
     
     public void openEnvironment(File envHome) throws DatabaseException {
@@ -160,61 +153,6 @@ public class Main {
         }
     }
     
-    private static class Pair {
-        final int timestamp;
-        final byte mtu;
-        Pair(int timestamp, byte mtu) {
-            this.timestamp = timestamp;
-            this.mtu = mtu;
-        }
-    }
-
-    private void reset(List<Pair> changes, boolean resetOnly) {
-        if(!isRunning || changes==null || changes.isEmpty()) return;
-        boolean setReset = false;
-        boolean setNewData = false;
-        synchronized(resetLock) {
-            if(resetTimestamp==null) {
-                resetTimestamp = new int[options.mtus];
-//                Arrays.fill(resetTimestamp,0);
-            }
-
-            for(Pair change : changes) {
-                int timestamp = change.timestamp;
-                byte mtu = change.mtu;
-                
-                boolean needed = false;
-                if(timestamp < resetTimestamp[mtu]) needed = true;
-                else {
-                    for(int i = 1; i < numDurations; i++) {
-                        if(timestamp <= databases[i].maxForMTU[mtu]) {
-                            needed = true;
-                            break;
-                        }
-                    }
-                }
-
-                if(needed) {
-                    log.trace("Reset needed at " + Util.dateString(timestamp) + " for MTU " + mtu);
-                    resetTimestamp[mtu] = timestamp;
-                    setReset = true;
-                }
-                else {
-                    setNewData = true;
-                }
-            }
-
-            if(setReset) reset = true;
-            else if(resetOnly) return; 
-            
-            if(setNewData) newData = true;
-            
-            synchronized(newDataLock) {
-                newDataLock.notify();
-            }
-        }
-    }
-
     public MinAndMax changesFromImport(int count, byte mtu, boolean oldOnly) {
         if(!isRunning) return null;
 
@@ -297,7 +235,7 @@ public class Main {
             int newMin = Integer.MAX_VALUE;
             int newMax = 0;
             int[] newMaxForMTU = new int[options.mtus];
-            List<Pair> changes = new ArrayList<Pair>();
+            List<Triple.Key> changes = new ArrayList<Triple.Key>();
 
             for(byte mtu = 0; mtu < options.mtus; mtu++) {
                 if(!isRunning) return;
@@ -308,22 +246,28 @@ public class Main {
                 
                 if(minAndMax.min < newMin) newMin = minAndMax.min;
                 newMaxForMTU[mtu] = minAndMax.max;
-                changes.add(new Pair(minAndMax.min,mtu));
+                changes.add(new Triple.Key(minAndMax.min,mtu));
             }
             int[] maxSeconds = newMaxForMTU.clone();
             Arrays.sort(maxSeconds);
+            int latestMax = maxSeconds[options.mtus-1];
             for(byte mtu = 0; mtu < options.mtus; mtu++) {
-                if(maxSeconds[mtu] + LAG > maxSeconds[options.mtus-1]) {
+                if(maxSeconds[mtu] + LAG > latestMax) {
                     newMax = maxSeconds[mtu];
                     break;
                 }
             }
 
-            reset(changes, false);
+            catchUp.reset(changes, false);
             
             synchronized(minMaxLock) {
                 if(minimum==0 || minimum > newMin) minimum = newMin;
-                if(maximum < newMax) maximum = newMax;
+                if(maximum < newMax) {
+                    int latestVA = latestVoltAmperesTimestamp;
+                    if(latestVA + LAG < newMax || latestVA > newMax) catchUp.setMaximum(newMax);
+                    else if(catchUp.getMaximum() < latestVA) catchUp.setMaximum(latestVA);
+                    maximum = newMax;
+                }
                 for(byte mtu = 0; mtu < options.mtus; mtu++) {
                     if(newMaxForMTU[mtu] < maxSecondForMTU[mtu]) {
                         newMaxForMTU[mtu] = maxSecondForMTU[mtu];
@@ -364,7 +308,7 @@ public class Main {
         
         public void runReal() {
             int[] newMaxForMTU = new int[options.mtus];
-            List<Pair> changes = new ArrayList<Pair>();
+            List<Triple.Key> changes = new ArrayList<Triple.Key>();
             boolean changed = false;
 
             VoltAmpereFetcher fetcher = new VoltAmpereFetcher(options);
@@ -383,7 +327,7 @@ public class Main {
                     if (secondsDb.putIfChanged(cursor, triple)) {
                         changed = true;
                         newMaxForMTU[triple.mtu] = timestamp;
-                        changes.add(new Pair(timestamp,triple.mtu));
+                        changes.add(new Triple.Key(timestamp,triple.mtu));
                     }
                 }
             }
@@ -397,7 +341,7 @@ public class Main {
             if(changed) {
                 log.trace("kVA data at " + Util.dateString(timestamp));
                 latestVoltAmperesTimestamp = timestamp;
-                reset(changes, true);
+                catchUp.reset(changes, true);
             }
         }
     }
@@ -421,128 +365,14 @@ public class Main {
         return execServ;
     }
 
-    public class CatchUp implements Runnable {
-        private int[] caughtUpTo = new int[options.mtus];
-
-        @Override
-        public void run() {
-            try {
-                runReal();
-            }
-            catch(Throwable e) {
-                e.printStackTrace();
-                shutdown();
-            }
-        }
-        
-        private void runReal() {
-            boolean firstTime = true;
-            while(isRunning) {
-                // at start or following a reset, figure out where we are caught up to
-                Arrays.fill(caughtUpTo, Integer.MAX_VALUE);
-                for (int i = 1; i < numDurations; i++) {
-                    for(byte mtu = 0; mtu < options.mtus; mtu++) {
-                        if(databases[i].maxForMTU[mtu] < caughtUpTo[mtu]) {
-                            caughtUpTo[mtu] = databases[i].maxForMTU[mtu];
-                        }
-                    }
-                }
-                // First time each run we do an extra catchup of two hours.
-                // This is because we might have crashed right after getting
-                // reset data for an hour ago, but before doing the reset.
-                if(firstTime) {
-                    for(byte mtu = 0; mtu < options.mtus; mtu++) {
-                        caughtUpTo[mtu] -= 7200;
-                    }
-                    firstTime = false;
-                }
-                
-                
-                while(!reset && isRunning) {
-                    catchUpNewData();
-                }
-                
-                if(!isRunning) return;
-                
-                // perform the reset
-                synchronized(resetLock) {
-                    reset = false;
-                    for(byte mtu = 0; mtu < options.mtus; mtu++) {
-                        if(resetTimestamp[mtu]!=0) {
-                            for (int i = 1; i < numDurations; i++) {
-                                databases[i].resetForNewData(resetTimestamp[mtu], mtu);
-                            }
-                            resetTimestamp[mtu] = 0;
-                        }
-                    }
-                }
-            }
-        }
-        
-        private void catchUpNewData() {
-            // find starting place
-            int catchupStart = Integer.MAX_VALUE;
-            for(byte mtu = 0; mtu < options.mtus; mtu++) {
-                if(caughtUpTo[mtu] + 1 < catchupStart) {
-                    catchupStart = caughtUpTo[mtu] + 1;
-                }
-            }
-            // read the values
-            log.trace("Catching up from " + Util.dateString(catchupStart));
-            try {
-                ReadIterator iter = null;
-                Cursor[] cursors = new Cursor[numDurations];
-                try {
-                    newData = false;
-                    iter = secondsDb.read(catchupStart);
-                    for(int i = 1; i < numDurations; i++) {
-                        cursors[i] = databases[i].openCursor();
-                    }
-                    while(iter.hasNext() && !reset && isRunning) {
-                        Triple triple = iter.next();
-                        if(triple.timestamp > caughtUpTo[triple.mtu]) {
-                            if(triple.timestamp > maximum || (triple.timestamp > latestVoltAmperesTimestamp && triple.timestamp - LAG < latestVoltAmperesTimestamp)) break;
-                            synchronized(resetLock) {
-                                for(int i = 1; i < numDurations; i++) {
-                                    databases[i].accumulateForAverages(cursors[i],triple);
-                                }
-                            }
-                            caughtUpTo[triple.mtu] = triple.timestamp;
-                        }
-                    }
-                }
-                finally {
-                    for(Cursor cursor : cursors) { if(cursor!=null) try { cursor.close(); } catch (Exception e) { e.printStackTrace(); } }
-                    if(iter!=null) try { iter.close(); } catch (Exception e) { e.printStackTrace(); }
-                }
-                log.trace("Catch-up done.");
-            }
-            catch(DatabaseException e) {
-                e.printStackTrace();
-            }
-            
-            // wait for new data (or a reset)
-            if(!newData && !reset && isRunning) {
-                synchronized(newDataLock) { 
-                    while(!newData && !reset && isRunning) {
-                        try {
-                            newDataLock.wait();
-                        }
-                        catch(InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
     private Server server;
     private ExecutorService longImportTask;
     private ExecutorService shortImportTask;
     private ExecutorService voltAmpereImportTask;
     private ExecutorService catchUpTask;
     private ExecutorService deleteTask;
+    
+    private CatchUp catchUp;
     
     public void shutdown() {
         if(isRunning) {
@@ -657,27 +487,21 @@ public class Main {
                 main.server = Servlet.setupServlet(main);
                 main.server.start();
             }
-            if(main.options.record) {
-                boolean needCatchUp = false;
+            if(main.options.record && (main.options.longImportInterval>0 || main.options.importInterval>0 || main.options.voltAmpereImportIntervalMS>0)) {
+                main.catchUp = new CatchUp(main); 
+                main.catchUpTask = Executors.newSingleThreadExecutor();
+                main.catchUpTask.execute(main.catchUp);
                 if(main.options.longImportInterval>0) {
-                    needCatchUp = true;
                     main.longImportTask = main.repeatedlyImport(3600, true, main.options.longImportInterval);
                 }
                 if(main.options.importInterval>0) {
-                    needCatchUp = true;
                     main.shortImportTask = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
                 }
                 if(main.options.voltAmpereImportIntervalMS>0) {
-                    needCatchUp = true;
                     ExecutorService voltAmpereExecServ;
                     if(main.options.kvaThreads==0) voltAmpereExecServ = main.shortImportTask;
                     else voltAmpereExecServ = Executors.newScheduledThreadPool(main.options.kvaThreads);
                     main.voltAmpereImportTask = main.voltAmpereImporter(voltAmpereExecServ, main.options.voltAmpereImportIntervalMS);
-                }
-                if(needCatchUp) {
-                    ExecutorService execServ = Executors.newSingleThreadExecutor();
-                    main.catchUpTask = execServ;
-                    execServ.execute(main.new CatchUp());
                 }
             }
             if(main.options.export) {
