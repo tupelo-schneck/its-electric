@@ -21,9 +21,7 @@ If not, see <http://www.gnu.org/licenses/>.
 
 package org.tupelo_schneck.electric;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -45,11 +43,13 @@ import com.sleepycat.je.EnvironmentConfig;
 import com.sleepycat.je.StatsConfig;
 
 public class Main {
-    public static final int LAG = 5;
-    
-    public static final BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-    
     Log log = LogFactory.getLog(Main.class);
+
+    // "maximum" can be this many seconds behind the newest data, to ensure we have data from each MTU
+    // if an MTU is missing longer than this, only then we proceed
+    // also used to prevent the catch-up thread from considering timestamps where we haven't yet seen kVA data;
+    // if kVA data is missing longer than this, only then we proceed
+    private static final int LAG = 5;
     
     public boolean readOnly = false; // I set this true when running tests from a different main method
     
@@ -67,9 +67,12 @@ public class Main {
     
     public final Options options = new Options();
     
+    // minimum and maximum are maintained as defaults for the server
+    // maximum is also used to keep the catch-up thread from considering timestamps where we've only seen some MTUs
     public volatile int minimum;
     public volatile int maximum;
     // volatility is correct; we change the reference on update
+    // maxSecondForMTU is used only for ensuring that old-only multi-imports don't consider new data
     private volatile int[] maxSecondForMTU;
     private Object minMaxLock = new Object();
         

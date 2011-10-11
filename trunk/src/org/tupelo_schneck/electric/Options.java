@@ -1,6 +1,8 @@
 package org.tupelo_schneck.electric;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Authenticator;
 import java.net.PasswordAuthentication;
@@ -28,6 +30,8 @@ import com.ibm.icu.util.TimeZone;
 
 public class Options extends org.apache.commons.cli.Options {
     Log log = LogFactory.getLog(Options.class);
+    
+    public static final BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
     
     static {
         System.setProperty("org.apache.commons.logging.simplelog.showdatetime", "true");
@@ -399,7 +403,7 @@ public class Options extends org.apache.commons.cli.Options {
         else {
             if(record && username!=null) {
                 System.err.print("Please enter password for username '" + username + "': ");
-                password = Main.reader.readLine();
+                password = Options.reader.readLine();
                 Authenticator.setDefault(new Authenticator() {
                     @Override
                     protected PasswordAuthentication getPasswordAuthentication() {
@@ -411,7 +415,7 @@ public class Options extends org.apache.commons.cli.Options {
                 boolean doit;
                 System.err.print("Irrevocably delete all data up to " + Util.dateString(deleteUntil) + "? (yes/no [no]) ");
                 try {
-                    String input = Main.reader.readLine();
+                    String input = Options.reader.readLine();
                     doit = input!=null && input.toLowerCase().trim().equals("yes");
                 }
                 catch(IOException e) {
