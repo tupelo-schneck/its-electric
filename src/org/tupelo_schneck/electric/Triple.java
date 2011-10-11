@@ -50,4 +50,13 @@ public class Triple {
     public String toString() {
         return Util.dateString(timestamp) + ", MTU" + mtu + ", " + power + "W" + ", " + voltage + "dV" + ", " + voltAmperes + "VA";
     }
+    
+    public static class Key {
+        public final int timestamp;
+        public final byte mtu;
+        public Key(int timestamp, byte mtu) {
+            this.timestamp = timestamp;
+            this.mtu = mtu;
+        }
+    }
 }
