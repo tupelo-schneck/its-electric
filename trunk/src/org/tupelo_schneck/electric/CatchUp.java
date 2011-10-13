@@ -13,6 +13,7 @@ import com.sleepycat.je.DatabaseException;
 public class CatchUp implements Runnable {
     Log log = LogFactory.getLog(CatchUp.class);
     private final Main main;
+    private final DatabaseManager databaseManager;
     private final int[] caughtUpTo;
     
     private int[] resetTimestamp;
@@ -23,8 +24,9 @@ public class CatchUp implements Runnable {
 
     private volatile int maximum;
     
-    public CatchUp(Main main) {
+    public CatchUp(Main main, DatabaseManager databaseManager) {
         this.main = main;
+        this.databaseManager = databaseManager;
         caughtUpTo = new int[main.options.mtus];
     }
     
@@ -44,10 +46,10 @@ public class CatchUp implements Runnable {
         while(Main.isRunning) {
             // at start or following a reset, figure out where we are caught up to
             Arrays.fill(caughtUpTo, Integer.MAX_VALUE);
-            for (int i = 1; i < Main.numDurations; i++) {
+            for (int i = 1; i < DatabaseManager.numDurations; i++) {
                 for(byte mtu = 0; mtu < main.options.mtus; mtu++) {
-                    if(main.databases[i].maxForMTU[mtu] < caughtUpTo[mtu]) {
-                        caughtUpTo[mtu] = main.databases[i].maxForMTU[mtu];
+                    if(databaseManager.databases[i].maxForMTU[mtu] < caughtUpTo[mtu]) {
+                        caughtUpTo[mtu] = databaseManager.databases[i].maxForMTU[mtu];
                     }
                 }
             }
@@ -73,8 +75,8 @@ public class CatchUp implements Runnable {
                 reset = false;
                 for(byte mtu = 0; mtu < main.options.mtus; mtu++) {
                     if(resetTimestamp[mtu]!=0) {
-                        for (int i = 1; i < Main.numDurations; i++) {
-                            main.databases[i].resetForNewData(resetTimestamp[mtu], mtu);
+                        for (int i = 1; i < DatabaseManager.numDurations; i++) {
+                            databaseManager.databases[i].resetForNewData(resetTimestamp[mtu], mtu);
                         }
                         resetTimestamp[mtu] = 0;
                     }
@@ -95,20 +97,20 @@ public class CatchUp implements Runnable {
         log.trace("Catching up from " + Util.dateString(catchupStart));
         try {
             ReadIterator iter = null;
-            Cursor[] cursors = new Cursor[Main.numDurations];
+            Cursor[] cursors = new Cursor[DatabaseManager.numDurations];
             try {
                 newData = false;
-                iter = main.secondsDb.read(catchupStart);
-                for(int i = 1; i < Main.numDurations; i++) {
-                    cursors[i] = main.databases[i].openCursor();
+                iter = databaseManager.secondsDb.read(catchupStart);
+                for(int i = 1; i < DatabaseManager.numDurations; i++) {
+                    cursors[i] = databaseManager.databases[i].openCursor();
                 }
                 while(iter.hasNext() && !reset && Main.isRunning) {
                     Triple triple = iter.next();
                     if(triple.timestamp > caughtUpTo[triple.mtu]) {
                         if(triple.timestamp > this.maximum) break;
                         synchronized(resetLock) {
-                            for(int i = 1; i < Main.numDurations; i++) {
-                                main.databases[i].accumulateForAverages(cursors[i],triple);
+                            for(int i = 1; i < DatabaseManager.numDurations; i++) {
+                                databaseManager.databases[i].accumulateForAverages(cursors[i],triple);
                             }
                         }
                         caughtUpTo[triple.mtu] = triple.timestamp;
@@ -165,8 +167,8 @@ public class CatchUp implements Runnable {
                     boolean needed = false;
                     if(timestamp < resetTimestamp[mtu]) needed = true;
                     else {
-                        for(int i = 1; i < Main.numDurations; i++) {
-                            if(timestamp <= main.databases[i].maxForMTU[mtu]) {
+                        for(int i = 1; i < DatabaseManager.numDurations; i++) {
+                            if(timestamp <= databaseManager.databases[i].maxForMTU[mtu]) {
                                 needed = true;
                                 break;
                             }

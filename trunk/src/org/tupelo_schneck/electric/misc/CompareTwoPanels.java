@@ -23,6 +23,7 @@ package org.tupelo_schneck.electric.misc;
 import java.io.File;
 import java.io.PrintStream;
 
+import org.tupelo_schneck.electric.DatabaseManager;
 import org.tupelo_schneck.electric.Main;
 import org.tupelo_schneck.electric.Triple;
 import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
@@ -37,14 +38,14 @@ public class CompareTwoPanels {
 
     public static void main(String[] args) {
         final Main main = new Main();
-        main.readOnly = true;
         
         try {
             if(!main.options.parseOptions(args)) return;
             File dbFile = new File(main.options.dbFilename);
             dbFile.mkdirs();
-            main.openEnvironment(dbFile);
-            main.openDatabases();
+            main.databaseManager = new DatabaseManager(dbFile,true,main.options);
+            main.databaseManager.open();
+            main.initMinAndMax();
 
             Runtime.getRuntime().addShutdownHook(new Thread(){
                 @Override
@@ -58,7 +59,7 @@ public class CompareTwoPanels {
             double[] total = new double[4];
             double[] count = new double[4];
             
-            ReadIterator iter = main.secondsDb.read((int)(new GregorianCalendar(2011,6-1,18,0,0,0).getTimeInMillis()/1000),
+            ReadIterator iter = main.databaseManager.secondsDb.read((int)(new GregorianCalendar(2011,6-1,18,0,0,0).getTimeInMillis()/1000),
                     (int)(new GregorianCalendar(2011,8-1,1,0,0,0).getTimeInMillis()/1000));
             try {
                 while(iter.hasNext()) {
