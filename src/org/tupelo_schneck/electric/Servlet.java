@@ -61,22 +61,24 @@ public class Servlet extends DataSourceServlet {
     
     private Log log = LogFactory.getLog(Servlet.class);
 
-    private Main main;
+    private final Main main;
+    private final DatabaseManager databaseManager;
 
-    public Servlet(Main main) {
+    public Servlet(Main main, DatabaseManager databaseManager) {
         this.main = main;
+        this.databaseManager = databaseManager;
     }
 
     public TimeSeriesDatabase databaseForResolution(int res,boolean less) {
-        TimeSeriesDatabase lastDb = main.secondsDb;
-        for(TimeSeriesDatabase db : main.databases) {
+        TimeSeriesDatabase lastDb = databaseManager.secondsDb;
+        for(TimeSeriesDatabase db : databaseManager.databases) {
             if(db.resolution==res) return db;
             else if(db.resolution>res) {
                 return less ? lastDb : db;
             }
             lastDb = db;
         }
-        return main.databases[Main.numDurations-1];
+        return databaseManager.databases[DatabaseManager.numDurations-1];
     }
 
     public TimeSeriesDatabase rangeDb(QueryParameters params) {
@@ -513,32 +515,32 @@ public class Servlet extends DataSourceServlet {
             
             if(params.extraPoints > 0) {
                 if(builder.min() > params.start) {
-                    builder.addRowsFromIterator(main.secondsDb.read(params.start),1);
+                    builder.addRowsFromIterator(databaseManager.secondsDb.read(params.start),1);
                 }
 
                 if(params.end == max && builder.max()>0 && !possibleRedraw) {
                     int zoomDbIndex;
-                    for(zoomDbIndex = Main.numDurations - 1; zoomDbIndex >= 0; zoomDbIndex--) {
-                        if(main.databases[zoomDbIndex].resolution == zoomDb.resolution) break;
+                    for(zoomDbIndex = DatabaseManager.numDurations - 1; zoomDbIndex >= 0; zoomDbIndex--) {
+                        if(databaseManager.databases[zoomDbIndex].resolution == zoomDb.resolution) break;
                     }
                     if(zoomDbIndex > 0) {
-                        int nextTime = builder.max() + main.databases[zoomDbIndex].resolution - main.databases[zoomDbIndex-1].resolution + 1;
-                        log.debug("After resolution " + main.databases[zoomDbIndex].resolution + " max = " + Util.dateString(builder.max()) + " nextTime = " + Util.dateString(nextTime));
+                        int nextTime = builder.max() + databaseManager.databases[zoomDbIndex].resolution - databaseManager.databases[zoomDbIndex-1].resolution + 1;
+                        log.debug("After resolution " + databaseManager.databases[zoomDbIndex].resolution + " max = " + Util.dateString(builder.max()) + " nextTime = " + Util.dateString(nextTime));
                         for(int i = zoomDbIndex - 1; i >= 1; i--) {
                             if(nextTime>=max) break;
-                            if (builder.addRowsFromIterator(main.databases[i].read(nextTime,max),10)) {
-                                nextTime = builder.max() + main.databases[i].resolution - main.databases[i-1].resolution + 1;
-                                log.debug("After resolution " + main.databases[i].resolution + " max = " + Util.dateString(builder.max()) + " nextTime = " + Util.dateString(nextTime));
+                            if (builder.addRowsFromIterator(databaseManager.databases[i].read(nextTime,max),10)) {
+                                nextTime = builder.max() + databaseManager.databases[i].resolution - databaseManager.databases[i-1].resolution + 1;
+                                log.debug("After resolution " + databaseManager.databases[i].resolution + " max = " + Util.dateString(builder.max()) + " nextTime = " + Util.dateString(nextTime));
                             }
                         }
                         if(builder.max() < max) {
                             nextTime = Math.min(nextTime, max);
-                            builder.addRowsFromIterator(main.databases[0].read(nextTime,max),10);
+                            builder.addRowsFromIterator(databaseManager.databases[0].read(nextTime,max),10);
                         }
                     }
                 }
                 else if(builder.max() < params.end && !possibleRedraw) {
-                    builder.addRowsFromIterator(main.secondsDb.read(params.end),1);
+                    builder.addRowsFromIterator(databaseManager.secondsDb.read(params.end),1);
                 }
             }
         }
@@ -567,7 +569,7 @@ public class Servlet extends DataSourceServlet {
         return false;
     }
 
-    public static Server setupServlet(Main main) throws Exception {
+    public static Server setupServlet(Main main, DatabaseManager databaseManager) throws Exception {
         HandlerCollection handlers = new HandlerCollection();
         if(main.options.serverLogFilename!=null) {
             RequestLogHandler requestLogHandler = new RequestLogHandler();
@@ -587,7 +589,7 @@ public class Servlet extends DataSourceServlet {
         }
 
         ServletContextHandler root = new ServletContextHandler(handlers, "/", ServletContextHandler.NO_SESSIONS|ServletContextHandler.NO_SECURITY);
-        root.addServlet(new ServletHolder(new Servlet(main)), "/*");
+        root.addServlet(new ServletHolder(new Servlet(main,databaseManager)), "/*");
 
         Server server = new Server(main.options.port);
         server.setHandler(handlers);

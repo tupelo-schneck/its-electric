@@ -38,12 +38,10 @@ import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
 
 import com.sleepycat.je.Cursor;
 import com.sleepycat.je.DatabaseException;
-import com.sleepycat.je.Environment;
-import com.sleepycat.je.EnvironmentConfig;
 import com.sleepycat.je.StatsConfig;
 
 public class Main {
-    Log log = LogFactory.getLog(Main.class);
+    private Log log = LogFactory.getLog(Main.class);
 
     // "maximum" can be this many seconds behind the newest data, to ensure we have data from each MTU
     // if an MTU is missing longer than this, only then we proceed
@@ -51,20 +49,7 @@ public class Main {
     // if kVA data is missing longer than this, only then we proceed
     private static final int LAG = 5;
     
-    public boolean readOnly = false; // I set this true when running tests from a different main method
-    
-    public static final int[] durations = new int[] { 
-        1, 4, 15, 60, 60*4, 60*15, 60*60, 60*60*3, 60*60*8, 60*60*24
-    };
-    public static final int numDurations = durations.length;
-    public static final String[] durationStrings = new String[] {
-        "1\"","4\"","15\"","1'","4'","15'","1h","3h","8h","1d"
-    };
-
-    private Environment environment;
-    public final TimeSeriesDatabase[] databases = new TimeSeriesDatabase[numDurations];
-    public final TimeSeriesDatabase secondsDb = databases[0];
-    
+    public DatabaseManager databaseManager;
     public final Options options = new Options();
     
     // minimum and maximum are maintained as defaults for the server
@@ -80,29 +65,9 @@ public class Main {
         
     private volatile int latestVoltAmperesTimestamp;
     
-    public void openEnvironment(File envHome) throws DatabaseException {
-        EnvironmentConfig configuration = new EnvironmentConfig();
-        configuration.setTransactional(false);
-        // this seems to help with memory issues
-        configuration.setCachePercent(40);
-        long maxMem = Runtime.getRuntime().maxMemory();
-        if(maxMem/100*(100-configuration.getCachePercent()) < 60L * 1024 * 1024) {
-            configuration.setCacheSize(maxMem - 60L * 1024 * 1024);
-            log.info("Cache size set to: " + (maxMem - 60L * 1024 * 1024));
-        }
-        configuration.setAllowCreate(true);
-        configuration.setReadOnly(readOnly);
-        environment = new Environment(envHome, configuration);
-        log.info("Environment opened.");
-    }
-
-    public void openDatabases() throws DatabaseException {
-        for(int i = 0; i < numDurations; i++) {
-            databases[i] = new TimeSeriesDatabase(this, environment, String.valueOf(durations[i]), options.mtus, durations[i], durationStrings[i], options.serveTimeZone.getRawOffset() / 1000);
-            log.trace("Database " + i + " opened");
-        }
-        minimum = secondsDb.minimumAfter(0);
-        maxSecondForMTU = secondsDb.maxForMTU.clone();
+    public void initMinAndMax() throws DatabaseException {
+        minimum = databaseManager.secondsDb.minimumAfter(0);
+        maxSecondForMTU = databaseManager.secondsDb.maxForMTU.clone();
         log.trace("Minimum is " + Util.dateString(minimum));
         int[] maxSeconds = maxSecondForMTU.clone();
         Arrays.sort(maxSeconds);
@@ -113,7 +78,9 @@ public class Main {
             }
         }
         log.trace("Maximum is " + Util.dateString(maximum));
-        
+    }
+    
+    private void performDeletions() throws DatabaseException {
         if(options.deleteUntil > maximum) {
             System.err.println("delete-until option would delete everything, ignoring");
         }
@@ -121,27 +88,13 @@ public class Main {
             // Always delete everything before 2009; got some due to bug in its-electric 1.4
             if(options.deleteUntil < 1230000000) options.deleteUntil = 1230000000;
             if(options.deleteUntil >= minimum) {
-                minimum = secondsDb.minimumAfter(options.deleteUntil);
+                minimum = databaseManager.secondsDb.minimumAfter(options.deleteUntil);
                 deleteTask = Executors.newSingleThreadExecutor();
-                for(final TimeSeriesDatabase db : databases) {
+                for(final TimeSeriesDatabase db : databaseManager.databases) {
                     deleteTask.execute(db.new DeleteUntil(options.deleteUntil));
                 }                    
             }
         }
-    }
-
-    private boolean closed;
-    
-    public synchronized void close() {
-        if(closed) return;
-        for(TimeSeriesDatabase db : databases) {
-            if(db!=null) db.close();
-        }
-        if(environment!=null) try { 
-            environment.close(); 
-            log.info("Environment closed.");
-        } catch (Exception e) { e.printStackTrace(); }
-        closed = true;
     }
 
     private static class MinAndMax {
@@ -165,7 +118,7 @@ public class Main {
         Cursor cursor = null;
         try {
             iter = new ImportIterator(options, mtu, count);
-            cursor = secondsDb.openCursor();
+            cursor = databaseManager.secondsDb.openCursor();
             while(iter.hasNext()) {
                 if(!isRunning) return null;
 
@@ -173,7 +126,7 @@ public class Main {
                 if(triple==null) break;
                 int max = maxSecondForMTU[triple.mtu];
                 if(oldOnly && max > 0 && triple.timestamp > max) continue;
-                if (secondsDb.putIfChanged(cursor, triple)) {
+                if (databaseManager.secondsDb.putIfChanged(cursor, triple)) {
                     changed = true;
                     if(triple.timestamp < minChange) minChange = triple.timestamp;
                     if(triple.timestamp > maxChange) maxChange = triple.timestamp;
@@ -278,9 +231,9 @@ public class Main {
             
             if(longImport || options.longImportInterval==0) {
                 try {
-                    environment.sync();
+                    databaseManager.environment.sync();
                     log.trace("Environment synced.");
-                    log.trace(environment.getStats(StatsConfig.DEFAULT).toString());
+                    log.trace(databaseManager.environment.getStats(StatsConfig.DEFAULT).toString());
                 }
                 catch(DatabaseException e) {
                     log.debug("Exception syncing environment: " + e);
@@ -320,11 +273,11 @@ public class Main {
             Cursor cursor = null;
             try {
                 if(!isRunning) return;
-                cursor = secondsDb.openCursor();
+                cursor = databaseManager.secondsDb.openCursor();
                 for(Triple triple : triples) {
                     if(!isRunning) return;
                     timestamp = triple.timestamp;
-                    if (secondsDb.putIfChanged(cursor, triple)) {
+                    if (databaseManager.secondsDb.putIfChanged(cursor, triple)) {
                         changed = true;
                         newMaxForMTU[triple.mtu] = timestamp;
                         changes.add(new Triple.Key(timestamp,triple.mtu));
@@ -391,15 +344,15 @@ public class Main {
             //try { synchronized(newDataLock) { newDataLock.notifyAll(); } } catch (Throwable e) {}
             try { catchUpTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
             try { server.stop(); } catch (Throwable e) {}
-            try { close(); } catch (Throwable e) {}
+            try { databaseManager.close(); } catch (Throwable e) {}
         }
     }
     
     public void export() throws DatabaseException {
-        TimeSeriesDatabase database = databases[Main.numDurations - 1];
-        for(int i = Main.numDurations - 2; i >= 0; i--) {
+        TimeSeriesDatabase database = databaseManager.databases[DatabaseManager.numDurations - 1];
+        for(int i = DatabaseManager.numDurations - 2; i >= 0; i--) {
             if(database.resolution <= options.resolution) break;
-            database = databases[i];
+            database = databaseManager.databases[i];
         }
         
         ReadIterator iter = database.read(options.startTime,options.endTime);
@@ -468,10 +421,10 @@ public class Main {
 
         try {
             if(!main.options.parseOptions(args)) return;
-            main.readOnly = !main.options.record;
+            boolean readOnly = !main.options.record;
             File dbFile = new File(main.options.dbFilename);
             dbFile.mkdirs();
-            main.openEnvironment(dbFile);
+            main.databaseManager = new DatabaseManager(dbFile,readOnly,main.options);
             
             Runtime.getRuntime().addShutdownHook(new Thread(){
                 @Override
@@ -480,15 +433,16 @@ public class Main {
                 }
             });
 
-            main.openDatabases();
-
+            main.databaseManager.open();
+            main.initMinAndMax();
+            main.performDeletions();
 
             if(main.options.serve) { 
-                main.server = Servlet.setupServlet(main);
+                main.server = Servlet.setupServlet(main,main.databaseManager);
                 main.server.start();
             }
             if(main.options.record && (main.options.longImportInterval>0 || main.options.importInterval>0 || main.options.voltAmpereImportIntervalMS>0)) {
-                main.catchUp = new CatchUp(main); 
+                main.catchUp = new CatchUp(main,main.databaseManager); 
                 main.catchUpTask = Executors.newSingleThreadExecutor();
                 main.catchUpTask.execute(main.catchUp);
                 if(main.options.longImportInterval>0) {

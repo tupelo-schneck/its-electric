@@ -23,6 +23,7 @@ package org.tupelo_schneck.electric.misc;
 import java.io.File;
 import java.io.PrintStream;
 
+import org.tupelo_schneck.electric.DatabaseManager;
 import org.tupelo_schneck.electric.Main;
 import org.tupelo_schneck.electric.Triple;
 import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
@@ -42,14 +43,14 @@ public class WaterHeaterReader {
 
     public static void main(String[] args) {
         final Main main = new Main();
-        main.readOnly = true;
         
         try {
             if(!main.options.parseOptions(args)) return;
             File dbFile = new File(main.options.dbFilename);
             dbFile.mkdirs();
-            main.openEnvironment(dbFile);
-            main.openDatabases();
+            main.databaseManager = new DatabaseManager(dbFile,true,main.options);
+            main.databaseManager.open();
+            main.initMinAndMax();
 
             Runtime.getRuntime().addShutdownHook(new Thread(){
                 @Override
@@ -69,7 +70,7 @@ public class WaterHeaterReader {
             double[] countSinceLastOff = new double[2];
             int[][] histo = new int[2][20];
             
-            ReadIterator iter = main.secondsDb.read((int)(new GregorianCalendar(2011,1-1,1,0,0,0).getTimeInMillis()/1000),
+            ReadIterator iter = main.databaseManager.secondsDb.read((int)(new GregorianCalendar(2011,1-1,1,0,0,0).getTimeInMillis()/1000),
                     (int)(new GregorianCalendar(2011,2-1,1,0,0,0).getTimeInMillis()/1000));
             try {
                 while(iter.hasNext()) {

@@ -191,7 +191,7 @@ public class TimeSeriesDatabase {
         return new DatabaseEntry(buf);
     }
 
-    public TimeSeriesDatabase(Main main, Environment environment, String name, byte mtus, int resolution, String resolutionString, int timeZoneRawOffset) {
+    public TimeSeriesDatabase(Environment environment, boolean readOnly, String name, byte mtus, int resolution, String resolutionString, int timeZoneRawOffset) {
         this.timeZoneRawOffset = timeZoneRawOffset;
         this.resolution = resolution;
         this.resolutionString = resolutionString;
@@ -200,7 +200,7 @@ public class TimeSeriesDatabase {
                 if(ALLOW_CREATE_CONFIG==null) {
                     DatabaseConfig config = new DatabaseConfig();
                     config.setAllowCreate(true);
-                    config.setReadOnly(main.readOnly);
+                    config.setReadOnly(readOnly);
                     ALLOW_CREATE_CONFIG = config;
                 }
             }
@@ -254,7 +254,7 @@ public class TimeSeriesDatabase {
         catch(Throwable e) {
             e.printStackTrace();
             close();
-            main.shutdown();
+            throw new RuntimeException(e);
         }
     }
 
