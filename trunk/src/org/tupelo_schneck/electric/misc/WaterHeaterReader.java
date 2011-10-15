@@ -50,7 +50,6 @@ public class WaterHeaterReader {
             dbFile.mkdirs();
             main.databaseManager = new DatabaseManager(dbFile,true,main.options);
             main.databaseManager.open();
-            main.initMinAndMax();
 
             Runtime.getRuntime().addShutdownHook(new Thread(){
                 @Override

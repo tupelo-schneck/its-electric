@@ -22,73 +22,37 @@ If not, see <http://www.gnu.org/licenses/>.
 package org.tupelo_schneck.electric;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.jetty.server.Server;
 import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
+import org.tupelo_schneck.electric.ted.TedImporter;
 
-import com.sleepycat.je.Cursor;
 import com.sleepycat.je.DatabaseException;
-import com.sleepycat.je.StatsConfig;
 
 public class Main {
     private Log log = LogFactory.getLog(Main.class);
 
-    // "maximum" can be this many seconds behind the newest data, to ensure we have data from each MTU
-    // if an MTU is missing longer than this, only then we proceed
-    // also used to prevent the catch-up thread from considering timestamps where we haven't yet seen kVA data;
-    // if kVA data is missing longer than this, only then we proceed
-    private static final int LAG = 5;
-    
     public DatabaseManager databaseManager;
+    private Servlet servlet;
+    private Importer importer;
     public final Options options = new Options();
     
-    // minimum and maximum are maintained as defaults for the server
-    // maximum is also used to keep the catch-up thread from considering timestamps where we've only seen some MTUs
-    public volatile int minimum;
-    public volatile int maximum;
-    // volatility is correct; we change the reference on update
-    // maxSecondForMTU is used only for ensuring that old-only multi-imports don't consider new data
-    private volatile int[] maxSecondForMTU;
-    private Object minMaxLock = new Object();
-        
     public static volatile boolean isRunning = true;
-        
-    private volatile int latestVoltAmperesTimestamp;
-    
-    public void initMinAndMax() throws DatabaseException {
-        minimum = databaseManager.secondsDb.minimumAfter(0);
-        maxSecondForMTU = databaseManager.secondsDb.maxForMTU.clone();
-        log.trace("Minimum is " + Util.dateString(minimum));
-        int[] maxSeconds = maxSecondForMTU.clone();
-        Arrays.sort(maxSeconds);
-        for(byte mtu = 0; mtu < options.mtus; mtu++) {
-            if(maxSeconds[mtu] + LAG > maxSeconds[options.mtus-1]) {
-                maximum = maxSeconds[mtu];
-                break;
-            }
-        }
-        log.trace("Maximum is " + Util.dateString(maximum));
-    }
-    
+
     private void performDeletions() throws DatabaseException {
-        if(options.deleteUntil > maximum) {
+        if(options.deleteUntil > servlet.getMaximum()) {
             System.err.println("delete-until option would delete everything, ignoring");
         }
         else {
             // Always delete everything before 2009; got some due to bug in its-electric 1.4
             if(options.deleteUntil < 1230000000) options.deleteUntil = 1230000000;
-            if(options.deleteUntil >= minimum) {
-                minimum = databaseManager.secondsDb.minimumAfter(options.deleteUntil);
+            if(options.deleteUntil >= servlet.getMinimum()) {
+                servlet.setMinimum(databaseManager.secondsDb.minimumAfter(options.deleteUntil));
                 deleteTask = Executors.newSingleThreadExecutor();
                 for(final TimeSeriesDatabase db : databaseManager.databases) {
                     deleteTask.execute(db.new DeleteUntil(options.deleteUntil));
@@ -97,231 +61,8 @@ public class Main {
         }
     }
 
-    private static class MinAndMax {
-        final int min;
-        final int max;
-        MinAndMax(int min, int max) {
-            this.min = min;
-            this.max = max;
-        }
-    }
-    
-    public MinAndMax changesFromImport(int count, byte mtu, boolean oldOnly) {
-        if(!isRunning) return null;
-
-        boolean changed = false;
-        int minChange = Integer.MAX_VALUE;
-        int maxChange = 0;
-
-        log.trace("Importing " + count + " seconds for MTU " + mtu);
-        ImportIterator iter = null;
-        Cursor cursor = null;
-        try {
-            iter = new ImportIterator(options, mtu, count);
-            cursor = databaseManager.secondsDb.openCursor();
-            while(iter.hasNext()) {
-                if(!isRunning) return null;
-
-                Triple triple = iter.next();
-                if(triple==null) break;
-                int max = maxSecondForMTU[triple.mtu];
-                if(oldOnly && max > 0 && triple.timestamp > max) continue;
-                if (databaseManager.secondsDb.putIfChanged(cursor, triple)) {
-                    changed = true;
-                    if(triple.timestamp < minChange) minChange = triple.timestamp;
-                    if(triple.timestamp > maxChange) maxChange = triple.timestamp;
-                }
-            }
-        }
-        catch(Exception e) {
-            e.printStackTrace();
-        }
-        finally {
-            if(iter!=null) try { iter.close(); } catch (Exception e) { e.printStackTrace(); }
-            if(cursor!=null) try { cursor.close(); } catch (Exception e) { e.printStackTrace(); }
-        }
-
-        if(changed) {
-            log.trace("Put from " + Util.dateString(minChange) + " to " + Util.dateString(maxChange) + ".");
-            return new MinAndMax(minChange, maxChange);
-        }
-        else {
-            log.trace("No new data.");
-            return null;
-        }
-    }
-
-    private volatile CountDownLatch importInterleaver;
-
-    public class MultiImporter implements Runnable {
-        private int count;
-        private boolean longImport;
-        
-        public MultiImporter(int count, boolean longImport) {
-            this.count = count;
-            this.longImport = longImport;
-        }
-
-        @Override
-        public void run() {
-            try {
-                runReal();
-            }
-            catch(Throwable e) {
-                e.printStackTrace();
-                shutdown();
-            }
-        }
-        
-        private void runReal() {
-            if(longImport && options.importInterval > 0) {
-                importInterleaver = new CountDownLatch(1);
-                try {
-                    importInterleaver.await();
-                }
-                catch(InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return;
-                }
-            }
-            
-            int newMin = Integer.MAX_VALUE;
-            int newMax = 0;
-            int[] newMaxForMTU = new int[options.mtus];
-            List<Triple.Key> changes = new ArrayList<Triple.Key>();
-
-            for(byte mtu = 0; mtu < options.mtus; mtu++) {
-                if(!isRunning) return;
-                
-                MinAndMax minAndMax = changesFromImport(count,mtu,longImport && options.importInterval > 0);
-
-                if(minAndMax==null) continue;
-                
-                if(minAndMax.min < newMin) newMin = minAndMax.min;
-                newMaxForMTU[mtu] = minAndMax.max;
-                changes.add(new Triple.Key(minAndMax.min,mtu));
-            }
-            int[] maxSeconds = newMaxForMTU.clone();
-            Arrays.sort(maxSeconds);
-            int latestMax = maxSeconds[options.mtus-1];
-            for(byte mtu = 0; mtu < options.mtus; mtu++) {
-                if(maxSeconds[mtu] + LAG > latestMax) {
-                    newMax = maxSeconds[mtu];
-                    break;
-                }
-            }
-
-            catchUp.reset(changes, false);
-            
-            synchronized(minMaxLock) {
-                if(minimum==0 || minimum > newMin) minimum = newMin;
-                if(maximum < newMax) {
-                    int latestVA = latestVoltAmperesTimestamp;
-                    if(latestVA + LAG < newMax || latestVA > newMax) catchUp.setMaximum(newMax);
-                    else if(catchUp.getMaximum() < latestVA) catchUp.setMaximum(latestVA);
-                    maximum = newMax;
-                }
-                for(byte mtu = 0; mtu < options.mtus; mtu++) {
-                    if(newMaxForMTU[mtu] < maxSecondForMTU[mtu]) {
-                        newMaxForMTU[mtu] = maxSecondForMTU[mtu];
-                    }
-                }
-                maxSecondForMTU = newMaxForMTU;
-            }
-            
-            if(longImport || options.longImportInterval==0) {
-                try {
-                    databaseManager.environment.sync();
-                    log.trace("Environment synced.");
-                    log.trace(databaseManager.environment.getStats(StatsConfig.DEFAULT).toString());
-                }
-                catch(DatabaseException e) {
-                    log.debug("Exception syncing environment: " + e);
-                }
-            }
-            else {
-                if(importInterleaver!=null) importInterleaver.countDown();
-            }
-        }
-    }
-    
-    public class VoltAmpereImporter implements Runnable {
-        public VoltAmpereImporter() {}
-        
-        @Override
-        public void run() {
-            try {
-                runReal();
-            }
-            catch(Throwable e) {
-                e.printStackTrace();
-                shutdown();
-            }
-        }
-        
-        public void runReal() {
-            int[] newMaxForMTU = new int[options.mtus];
-            List<Triple.Key> changes = new ArrayList<Triple.Key>();
-            boolean changed = false;
-
-            VoltAmpereFetcher fetcher = new VoltAmpereFetcher(options);
-            List<Triple> triples = fetcher.doImport();
-
-            if(triples.isEmpty()) return;
-            
-            int timestamp = 0;
-            Cursor cursor = null;
-            try {
-                if(!isRunning) return;
-                cursor = databaseManager.secondsDb.openCursor();
-                for(Triple triple : triples) {
-                    if(!isRunning) return;
-                    timestamp = triple.timestamp;
-                    if (databaseManager.secondsDb.putIfChanged(cursor, triple)) {
-                        changed = true;
-                        newMaxForMTU[triple.mtu] = timestamp;
-                        changes.add(new Triple.Key(timestamp,triple.mtu));
-                    }
-                }
-            }
-            catch(DatabaseException e) {
-                e.printStackTrace();
-            }
-            finally {
-                if(cursor!=null) try { cursor.close(); } catch (Exception e) { e.printStackTrace(); }
-            }
-            
-            if(changed) {
-                log.trace("kVA data at " + Util.dateString(timestamp));
-                latestVoltAmperesTimestamp = timestamp;
-                catchUp.reset(changes, true);
-            }
-        }
-    }
-    
-    public ExecutorService repeatedlyImport(int count,boolean longImport,int interval) {
-        ScheduledExecutorService execServ = Executors.newSingleThreadScheduledExecutor();
-        execServ.scheduleAtFixedRate(new MultiImporter(count, longImport), 0, interval, TimeUnit.SECONDS);
-        return execServ;
-    }
-
-    public ExecutorService voltAmpereImporter(final ExecutorService execServ, long interval) {
-        if(!(execServ instanceof ScheduledExecutorService)) throw new AssertionError();
-        if(options.kvaThreads <= 1) {
-            ((ScheduledExecutorService)execServ).scheduleAtFixedRate(new VoltAmpereImporter(), 0, interval, TimeUnit.MILLISECONDS);
-        }
-        else {
-            for(int i = 0; i < options.kvaThreads; i++) {
-                ((ScheduledExecutorService)execServ).scheduleAtFixedRate(new VoltAmpereImporter(), i*interval, interval*options.kvaThreads, TimeUnit.MILLISECONDS);
-            }
-        }
-        return execServ;
-    }
 
     private Server server;
-    private ExecutorService longImportTask;
-    private ExecutorService shortImportTask;
-    private ExecutorService voltAmpereImportTask;
     private ExecutorService catchUpTask;
     private ExecutorService deleteTask;
     
@@ -331,15 +72,9 @@ public class Main {
         if(isRunning) {
             try { log.info("Exiting."); } catch (Throwable e) {}
             isRunning = false;
-            try { longImportTask.shutdownNow(); } catch (Throwable e) {}
-            try { shortImportTask.shutdownNow(); } catch (Throwable e) {}
-            try { voltAmpereImportTask.shutdownNow(); } catch (Throwable e) {}
             try { deleteTask.shutdownNow(); } catch (Throwable e) {}
             try { catchUpTask.shutdownNow(); } catch (Throwable e) {}
-            //try { if(importInterleaver!=null) importInterleaver.countDown(); } catch (Throwable e) {}
-            try { longImportTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
-            try { shortImportTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
-            try { voltAmpereImportTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
+            try { importer.shutdown(); } catch(Throwable e) {}
             try { deleteTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
             //try { synchronized(newDataLock) { newDataLock.notifyAll(); } } catch (Throwable e) {}
             try { catchUpTask.awaitTermination(60, TimeUnit.SECONDS); } catch (Throwable e) {}
@@ -434,29 +169,21 @@ public class Main {
             });
 
             main.databaseManager.open();
-            main.initMinAndMax();
+            
             main.performDeletions();
 
             if(main.options.serve) { 
-                main.server = Servlet.setupServlet(main,main.databaseManager);
+                main.servlet = new Servlet(main,main.databaseManager);
+                main.servlet.initMinAndMax();
+                main.server = Servlet.setupServer(main,main.servlet);
                 main.server.start();
             }
             if(main.options.record && (main.options.longImportInterval>0 || main.options.importInterval>0 || main.options.voltAmpereImportIntervalMS>0)) {
                 main.catchUp = new CatchUp(main,main.databaseManager); 
                 main.catchUpTask = Executors.newSingleThreadExecutor();
                 main.catchUpTask.execute(main.catchUp);
-                if(main.options.longImportInterval>0) {
-                    main.longImportTask = main.repeatedlyImport(3600, true, main.options.longImportInterval);
-                }
-                if(main.options.importInterval>0) {
-                    main.shortImportTask = main.repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
-                }
-                if(main.options.voltAmpereImportIntervalMS>0) {
-                    ExecutorService voltAmpereExecServ;
-                    if(main.options.kvaThreads==0) voltAmpereExecServ = main.shortImportTask;
-                    else voltAmpereExecServ = Executors.newScheduledThreadPool(main.options.kvaThreads);
-                    main.voltAmpereImportTask = main.voltAmpereImporter(voltAmpereExecServ, main.options.voltAmpereImportIntervalMS);
-                }
+                main.importer = new TedImporter(main, main.databaseManager, main.options, main.servlet, main.catchUp);
+                main.importer.startup();
             }
             if(main.options.export) {
                 main.export();

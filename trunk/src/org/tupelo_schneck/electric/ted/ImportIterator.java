@@ -19,7 +19,7 @@ along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
 */
 
-package org.tupelo_schneck.electric;
+package org.tupelo_schneck.electric.ted;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,6 +29,9 @@ import java.net.URLConnection;
 import java.util.Iterator;
 
 import org.apache.commons.codec.binary.Base64;
+import org.tupelo_schneck.electric.Options;
+import org.tupelo_schneck.electric.Triple;
+import org.tupelo_schneck.electric.Util;
 
 import com.ibm.icu.util.GregorianCalendar;
 import com.ibm.icu.util.TimeZone;

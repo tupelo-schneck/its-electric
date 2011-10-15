@@ -22,6 +22,7 @@ If not, see <http://www.gnu.org/licenses/>.
 package org.tupelo_schneck.electric;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
@@ -61,6 +62,12 @@ public class Servlet extends DataSourceServlet {
     
     private Log log = LogFactory.getLog(Servlet.class);
 
+    // minimum and maximum are maintained as defaults for the server
+    private volatile int minimum;
+    private final Object minimumLock = new Object();
+    private volatile int maximum;
+    private final Object maximumLock = new Object();
+
     private final Main main;
     private final DatabaseManager databaseManager;
 
@@ -69,6 +76,46 @@ public class Servlet extends DataSourceServlet {
         this.databaseManager = databaseManager;
     }
 
+    public void initMinAndMax() throws DatabaseException {
+        setMinimumIfNewer(databaseManager.secondsDb.minimumAfter(0));
+        log.trace("Minimum is " + Util.dateString(getMinimum()));
+        int[] maxSeconds = databaseManager.secondsDb.maxForMTU.clone();
+        Arrays.sort(maxSeconds);
+        for(byte mtu = 0; mtu < main.options.mtus; mtu++) {
+            if(maxSeconds[mtu] + CatchUp.LAG > maxSeconds[main.options.mtus-1]) {
+                setMaximumIfNewer(maxSeconds[mtu]);
+                break;
+            }
+        }
+        log.trace("Maximum is " + Util.dateString(getMaximum()));
+    }
+
+    public void setMinimum(int newMin) {
+        synchronized(minimumLock) {
+            minimum = newMin;
+        }
+    }
+
+    public void setMinimumIfNewer(int newMin) {
+        synchronized(minimumLock) {
+            if(minimum==0 || minimum > newMin) minimum = newMin;
+        }
+    }
+    
+    public int getMinimum() {
+        return minimum;
+    }
+    
+    public void setMaximumIfNewer(int newMax) {
+        synchronized(maximumLock) {
+            if(maximum < newMax) maximum = newMax;
+        }
+    }
+    
+    public int getMaximum() {
+        return maximum;
+    }
+    
     public TimeSeriesDatabase databaseForResolution(int res,boolean less) {
         TimeSeriesDatabase lastDb = databaseManager.secondsDb;
         for(TimeSeriesDatabase db : databaseManager.databases) {
@@ -439,8 +486,8 @@ public class Servlet extends DataSourceServlet {
     
     @Override
     public DataTable generateDataTable(Query query, HttpServletRequest req) throws DataSourceException {
-        int min = main.minimum;
-        int max = main.maximum;
+        int min = minimum;
+        int max = maximum;
         
         QueryParameters params = new QueryParameters(req,min,max);
         
@@ -569,7 +616,7 @@ public class Servlet extends DataSourceServlet {
         return false;
     }
 
-    public static Server setupServlet(Main main, DatabaseManager databaseManager) throws Exception {
+    public static Server setupServer(Main main, Servlet servlet) throws Exception {
         HandlerCollection handlers = new HandlerCollection();
         if(main.options.serverLogFilename!=null) {
             RequestLogHandler requestLogHandler = new RequestLogHandler();
@@ -589,7 +636,7 @@ public class Servlet extends DataSourceServlet {
         }
 
         ServletContextHandler root = new ServletContextHandler(handlers, "/", ServletContextHandler.NO_SESSIONS|ServletContextHandler.NO_SECURITY);
-        root.addServlet(new ServletHolder(new Servlet(main,databaseManager)), "/*");
+        root.addServlet(new ServletHolder(servlet), "/*");
 
         Server server = new Server(main.options.port);
         server.setHandler(handlers);
