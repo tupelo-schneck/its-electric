@@ -1,4 +1,4 @@
-package org.tupelo_schneck.electric;
+package org.tupelo_schneck.electric.ted;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -12,6 +12,10 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.tupelo_schneck.electric.Options;
+import org.tupelo_schneck.electric.Triple;
+import org.tupelo_schneck.electric.Util;
 
 import com.ibm.icu.util.GregorianCalendar;
 import com.ibm.icu.util.TimeZone;

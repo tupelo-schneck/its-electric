@@ -12,6 +12,13 @@ import com.sleepycat.je.DatabaseException;
 
 public class CatchUp implements Runnable {
     Log log = LogFactory.getLog(CatchUp.class);
+    
+    // "maximum" can be this many seconds behind the newest data, to ensure we have data from each MTU
+    // if an MTU is missing longer than this, only then we proceed
+    // also used to prevent the catch-up thread from considering timestamps where we haven't yet seen kVA data;
+    // if kVA data is missing longer than this, only then we proceed
+    public static final int LAG = 5;
+
     private final Main main;
     private final DatabaseManager databaseManager;
     private final int[] caughtUpTo;
@@ -23,6 +30,7 @@ public class CatchUp implements Runnable {
     private Object newDataLock = new Object();
 
     private volatile int maximum;
+    private final Object maximumLock = new Object();
     
     public CatchUp(Main main, DatabaseManager databaseManager) {
         this.main = main;
@@ -146,8 +154,10 @@ public class CatchUp implements Runnable {
         return this.maximum;
     }
     
-    public void setMaximum(int maximum) {
-        this.maximum = maximum;
+    public void setMaximumIfNewer(int newMax) {
+        synchronized(maximumLock) {
+            if(maximum < newMax) maximum = newMax;
+        }
     }
     
     public void reset(List<Triple.Key> changes, boolean resetOnly) {
