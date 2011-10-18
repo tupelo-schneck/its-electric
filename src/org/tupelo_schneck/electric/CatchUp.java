@@ -20,6 +20,7 @@ public class CatchUp implements Runnable {
     public static final int LAG = 5;
 
     private final Main main;
+    private final Options options;
     private final DatabaseManager databaseManager;
     private final int[] caughtUpTo;
     
@@ -32,10 +33,11 @@ public class CatchUp implements Runnable {
     private volatile int maximum;
     private final Object maximumLock = new Object();
     
-    public CatchUp(Main main, DatabaseManager databaseManager) {
+    public CatchUp(Main main, Options options, DatabaseManager databaseManager) {
         this.main = main;
+        this.options = options;
         this.databaseManager = databaseManager;
-        caughtUpTo = new int[main.options.mtus];
+        caughtUpTo = new int[options.mtus];
     }
     
     @Override
@@ -55,7 +57,7 @@ public class CatchUp implements Runnable {
             // at start or following a reset, figure out where we are caught up to
             Arrays.fill(caughtUpTo, Integer.MAX_VALUE);
             for (int i = 1; i < DatabaseManager.numDurations; i++) {
-                for(byte mtu = 0; mtu < main.options.mtus; mtu++) {
+                for(byte mtu = 0; mtu < options.mtus; mtu++) {
                     if(databaseManager.databases[i].maxForMTU[mtu] < caughtUpTo[mtu]) {
                         caughtUpTo[mtu] = databaseManager.databases[i].maxForMTU[mtu];
                     }
@@ -65,7 +67,7 @@ public class CatchUp implements Runnable {
             // This is because we might have crashed right after getting
             // reset data for an hour ago, but before doing the reset.
             if(firstTime) {
-                for(byte mtu = 0; mtu < main.options.mtus; mtu++) {
+                for(byte mtu = 0; mtu < options.mtus; mtu++) {
                     caughtUpTo[mtu] -= 7200;
                 }
                 firstTime = false;
@@ -81,7 +83,7 @@ public class CatchUp implements Runnable {
             // perform the reset
             synchronized(resetLock) {
                 reset = false;
-                for(byte mtu = 0; mtu < main.options.mtus; mtu++) {
+                for(byte mtu = 0; mtu < options.mtus; mtu++) {
                     if(resetTimestamp[mtu]!=0) {
                         for (int i = 1; i < DatabaseManager.numDurations; i++) {
                             databaseManager.databases[i].resetForNewData(resetTimestamp[mtu], mtu);
@@ -96,7 +98,7 @@ public class CatchUp implements Runnable {
     private void catchUpNewData() {
         // find starting place
         int catchupStart = Integer.MAX_VALUE;
-        for(byte mtu = 0; mtu < main.options.mtus; mtu++) {
+        for(byte mtu = 0; mtu < options.mtus; mtu++) {
             if(caughtUpTo[mtu] + 1 < catchupStart) {
                 catchupStart = caughtUpTo[mtu] + 1;
             }
@@ -166,7 +168,7 @@ public class CatchUp implements Runnable {
             boolean setNewData = false;
             synchronized(resetLock) {
                 if(resetTimestamp==null) {
-                    resetTimestamp = new int[main.options.mtus];
+                    resetTimestamp = new int[options.mtus];
     //                Arrays.fill(resetTimestamp,0);
                 }
     

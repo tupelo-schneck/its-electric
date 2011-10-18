@@ -44,7 +44,7 @@ public class TedImporter implements Importer {
     private ExecutorService shortImportTask;
     private ExecutorService voltAmpereImportTask;
     
-    public TedImporter(Main main, DatabaseManager databaseManager, Options options, Servlet servlet, CatchUp catchUp) {
+    public TedImporter(Main main, Options options, DatabaseManager databaseManager, Servlet servlet, CatchUp catchUp) {
         this.main = main;
         this.databaseManager = databaseManager;
         this.options = options;
@@ -55,17 +55,17 @@ public class TedImporter implements Importer {
 
     @Override
     public void startup() {
-        if(main.options.longImportInterval>0) {
-            longImportTask = repeatedlyImport(3600, true, main.options.longImportInterval);
+        if(options.longImportInterval>0) {
+            longImportTask = repeatedlyImport(3600, true, options.longImportInterval);
         }
-        if(main.options.importInterval>0) {
-            shortImportTask = repeatedlyImport(main.options.importInterval + main.options.importOverlap, false, main.options.importInterval);
+        if(options.importInterval>0) {
+            shortImportTask = repeatedlyImport(options.importInterval + options.importOverlap, false, options.importInterval);
         }
-        if(main.options.voltAmpereImportIntervalMS>0) {
+        if(options.voltAmpereImportIntervalMS>0) {
             ExecutorService voltAmpereExecServ;
-            if(main.options.kvaThreads==0) voltAmpereExecServ = shortImportTask;
-            else voltAmpereExecServ = Executors.newScheduledThreadPool(main.options.kvaThreads);
-            voltAmpereImportTask = voltAmpereImporter(voltAmpereExecServ, main.options.voltAmpereImportIntervalMS);
+            if(options.kvaThreads==0) voltAmpereExecServ = shortImportTask;
+            else voltAmpereExecServ = Executors.newScheduledThreadPool(options.kvaThreads);
+            voltAmpereImportTask = voltAmpereImporter(voltAmpereExecServ, options.voltAmpereImportIntervalMS);
         }
     }
     

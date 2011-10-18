@@ -68,11 +68,11 @@ public class Servlet extends DataSourceServlet {
     private volatile int maximum;
     private final Object maximumLock = new Object();
 
-    private final Main main;
+    private final Options options;
     private final DatabaseManager databaseManager;
 
-    public Servlet(Main main, DatabaseManager databaseManager) {
-        this.main = main;
+    public Servlet(Options options, DatabaseManager databaseManager) {
+        this.options = options;
         this.databaseManager = databaseManager;
     }
 
@@ -81,8 +81,8 @@ public class Servlet extends DataSourceServlet {
         log.trace("Minimum is " + Util.dateString(getMinimum()));
         int[] maxSeconds = databaseManager.secondsDb.maxForMTU.clone();
         Arrays.sort(maxSeconds);
-        for(byte mtu = 0; mtu < main.options.mtus; mtu++) {
-            if(maxSeconds[mtu] + CatchUp.LAG > maxSeconds[main.options.mtus-1]) {
+        for(byte mtu = 0; mtu < options.mtus; mtu++) {
+            if(maxSeconds[mtu] + CatchUp.LAG > maxSeconds[options.mtus-1]) {
                 setMaximumIfNewer(maxSeconds[mtu]);
                 break;
             }
@@ -157,8 +157,8 @@ public class Servlet extends DataSourceServlet {
             }
             res = db.resolution;
         }
-        if(range / main.options.maxDataPoints > res) {
-            db = databaseForResolution(range / main.options.maxDataPoints, false);
+        if(range / options.maxDataPoints > res) {
+            db = databaseForResolution(range / options.maxDataPoints, false);
         }
         if(db==null) {
             db = databaseForResolution(res,false);
@@ -209,16 +209,16 @@ public class Servlet extends DataSourceServlet {
             data = new DataTable();
             ArrayList<ColumnDescription> cd = new ArrayList<ColumnDescription>();
             cd.add(new ColumnDescription("Date", ValueType.DATETIME, "Date"));
-            for(int mtu = 0; mtu < main.options.mtus; mtu++) {
+            for(int mtu = 0; mtu < options.mtus; mtu++) {
                 String label = "MTU" + (mtu+1);
                 cd.add(new ColumnDescription(label, ValueType.NUMBER, label));
             }
             if(params.queryType==QueryType.COMBINED_POWER) {
-                for(int mtu = 0; mtu < main.options.mtus; mtu++) {
+                for(int mtu = 0; mtu < options.mtus; mtu++) {
                     String label = "MTU" + (mtu+1) + "var";
                     cd.add(new ColumnDescription(label, ValueType.NUMBER, label));
                 }
-                for(int mtu = 0; mtu < main.options.mtus; mtu++) {
+                for(int mtu = 0; mtu < options.mtus; mtu++) {
                     String label = "MTU" + (mtu+1) + "VA";
                     cd.add(new ColumnDescription(label, ValueType.NUMBER, label));
                 }
@@ -241,13 +241,13 @@ public class Servlet extends DataSourceServlet {
                 TableRow oldRow = row;
                 row = new TableRow();
                 row.addCell(oldRow.getCell(0));
-                for(int mtu = 0; mtu < main.options.mtus; mtu++) {
+                for(int mtu = 0; mtu < options.mtus; mtu++) {
                     row.addCell(oldRow.getCell(1+mtu*3));
                 }
-                for(int mtu = 0; mtu < main.options.mtus; mtu++) {
+                for(int mtu = 0; mtu < options.mtus; mtu++) {
                     row.addCell(oldRow.getCell(2+mtu*3));
                 }
-                for(int mtu = 0; mtu < main.options.mtus; mtu++) {
+                for(int mtu = 0; mtu < options.mtus; mtu++) {
                     row.addCell(oldRow.getCell(3+mtu*3));
                 }
             }
@@ -256,7 +256,7 @@ public class Servlet extends DataSourceServlet {
         
         private void finishRow() {
             if(row!=null) {
-                addNullsTo(main.options.mtus);
+                addNullsTo(options.mtus);
                 addRow();
                 row = null;
                 lastTime = 0;
@@ -265,7 +265,7 @@ public class Servlet extends DataSourceServlet {
         }
         
         private void addTriple(Triple triple) {
-            if(triple.mtu >= main.options.mtus) return;
+            if(triple.mtu >= options.mtus) return;
             if(triple.timestamp < lastTime) return;
             if(params.queryType==QueryType.VOLTAGE && triple.voltage==null) return;
             else if(params.queryType==QueryType.POWER && triple.power==null) return;
@@ -283,7 +283,7 @@ public class Servlet extends DataSourceServlet {
                 
                 // note have to add in the time zone offset
                 // this because we want it to show our local time.
-                cal.setTimeInMillis((long)triple.timestamp * 1000 + main.options.serveTimeZone.getOffset((long)triple.timestamp*1000));
+                cal.setTimeInMillis((long)triple.timestamp * 1000 + options.serveTimeZone.getOffset((long)triple.timestamp*1000));
                 row.addCell(new DateTimeValue(cal));
                 lastMTU = -1;
             }
@@ -428,7 +428,7 @@ public class Servlet extends DataSourceServlet {
             String param = req.getParameter(name);
             if(param!=null && param.length()>0) {
                 try {
-                    res = Util.timestampFromUserInput(param,isEnd,main.options.serveTimeZone);
+                    res = Util.timestampFromUserInput(param,isEnd,options.serveTimeZone);
                 }
                 catch(NumberFormatException e) { log.error("Error parsing " + name,e); }
             }
@@ -452,10 +452,10 @@ public class Servlet extends DataSourceServlet {
                 throw new DataSourceException(ReasonType.INVALID_REQUEST, "Request '" + path + "' unknown");
             }
 //            if(queryType==QueryType.VOLTAGE) {
-//                if(!main.options.voltage) throw new DataSourceException(ReasonType.INVALID_REQUEST, "Voltage data not available");            
+//                if(!options.voltage) throw new DataSourceException(ReasonType.INVALID_REQUEST, "Voltage data not available");            
 //            }
 //            else if(queryType != QueryType.POWER) {
-//                if(main.options.voltAmpereImportIntervalMS==0) throw new DataSourceException(ReasonType.INVALID_REQUEST, "Volt-amperage data not available");
+//                if(options.voltAmpereImportIntervalMS==0) throw new DataSourceException(ReasonType.INVALID_REQUEST, "Volt-amperage data not available");
 //            }
             
             rangeStart = getTimestampParameter("rangeStart",false,min);
@@ -476,7 +476,7 @@ public class Servlet extends DataSourceServlet {
             resolution = getIntParameter("resolution",-1);
             minPoints = getIntParameter("minPoints",-1);
             maxPoints = getIntParameter("maxPoints",-1);
-            if(minPoints<=0 && maxPoints<=0) maxPoints = main.options.numDataPoints;
+            if(minPoints<=0 && maxPoints<=0) maxPoints = options.numDataPoints;
             
             String extraPointsString = req.getParameter("extraPoints");
             if("yes".equals(extraPointsString)) extraPoints = 2;
@@ -597,16 +597,16 @@ public class Servlet extends DataSourceServlet {
         }
 
         // These return the timestamp where UTC clock shows what would be local time
-        builder.setCustomProperty(MINIMUM_STRING, String.valueOf(min + main.options.serveTimeZone.getOffset(1000L*min)/1000));
+        builder.setCustomProperty(MINIMUM_STRING, String.valueOf(min + options.serveTimeZone.getOffset(1000L*min)/1000));
         int sentMax = possibleRedraw ? builder.max() : max;
-        builder.setCustomProperty(MAXIMUM_STRING, String.valueOf(sentMax + main.options.serveTimeZone.getOffset(1000L*sentMax)/1000));
+        builder.setCustomProperty(MAXIMUM_STRING, String.valueOf(sentMax + options.serveTimeZone.getOffset(1000L*sentMax)/1000));
         
         // send time zone info 
         // used to say "so that client can adjust (Annotated Time Line bug)" but that was wrong;
         // the bug is about the client's time zone.
         // We'll still send this in case it's useful.  Whether it says standard or daylight time
         // is determined by the highest date in the visible range.
-        builder.setCustomProperty(TIME_ZONE_OFFSET, String.valueOf(main.options.serveTimeZone.getOffset(1000L*params.end) / 1000));
+        builder.setCustomProperty(TIME_ZONE_OFFSET, String.valueOf(options.serveTimeZone.getOffset(1000L*params.end) / 1000));
         log.trace("Query complete.");
         return builder.dataTable();
     }
@@ -616,16 +616,16 @@ public class Servlet extends DataSourceServlet {
         return false;
     }
 
-    public static Server setupServer(Main main, Servlet servlet) throws Exception {
+    public static Server setupServer(Options options, Servlet servlet) throws Exception {
         HandlerCollection handlers = new HandlerCollection();
-        if(main.options.serverLogFilename!=null) {
+        if(options.serverLogFilename!=null) {
             RequestLogHandler requestLogHandler = new RequestLogHandler();
             NCSARequestLog requestLog;
-            if("stderr".equals(main.options.serverLogFilename)) {
+            if("stderr".equals(options.serverLogFilename)) {
                 requestLog = new NCSARequestLog();
             }
             else {
-                requestLog = new NCSARequestLog(main.options.serverLogFilename);
+                requestLog = new NCSARequestLog(options.serverLogFilename);
             }
             //requestLog.setRetainDays(90);
             requestLog.setAppend(true);
@@ -638,7 +638,7 @@ public class Servlet extends DataSourceServlet {
         ServletContextHandler root = new ServletContextHandler(handlers, "/", ServletContextHandler.NO_SESSIONS|ServletContextHandler.NO_SECURITY);
         root.addServlet(new ServletHolder(servlet), "/*");
 
-        Server server = new Server(main.options.port);
+        Server server = new Server(options.port);
         server.setHandler(handlers);
         return server;
     }
