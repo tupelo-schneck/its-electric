@@ -40,7 +40,11 @@ public class Main {
     public DatabaseManager databaseManager;
     private Servlet servlet;
     private Importer importer;
-    public final Options options = new Options();
+    private final Options options;
+    
+    public Main(Options options) {
+        this.options = options;
+    }
     
     public static volatile boolean isRunning = true;
 
@@ -152,7 +156,7 @@ public class Main {
     }
     
     public static void main(String[] args) {
-        final Main main = new Main();
+        final Main main = new Main(new Options());
 
         try {
             if(!main.options.parseOptions(args)) return;
@@ -173,16 +177,16 @@ public class Main {
             main.performDeletions();
 
             if(main.options.serve) { 
-                main.servlet = new Servlet(main,main.databaseManager);
+                main.servlet = new Servlet(main.options,main.databaseManager);
                 main.servlet.initMinAndMax();
-                main.server = Servlet.setupServer(main,main.servlet);
+                main.server = Servlet.setupServer(main.options,main.servlet);
                 main.server.start();
             }
             if(main.options.record && (main.options.longImportInterval>0 || main.options.importInterval>0 || main.options.voltAmpereImportIntervalMS>0)) {
-                main.catchUp = new CatchUp(main,main.databaseManager); 
+                main.catchUp = new CatchUp(main,main.options,main.databaseManager); 
                 main.catchUpTask = Executors.newSingleThreadExecutor();
                 main.catchUpTask.execute(main.catchUp);
-                main.importer = new TedImporter(main, main.databaseManager, main.options, main.servlet, main.catchUp);
+                main.importer = new TedImporter(main, main.options, main.databaseManager, main.servlet, main.catchUp);
                 main.importer.startup();
             }
             if(main.options.export) {

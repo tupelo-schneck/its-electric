@@ -25,6 +25,7 @@ import java.io.PrintStream;
 
 import org.tupelo_schneck.electric.DatabaseManager;
 import org.tupelo_schneck.electric.Main;
+import org.tupelo_schneck.electric.Options;
 import org.tupelo_schneck.electric.Triple;
 import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
 import org.tupelo_schneck.electric.Util;
@@ -42,13 +43,14 @@ import com.ibm.icu.util.GregorianCalendar;
 public class WaterHeaterReader {
 
     public static void main(String[] args) {
-        final Main main = new Main();
+        final Options options = new Options();
+        final Main main = new Main(options);
         
         try {
-            if(!main.options.parseOptions(args)) return;
-            File dbFile = new File(main.options.dbFilename);
+            if(!options.parseOptions(args)) return;
+            File dbFile = new File(options.dbFilename);
             dbFile.mkdirs();
-            main.databaseManager = new DatabaseManager(dbFile,true,main.options);
+            main.databaseManager = new DatabaseManager(dbFile,true,options);
             main.databaseManager.open();
 
             Runtime.getRuntime().addShutdownHook(new Thread(){
