@@ -21,6 +21,7 @@ If not, see <http://www.gnu.org/licenses/>.
 package org.tupelo_schneck.electric.misc;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
 
 import org.tupelo_schneck.electric.DatabaseManager;
@@ -31,36 +32,38 @@ import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
 import org.tupelo_schneck.electric.Util;
 
 import com.ibm.icu.util.GregorianCalendar;
+import com.sleepycat.je.DatabaseException;
 
 /**
  * This is an example of writing a separate program to use the its-electric database.
  */
 public class CompareTwoPanels {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException, DatabaseException {
         final Options options = new Options();
-        final Main main = new Main(options);
+        if(!options.parseOptions(args)) return;
+        boolean readOnly = true;
+        File dbFile = new File(options.dbFilename);
+        dbFile.mkdirs();
+        DatabaseManager databaseManager = new DatabaseManager(dbFile,readOnly,options);
+        databaseManager.open();
         
+        final Main main = new Main(options,databaseManager);
+
+        Runtime.getRuntime().addShutdownHook(new Thread(){
+            @Override
+            public void run() {
+                main.shutdown();
+            }
+        });
+
         try {
-            if(!options.parseOptions(args)) return;
-            File dbFile = new File(options.dbFilename);
-            dbFile.mkdirs();
-            main.databaseManager = new DatabaseManager(dbFile,true,options);
-            main.databaseManager.open();
-
-            Runtime.getRuntime().addShutdownHook(new Thread(){
-                @Override
-                public void run() {
-                    main.shutdown();
-                }
-            });
-
             System.out.println("Doing it:");
             
             double[] total = new double[4];
             double[] count = new double[4];
             
-            ReadIterator iter = main.databaseManager.secondsDb.read((int)(new GregorianCalendar(2011,6-1,18,0,0,0).getTimeInMillis()/1000),
+            ReadIterator iter = databaseManager.secondsDb.read((int)(new GregorianCalendar(2011,6-1,18,0,0,0).getTimeInMillis()/1000),
                     (int)(new GregorianCalendar(2011,8-1,1,0,0,0).getTimeInMillis()/1000));
             try {
                 while(iter.hasNext()) {

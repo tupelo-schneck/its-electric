@@ -22,6 +22,7 @@ If not, see <http://www.gnu.org/licenses/>.
 package org.tupelo_schneck.electric;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -37,40 +38,23 @@ import com.sleepycat.je.DatabaseException;
 public class Main {
     private Log log = LogFactory.getLog(Main.class);
 
-    public DatabaseManager databaseManager;
+    private final Options options;
+    private final DatabaseManager databaseManager;
     private Servlet servlet;
     private Importer importer;
-    private final Options options;
     
-    public Main(Options options) {
-        this.options = options;
-    }
-    
-    public static volatile boolean isRunning = true;
-
-    private void performDeletions() throws DatabaseException {
-        if(options.deleteUntil > servlet.getMaximum()) {
-            System.err.println("delete-until option would delete everything, ignoring");
-        }
-        else {
-            // Always delete everything before 2009; got some due to bug in its-electric 1.4
-            if(options.deleteUntil < 1230000000) options.deleteUntil = 1230000000;
-            if(options.deleteUntil >= servlet.getMinimum()) {
-                servlet.setMinimum(databaseManager.secondsDb.minimumAfter(options.deleteUntil));
-                deleteTask = Executors.newSingleThreadExecutor();
-                for(final TimeSeriesDatabase db : databaseManager.databases) {
-                    deleteTask.execute(db.new DeleteUntil(options.deleteUntil));
-                }                    
-            }
-        }
-    }
-
-
     private Server server;
     private ExecutorService catchUpTask;
     private ExecutorService deleteTask;
     
     private CatchUp catchUp;
+
+    public volatile boolean isRunning = true;
+
+    public Main(Options options, DatabaseManager databaseManager) {
+        this.databaseManager = databaseManager;
+        this.options = options;
+    }
     
     public void shutdown() {
         if(isRunning) {
@@ -87,7 +71,7 @@ public class Main {
         }
     }
     
-    public void export() throws DatabaseException {
+    private void export() throws DatabaseException {
         TimeSeriesDatabase database = databaseManager.databases[DatabaseManager.numDurations - 1];
         for(int i = DatabaseManager.numDurations - 2; i >= 0; i--) {
             if(database.resolution <= options.resolution) break;
@@ -155,41 +139,56 @@ public class Main {
         }
     }
     
-    public static void main(String[] args) {
-        final Main main = new Main(new Options());
+    public static void main(String[] args) throws IOException, DatabaseException {
+        final Options options = new Options();
+        if(!options.parseOptions(args)) return;
+        boolean readOnly = !options.record;
+        File dbFile = new File(options.dbFilename);
+        dbFile.mkdirs();
+        DatabaseManager databaseManager = new DatabaseManager(dbFile,readOnly,options);
+        databaseManager.open();
+        
+        final Main main = new Main(options,databaseManager);
+
+        Runtime.getRuntime().addShutdownHook(new Thread(){
+            @Override
+            public void run() {
+                main.shutdown();
+            }
+        });
 
         try {
-            if(!main.options.parseOptions(args)) return;
-            boolean readOnly = !main.options.record;
-            File dbFile = new File(main.options.dbFilename);
-            dbFile.mkdirs();
-            main.databaseManager = new DatabaseManager(dbFile,readOnly,main.options);
-            
-            Runtime.getRuntime().addShutdownHook(new Thread(){
-                @Override
-                public void run() {
-                    main.shutdown();
-                }
-            });
-
-            main.databaseManager.open();
-            
-            main.performDeletions();
-
-            if(main.options.serve) { 
-                main.servlet = new Servlet(main.options,main.databaseManager);
+            if(options.serve) { 
+                main.servlet = new Servlet(options,main.databaseManager);
                 main.servlet.initMinAndMax();
-                main.server = Servlet.setupServer(main.options,main.servlet);
+                main.server = Servlet.setupServer(options,main.servlet);
                 main.server.start();
             }
-            if(main.options.record && (main.options.longImportInterval>0 || main.options.importInterval>0 || main.options.voltAmpereImportIntervalMS>0)) {
-                main.catchUp = new CatchUp(main,main.options,main.databaseManager); 
+
+            if(options.deleteUntil > main.servlet.getMaximum()) {
+                System.err.println("delete-until option would delete everything, ignoring");
+            }
+            else {
+                // Always delete everything before 2009; got some due to bug in its-electric 1.4
+                if(options.deleteUntil < 1230000000) options.deleteUntil = 1230000000;
+                if(options.deleteUntil >= main.servlet.getMinimum()) {
+                    main.servlet.setMinimum(databaseManager.secondsDb.minimumAfter(options.deleteUntil));
+                    main.deleteTask = Executors.newSingleThreadExecutor();
+                    for(final TimeSeriesDatabase db : databaseManager.databases) {
+                        main.deleteTask.execute(db.new DeleteUntil(main, options.deleteUntil));
+                    }                    
+                }
+            }
+
+            if(options.record && (options.longImportInterval>0 || options.importInterval>0 || options.voltAmpereImportIntervalMS>0)) {
+                main.catchUp = new CatchUp(main,options,main.databaseManager); 
                 main.catchUpTask = Executors.newSingleThreadExecutor();
                 main.catchUpTask.execute(main.catchUp);
-                main.importer = new TedImporter(main, main.options, main.databaseManager, main.servlet, main.catchUp);
+                main.importer = new TedImporter(main, options, main.databaseManager, main.servlet, main.catchUp);
                 main.importer.startup();
             }
-            if(main.options.export) {
+
+            if(options.export) {
                 main.export();
             }
         }

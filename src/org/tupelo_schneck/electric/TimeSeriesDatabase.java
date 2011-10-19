@@ -477,15 +477,17 @@ public class TimeSeriesDatabase {
     }
     
     class DeleteUntil implements Runnable {
-        private int until;
+        private final Main main;
+        private final int until;
         
-        DeleteUntil(int until) {
+        DeleteUntil(Main main, int until) {
+            this.main = main;
             this.until = until;
         }
         
         @Override
         public void run() {
-            if(!Main.isRunning) return; 
+            if(!main.isRunning) return; 
             log.trace("Deleting in database " + resolution);
             try {
                 Cursor cursor = openCursor();
@@ -499,7 +501,7 @@ public class TimeSeriesDatabase {
                     int interval = 86400;
                     if(resolution >= 3600) interval = 864000;
                     int timestamp = 0;
-                    while(Main.isRunning && status==OperationStatus.SUCCESS) {
+                    while(main.isRunning && status==OperationStatus.SUCCESS) {
                         byte[] buf = key.getData();
                         timestamp = intOfBytes(buf,0);
                         if(timestamp<until) {
@@ -536,7 +538,7 @@ public class TimeSeriesDatabase {
             catch (DatabaseException e) {
                 log.error("Error deleting",e);
             }
-            if(Main.isRunning) log.trace("Finished deleting in database " + resolution);
+            if(main.isRunning) log.trace("Finished deleting in database " + resolution);
         }
     }
 }

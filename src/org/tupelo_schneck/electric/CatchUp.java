@@ -53,7 +53,7 @@ public class CatchUp implements Runnable {
     
     private void runReal() {
         boolean firstTime = true;
-        while(Main.isRunning) {
+        while(main.isRunning) {
             // at start or following a reset, figure out where we are caught up to
             Arrays.fill(caughtUpTo, Integer.MAX_VALUE);
             for (int i = 1; i < DatabaseManager.numDurations; i++) {
@@ -74,11 +74,11 @@ public class CatchUp implements Runnable {
             }
             
             
-            while(!reset && Main.isRunning) {
+            while(!reset && main.isRunning) {
                 catchUpNewData();
             }
             
-            if(!Main.isRunning) return;
+            if(!main.isRunning) return;
             
             // perform the reset
             synchronized(resetLock) {
@@ -114,7 +114,7 @@ public class CatchUp implements Runnable {
                 for(int i = 1; i < DatabaseManager.numDurations; i++) {
                     cursors[i] = databaseManager.databases[i].openCursor();
                 }
-                while(iter.hasNext() && !reset && Main.isRunning) {
+                while(iter.hasNext() && !reset && main.isRunning) {
                     Triple triple = iter.next();
                     if(triple.timestamp > caughtUpTo[triple.mtu]) {
                         if(triple.timestamp > this.maximum) break;
@@ -138,9 +138,9 @@ public class CatchUp implements Runnable {
         }
         
         // wait for new data (or a reset)
-        if(!newData && !reset && Main.isRunning) {
+        if(!newData && !reset && main.isRunning) {
             synchronized(newDataLock) { 
-                while(!newData && !reset && Main.isRunning) {
+                while(!newData && !reset && main.isRunning) {
                     try {
                         newDataLock.wait();
                     }
@@ -162,8 +162,8 @@ public class CatchUp implements Runnable {
         }
     }
     
-    public void reset(List<Triple.Key> changes, boolean resetOnly) {
-            if(!Main.isRunning || changes==null || changes.isEmpty()) return;
+    public void notifyChanges(List<Triple.Key> changes, boolean existingDataChangesOnly) {
+            if(!main.isRunning || changes==null || changes.isEmpty()) return;
             boolean setReset = false;
             boolean setNewData = false;
             synchronized(resetLock) {
@@ -198,7 +198,7 @@ public class CatchUp implements Runnable {
                 }
     
                 if(setReset) reset = true;
-                else if(resetOnly) return; 
+                else if(existingDataChangesOnly) return; 
                 
                 if(setNewData) newData = true;
                 
