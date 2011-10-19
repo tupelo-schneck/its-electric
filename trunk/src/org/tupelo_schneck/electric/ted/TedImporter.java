@@ -44,6 +44,8 @@ public class TedImporter implements Importer {
     private ExecutorService shortImportTask;
     private ExecutorService voltAmpereImportTask;
     
+    private volatile CountDownLatch importInterleaver;
+
     public TedImporter(Main main, Options options, DatabaseManager databaseManager, Servlet servlet, CatchUp catchUp) {
         this.main = main;
         this.databaseManager = databaseManager;
@@ -90,8 +92,8 @@ public class TedImporter implements Importer {
         }
     }
     
-    public MinAndMax changesFromImport(int count, byte mtu, boolean oldOnly) {
-        if(!Main.isRunning) return null;
+    private MinAndMax changesFromImport(int count, byte mtu, boolean oldOnly) {
+        if(!main.isRunning) return null;
 
         boolean changed = false;
         int minChange = Integer.MAX_VALUE;
@@ -104,7 +106,7 @@ public class TedImporter implements Importer {
             iter = new ImportIterator(options, mtu, count);
             cursor = databaseManager.secondsDb.openCursor();
             while(iter.hasNext()) {
-                if(!Main.isRunning) return null;
+                if(!main.isRunning) return null;
 
                 Triple triple = iter.next();
                 if(triple==null) break;
@@ -135,9 +137,7 @@ public class TedImporter implements Importer {
         }
     }
 
-    private volatile CountDownLatch importInterleaver;
-
-    public class MultiImporter implements Runnable {
+    private class MultiImporter implements Runnable {
         private int count;
         private boolean longImport;
         
@@ -175,7 +175,7 @@ public class TedImporter implements Importer {
             List<Triple.Key> changes = new ArrayList<Triple.Key>();
 
             for(byte mtu = 0; mtu < options.mtus; mtu++) {
-                if(!Main.isRunning) return;
+                if(!main.isRunning) return;
                 
                 MinAndMax minAndMax = changesFromImport(count,mtu,longImport && options.importInterval > 0);
 
@@ -195,7 +195,7 @@ public class TedImporter implements Importer {
                 }
             }
 
-            catchUp.reset(changes, false);
+            catchUp.notifyChanges(changes, false);
             
             if(servlet!=null) {
                 servlet.setMinimumIfNewer(newMin);
@@ -229,7 +229,7 @@ public class TedImporter implements Importer {
         }
     }
     
-    public class VoltAmpereImporter implements Runnable {
+    private class VoltAmpereImporter implements Runnable {
         public VoltAmpereImporter() {}
         
         @Override
@@ -243,7 +243,7 @@ public class TedImporter implements Importer {
             }
         }
         
-        public void runReal() {
+        private void runReal() {
             int[] newMaxForMTU = new int[options.mtus];
             List<Triple.Key> changes = new ArrayList<Triple.Key>();
             boolean changed = false;
@@ -256,10 +256,10 @@ public class TedImporter implements Importer {
             int timestamp = 0;
             Cursor cursor = null;
             try {
-                if(!Main.isRunning) return;
+                if(!main.isRunning) return;
                 cursor = databaseManager.secondsDb.openCursor();
                 for(Triple triple : triples) {
-                    if(!Main.isRunning) return;
+                    if(!main.isRunning) return;
                     timestamp = triple.timestamp;
                     if (databaseManager.secondsDb.putIfChanged(cursor, triple)) {
                         changed = true;
@@ -278,18 +278,18 @@ public class TedImporter implements Importer {
             if(changed) {
                 log.trace("kVA data at " + Util.dateString(timestamp));
                 latestVoltAmperesTimestamp = timestamp;
-                catchUp.reset(changes, true);
+                catchUp.notifyChanges(changes, true);
             }
         }
     }
     
-    public ExecutorService repeatedlyImport(int count,boolean longImport,int interval) {
+    private ExecutorService repeatedlyImport(int count,boolean longImport,int interval) {
         ScheduledExecutorService execServ = Executors.newSingleThreadScheduledExecutor();
         execServ.scheduleAtFixedRate(new MultiImporter(count, longImport), 0, interval, TimeUnit.SECONDS);
         return execServ;
     }
 
-    public ExecutorService voltAmpereImporter(final ExecutorService execServ, long interval) {
+    private ExecutorService voltAmpereImporter(final ExecutorService execServ, long interval) {
         if(!(execServ instanceof ScheduledExecutorService)) throw new AssertionError();
         if(options.kvaThreads <= 1) {
             ((ScheduledExecutorService)execServ).scheduleAtFixedRate(new VoltAmpereImporter(), 0, interval, TimeUnit.MILLISECONDS);
