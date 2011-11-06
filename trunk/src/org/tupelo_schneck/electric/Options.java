@@ -370,7 +370,7 @@ public class Options extends org.apache.commons.cli.Options {
                 }
                 if(cmd.hasOption("cc-port-name")) {
                     ccOptions = true;
-                    ccPortName = cmd.getOptionValue("volt-ampere-threads");
+                    ccPortName = cmd.getOptionValue("cc-port-name");
                 }
                 if(cmd.hasOption("h")) {
                     showUsageAndExit = true;

@@ -166,14 +166,12 @@ public class Main {
                 main.server.start();
             }
 
-            if(options.deleteUntil > main.servlet.getMaximum()) {
-                System.err.println("delete-until option would delete everything, ignoring");
-            }
-            else {
+            {
                 // Always delete everything before 2009; got some due to bug in its-electric 1.4
                 if(options.deleteUntil < 1230000000) options.deleteUntil = 1230000000;
-                if(options.deleteUntil >= main.servlet.getMinimum()) {
-                    main.servlet.setMinimum(databaseManager.secondsDb.minimumAfter(options.deleteUntil));
+                int minimum = databaseManager.secondsDb.minimumAfter(0);
+                if(minimum>0 && options.deleteUntil >= minimum) {
+                    if(main.servlet!=null) main.servlet.setMinimum(databaseManager.secondsDb.minimumAfter(options.deleteUntil));
                     main.deleteTask = Executors.newSingleThreadExecutor();
                     for(final TimeSeriesDatabase db : databaseManager.databases) {
                         main.deleteTask.execute(db.new DeleteUntil(main, options.deleteUntil));

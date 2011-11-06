@@ -125,8 +125,8 @@ public class CurrentCostImporter implements Importer, Runnable {
 
     @Override
     public synchronized void shutdown() {
+        execServ.shutdownNow();
         closeSerial();
-        execServ.shutdown();
     }
 
     @Override
@@ -291,8 +291,10 @@ public class CurrentCostImporter implements Importer, Runnable {
 
         if(changed) {
             log.trace("Current Cost data at " + Util.dateString(timestamp));
-            servlet.setMinimumIfNewer(timestamp);
-            servlet.setMaximumIfNewer(timestamp);
+            if(servlet!=null) {
+                servlet.setMinimumIfNewer(timestamp);
+                servlet.setMaximumIfNewer(timestamp);
+            }
             catchUp.setMaximumIfNewer(timestamp);
             catchUp.notifyChanges(changes, false);
 
