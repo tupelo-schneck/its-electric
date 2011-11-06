@@ -22,7 +22,7 @@ public class DatabaseManager {
 
     public Environment environment;
     public final TimeSeriesDatabase[] databases = new TimeSeriesDatabase[numDurations];
-    public final TimeSeriesDatabase secondsDb = databases[0];
+    public TimeSeriesDatabase secondsDb;
 
     private boolean closed;
     
@@ -55,6 +55,7 @@ public class DatabaseManager {
             databases[i] = new TimeSeriesDatabase(environment, readOnly, String.valueOf(durations[i]), options.mtus, durations[i], durationStrings[i], options.serveTimeZone.getRawOffset() / 1000);
             log.trace("Database " + i + " opened");
         }
+        secondsDb = databases[0];
     }
     
     public synchronized void close() {
