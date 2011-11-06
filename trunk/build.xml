@@ -39,6 +39,7 @@ If not, see <http://www.gnu.org/licenses/>.
                 <include name="OneJar.class"/>
                 <include name="main/**"/>
                 <include name="lib/**"/>
+                <include name="binlib/**"/>
                 <include name="legal/**"/>
                 <include name="src/**"/>
                 <include name="web/**"/>
@@ -55,7 +56,7 @@ If not, see <http://www.gnu.org/licenses/>.
     <target name="its-electric-only.jar" depends="build">
         <mkdir dir="main"/>
         <jar destfile="main/its-electric-only-${version}.jar">
-            <fileset dir="build" includes="org/tupelo_schneck/electric/*.class"/>
+            <fileset dir="build" includes="org/tupelo_schneck/electric/*.class org/tupelo_schneck/electric/ted/*.class org/tupelo_schneck/electric/current_cost/*.class"/>
         </jar>
     </target>
 

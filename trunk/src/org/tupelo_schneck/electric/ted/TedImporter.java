@@ -195,8 +195,6 @@ public class TedImporter implements Importer {
                 }
             }
 
-            catchUp.notifyChanges(changes, false);
-            
             if(servlet!=null) {
                 servlet.setMinimumIfNewer(newMin);
                 servlet.setMaximumIfNewer(newMax);
@@ -204,6 +202,9 @@ public class TedImporter implements Importer {
             int latestVA = latestVoltAmperesTimestamp;
             if(latestVA + CatchUp.LAG < newMax || latestVA > newMax) catchUp.setMaximumIfNewer(newMax);
             else catchUp.setMaximumIfNewer(latestVA);
+
+            catchUp.notifyChanges(changes, false);
+            
             synchronized(minMaxLock) {
                 for(byte mtu = 0; mtu < options.mtus; mtu++) {
                     if(newMaxForMTU[mtu] < maxSecondForMTU[mtu]) {
@@ -244,7 +245,6 @@ public class TedImporter implements Importer {
         }
         
         private void runReal() {
-            int[] newMaxForMTU = new int[options.mtus];
             List<Triple.Key> changes = new ArrayList<Triple.Key>();
             boolean changed = false;
 
@@ -263,7 +263,6 @@ public class TedImporter implements Importer {
                     timestamp = triple.timestamp;
                     if (databaseManager.secondsDb.putIfChanged(cursor, triple)) {
                         changed = true;
-                        newMaxForMTU[triple.mtu] = timestamp;
                         changes.add(new Triple.Key(timestamp,triple.mtu));
                     }
                 }

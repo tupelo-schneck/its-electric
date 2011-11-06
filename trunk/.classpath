@@ -19,5 +19,6 @@
 	<classpathentry kind="lib" path="lib/jetty-server-7.5.1.v20110908.jar"/>
 	<classpathentry kind="lib" path="lib/jetty-servlet-7.5.1.v20110908.jar"/>
 	<classpathentry kind="lib" path="lib/jetty-util-7.5.1.v20110908.jar"/>
+	<classpathentry kind="lib" path="lib/RXTXcomm.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
