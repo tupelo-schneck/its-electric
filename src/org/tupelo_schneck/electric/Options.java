@@ -25,6 +25,7 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.tupelo_schneck.electric.current_cost.CurrentCostImporter;
 
 import com.ibm.icu.util.TimeZone;
 
@@ -79,6 +80,9 @@ public class Options extends org.apache.commons.cli.Options {
     public long voltAmpereImportIntervalMS = 0;
     public int kvaThreads = 0;
     public boolean record = true;
+    public String ccPortName;
+    public boolean ccOptions;
+    public boolean tedOptions;
     public boolean serve = true;
     
     public TimeZone recordTimeZone = TimeZone.getDefault();
@@ -172,6 +176,17 @@ public class Options extends org.apache.commons.cli.Options {
         .hasArg().create(); 
         this.addOption(deleteUntilOpt);
         
+        Option ccListSerialPortsOpt = OptionBuilder.withLongOpt("cc-list-serial-ports")
+        .withDescription("Current Cost: list all serial ports and exit")
+        .create();
+        this.addOption(ccListSerialPortsOpt);
+
+        Option ccPortNameOpt = OptionBuilder.withLongOpt("cc-port-name")
+        .withDescription("Current Cost: port name")
+        .withArgName("arg")
+        .hasArg().create();
+        this.addOption(ccPortNameOpt);
+        
         this.addOption("h","help",false,"print this help text");
     }
 
@@ -196,6 +211,7 @@ public class Options extends org.apache.commons.cli.Options {
         CommandLineParser parser = new GnuParser();
         CommandLine cmd = null;
         boolean showUsageAndExit = false;
+        boolean listSerialPortsAndExit = false;
         try {
             // parse the command line arguments
             cmd = parser.parse(this, args);
@@ -298,14 +314,17 @@ public class Options extends org.apache.commons.cli.Options {
                     }
                 }
                 if(cmd.hasOption("g")) {
+                    tedOptions = true;
                     gatewayURL = cmd.getOptionValue("g");
                     if(gatewayURL.equals("none")) record = false;
                 }
                 if(cmd.hasOption("m")) {
+                    tedOptions = true;
                     mtus = Byte.parseByte(cmd.getOptionValue("m"));
                     if(mtus<=0 || mtus >4) showUsageAndExit = true;
                 }
                 if(cmd.hasOption("u")) {
+                    tedOptions = true;
                     username = cmd.getOptionValue("u");
                 }
                 if(cmd.hasOption("n")) {
@@ -317,14 +336,17 @@ public class Options extends org.apache.commons.cli.Options {
                     if(maxDataPoints<=0) showUsageAndExit = true;
                 }
                 if(cmd.hasOption("i")) {
+                    tedOptions = true;
                     importInterval = Integer.parseInt(cmd.getOptionValue("i"));
                     if(importInterval<0) showUsageAndExit = true;
                 }
                 if(cmd.hasOption("o")) {
+                    tedOptions = true;
                     importOverlap = Integer.parseInt(cmd.getOptionValue("o"));
                     if(importOverlap<0) showUsageAndExit = true;
                 }
                 if(cmd.hasOption("e")) {
+                    tedOptions = true;
                     longImportInterval = Integer.parseInt(cmd.getOptionValue("e"));
                     if(longImportInterval<0) showUsageAndExit = true;
                 }
@@ -332,21 +354,32 @@ public class Options extends org.apache.commons.cli.Options {
                     serverLogFilename = cmd.getOptionValue("l");
                 }
                 if(cmd.hasOption("v")) {
+                    tedOptions = true;
                     voltage = optionalBoolean(cmd,"v",false);
                 }
                 if(cmd.hasOption("k")) {
+                    tedOptions = true;
                     double value = Double.parseDouble(cmd.getOptionValue("k"));
                     voltAmpereImportIntervalMS = (long)(1000 * value);
                     if(voltAmpereImportIntervalMS<0) showUsageAndExit = true;
                 }
                 if(cmd.hasOption("volt-ampere-threads")) {
+                    tedOptions = true;
                     kvaThreads = Integer.parseInt(cmd.getOptionValue("volt-ampere-threads"));
                     if(kvaThreads<0) showUsageAndExit = true;
+                }
+                if(cmd.hasOption("cc-port-name")) {
+                    ccOptions = true;
+                    ccPortName = cmd.getOptionValue("volt-ampere-threads");
                 }
                 if(cmd.hasOption("h")) {
                     showUsageAndExit = true;
                 }
             
+                if(cmd.hasOption("cc-list-serial-ports")) {
+                    listSerialPortsAndExit = true;
+                }
+                
                 if(cmd.hasOption("d")) {
                     dbFilename = cmd.getOptionValue("d");
                 }
@@ -354,7 +387,7 @@ public class Options extends org.apache.commons.cli.Options {
                     dbFilename = cmd.getArgs()[0];
                 }
                 else {
-                    showUsageAndExit = true;
+                    showUsageAndExit = !listSerialPortsAndExit;
                 }
             }
             catch (NumberFormatException e) {
@@ -362,7 +395,12 @@ public class Options extends org.apache.commons.cli.Options {
             }
         }
           
-        if(!serve && !record && !export) {
+        if(!serve && !record && !export && deleteUntil==0 && !listSerialPortsAndExit) {
+            showUsageAndExit = true;
+        }
+        
+        if(ccOptions && tedOptions) {
+            System.out.println("Cannot combine TED and Current Cost options.");
             showUsageAndExit = true;
         }
         
@@ -398,6 +436,10 @@ public class Options extends org.apache.commons.cli.Options {
             help.printOptions(writer,80,this,0,0);
             writer.flush();
             writer.close();
+            return false;
+        }
+        else if(listSerialPortsAndExit) {
+            CurrentCostImporter.printSerialPortNames();
             return false;
         }
         else {

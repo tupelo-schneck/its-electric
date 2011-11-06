@@ -31,6 +31,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.jetty.server.Server;
 import org.tupelo_schneck.electric.TimeSeriesDatabase.ReadIterator;
+import org.tupelo_schneck.electric.current_cost.CurrentCostImporter;
 import org.tupelo_schneck.electric.ted.TedImporter;
 
 import com.sleepycat.je.DatabaseException;
@@ -176,18 +177,26 @@ public class Main {
                     main.deleteTask = Executors.newSingleThreadExecutor();
                     for(final TimeSeriesDatabase db : databaseManager.databases) {
                         main.deleteTask.execute(db.new DeleteUntil(main, options.deleteUntil));
-                    }                    
+                    }                  
+                    main.deleteTask.shutdown();
                 }
             }
 
-            if(options.record && (options.longImportInterval>0 || options.importInterval>0 || options.voltAmpereImportIntervalMS>0)) {
+            if(options.record && options.ccPortName!=null) {
                 main.catchUp = new CatchUp(main,options,main.databaseManager); 
-                main.catchUpTask = Executors.newSingleThreadExecutor();
-                main.catchUpTask.execute(main.catchUp);
+                main.importer = new CurrentCostImporter(main, options, main.databaseManager, main.servlet, main.catchUp);
+            }
+            else if(options.record && (options.longImportInterval>0 || options.importInterval>0 || options.voltAmpereImportIntervalMS>0)) {
+                main.catchUp = new CatchUp(main,options,main.databaseManager); 
                 main.importer = new TedImporter(main, options, main.databaseManager, main.servlet, main.catchUp);
-                main.importer.startup();
             }
 
+            if(main.importer != null) {
+                main.catchUpTask = Executors.newSingleThreadExecutor();
+                main.catchUpTask.execute(main.catchUp);
+                main.importer.startup();
+            }
+            
             if(options.export) {
                 main.export();
             }
