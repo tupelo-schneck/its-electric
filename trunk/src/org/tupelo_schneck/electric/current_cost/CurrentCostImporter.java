@@ -1,21 +1,19 @@
 package org.tupelo_schneck.electric.current_cost;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import gnu.io.CommPort;
 import gnu.io.CommPortIdentifier;
 import gnu.io.SerialPort;
+import gnu.io.SerialPortEvent;
+import gnu.io.SerialPortEventListener;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -32,11 +30,11 @@ import com.sleepycat.je.Cursor;
 import com.sleepycat.je.DatabaseException;
 import com.sleepycat.je.StatsConfig;
 
-public class CurrentCostImporter implements Importer, Runnable {
+public class CurrentCostImporter implements Importer, SerialPortEventListener {
     static {
         System.out.println("RXTX version mismatch warning can safely be ignored.");
     }
-    
+
     private Log log = LogFactory.getLog(CurrentCostImporter.class);
 
     /** Milliseconds to block while waiting for port open */
@@ -61,8 +59,7 @@ public class CurrentCostImporter implements Importer, Runnable {
     private boolean modelVerified;
     private int serialSpeed;
     private InputStream input;
-    private Reader reader;
-    private ExecutorService execServ = Executors.newSingleThreadExecutor();
+    private StringBuilder sb;
     private int fails;
 
     private long latestStatsDump;
@@ -73,7 +70,7 @@ public class CurrentCostImporter implements Importer, Runnable {
         this.options = options;
         this.servlet = servlet;
         this.catchUp = catchUp;
-        
+
         // TODO options
         portName = this.options.ccPortName;
         maxSensors = 0;
@@ -107,8 +104,9 @@ public class CurrentCostImporter implements Importer, Runnable {
             serialPort = (SerialPort) commPort;
             serialPort.setSerialPortParams(SERIAL_SPEEDS[serialSpeed],SerialPort.DATABITS_8,SerialPort.STOPBITS_1,SerialPort.PARITY_NONE);
             input = serialPort.getInputStream();
-            reader = new BufferedReader(new InputStreamReader(input,"UTF-8"));
-            execServ.execute(this);
+            sb = new StringBuilder();
+            serialPort.addEventListener(this);
+            serialPort.notifyOnDataAvailable(true);
         }
         catch(Exception e) {
             e.printStackTrace();
@@ -119,92 +117,107 @@ public class CurrentCostImporter implements Importer, Runnable {
 
     private synchronized void closeSerial() {
         if (serialPort != null) {
+            serialPort.removeEventListener();
             serialPort.close();
         }
     }
 
     @Override
     public synchronized void shutdown() {
-        execServ.shutdownNow();
         closeSerial();
     }
 
     @Override
-    public void run() {
-        StringBuilder sb = new StringBuilder();
-        char[] buf = new char[4096];
-        while(main.isRunning) {
-            if(fails > MAX_FAILS) {
-                log.error("Too many errors reading from serial port.");
-                main.shutdown();
-                return;
+    public void serialEvent(SerialPortEvent ev) {
+        if(!main.isRunning || ev.getEventType()!=SerialPortEvent.DATA_AVAILABLE) return;
+
+        if(fails > MAX_FAILS) {
+            log.error("Too many errors reading from serial port.");
+            main.shutdown();
+            return;
+        }
+        
+        byte[] buf;
+        int r = 0;
+        try {
+            int available = input.available();
+            if(available==0) return;
+            buf = new byte[available];
+            int off = 0;
+
+            while(main.isRunning && available > 0 && (r = input.read(buf,off,available)) > 0) {
+                off += r;
+                available -= r;
+            }
+        }
+        catch(IOException e) {
+            fails++;
+            sb.delete(0,sb.length());
+            log.error("Error reading from serial port", e);
+            return;
+        }
+
+        if(!main.isRunning) return;
+
+        if(r<0) {
+            fails++;
+            log.error("Error reading from serial port; no input");
+            closeSerial();
+            try { Thread.sleep(1000); } catch(InterruptedException e) { Thread.currentThread().interrupt(); }
+            initSerial();
+            return;
+        }
+
+        fails = 0;
+
+        String s;
+        try {
+            s = new String(buf,"UTF-8");
+        }
+        catch(UnsupportedEncodingException e) {
+            throw new AssertionError(e);
+        }
+        
+        if (!modelVerified) {    
+            boolean nonsenseXML = false;
+            for(int i = 0; i < s.length(); i++) {
+                char ch = s.charAt(i);
+                if((ch<32 && ch!=9 && ch!=10 && ch!=13) || (ch>=127 && ch<=159) || ch>255) {
+                    nonsenseXML = true;
+                    break;
+                } 
             }
 
-            int r;
-            try {
-                r = reader.read(buf);
-            }
-            catch(IOException e) {
-                fails++;
-                sb.delete(0,sb.length());
-                log.error("Error reading from serial port", e);
-                continue;
-            }
-
-            if(!main.isRunning) return;
-
-            if(r<0) {
-                fails++;
-                log.error("Error reading from serial port; no input");
+            if (nonsenseXML) {
+                serialSpeed++;
+                if(serialSpeed>=SERIAL_SPEEDS.length) { 
+                    log.error("Unable to find correct speed for serial port.");
+                    main.shutdown();
+                    return;
+                }
                 closeSerial();
-                try { Thread.sleep(1000); } catch(InterruptedException e) { Thread.currentThread().interrupt(); }
                 initSerial();
                 return;
             }
+        } 
 
-            fails = 0;
+        sb.append(s);
+        int startPos = sb.indexOf("<msg>");
+        int endPos = sb.indexOf("</msg>");
 
-            if (!modelVerified) {    
-                boolean nonsenseXML = false;
-                for(int i = 0; i < r; i++) {
-                    char ch = buf[i];
-                    if((ch<32 && ch!=9 && ch!=10 && ch!=13) || (ch>=127 && ch<=159) || ch>255) {
-                        nonsenseXML = true;
-                        break;
-                    } 
-                }
-
-                if (nonsenseXML) {
-                    serialSpeed++;
-                    if(serialSpeed>=SERIAL_SPEEDS.length) { 
-                        log.error("Unable to find correct speed for serial port.");
-                        main.shutdown();
-                        return;
-                    }
-                    closeSerial();
-                    initSerial();
-                    return;
-                }
+        if ((startPos >=0) && (endPos >= 0)){
+            if (endPos > startPos){     
+                modelVerified = true;
+                String message = sb.substring(startPos, endPos+6);
+                sb.delete(0,endPos+6);
+                List<Triple> triples = currentCostParse(message);
+                processTriples(triples);
             } 
-
-            sb.append(buf,0,r);
-            int startPos = sb.indexOf("<msg>");
-            int endPos = sb.indexOf("</msg>");
-
-            if ((startPos >=0) && (endPos >= 0)){
-                if (endPos > startPos){     
-                    modelVerified = true;
-                    String message = sb.substring(startPos, endPos+6);
-                    sb.delete(0,endPos+6);
-                    List<Triple> triples = currentCostParse(message);
-                    processTriples(triples);
-                } 
-                else {                
-                    sb.delete(0,startPos);
-                }
+            else {                
+                sb.delete(0,startPos);
             }
-
         }
+
     }
 
     private static final Pattern sensorPattern = Pattern.compile("<sensor>([^<]*+)</sensor>");
@@ -324,26 +337,26 @@ public class CurrentCostImporter implements Importer, Runnable {
             }
         }        
     }
-//    
-//    
-//    public CurrentCostImporter() {
-//        this.main = null;
-//        this.databaseManager = null;
-//        this.options = null;
-//        this.servlet = null;
-//        this.catchUp = null;
-//        
-//        // TODO options
-//        portName = null;
-//        maxSensors = 0;
-//        numberOfClamps = 3;
-//        sumClamps = true;
-//        recordTemperature = false;
-//    }
-//
-//    public static void main(String[] args) {
-//        String msg = "<msg>\n   <src>CC128-v0.11</src>\n   <dsb>00089</dsb>\n   <time>13:02:39</time>\n   <tmpr>18.7</tmpr>\n   <sensor>0</sensor>\n   <id>01234</id>\n   <type>1</type>\n   <ch1>\n      <watts>00345</watts>\n   </ch1>\n   <ch2>\n      <watts>02151</watts>\n   </ch2>\n   <ch3>\n      <watts>00000</watts>\n   </ch3>\n</msg>\n";
-//        msg = "<msg>\n  <date>\n    <dsb>00030</dsb>\n    <hr>00</hr><min>20</min><sec>11</sec>\n  </date>\n  <src>\n    <name>CC02</name>\n    <id>00077</id> \n    <type>1</type>\n    <sver>1.06</sver>\n  </src>\n  <ch1>\n    <watts>00168</watts>\n  </ch1>\n  <ch2>\n    <watts>00000</watts>\n  </ch2>\n  <ch3>\n    <watts>00000</watts>\n  </ch3>\n  <tmpr>25.6</tmpr>\n  <hist>\n    <hrs>\n      <h02>000.3</h02>\n      ....\n      <h26>003.1</h26>\n    </hrs>\n    <days>\n\n      <d01>0014</d01>\n      ....\n      <d31>0000</d31>\n    </days>\n    <mths>\n\n      <m01>0000</m01>\n      ....\n      <m12>0000</m12>\n    </mths>\n    <yrs>\n\n      <y1>0000000</y1>\n      ....\n      <y4>0000000</y4>\n    </yrs>\n  </hist>\n</msg>\n";
-//        System.out.println(new CurrentCostImporter().currentCostParse(msg));
-//    }
+    //    
+    //    
+    //    public CurrentCostImporter() {
+    //        this.main = null;
+    //        this.databaseManager = null;
+    //        this.options = null;
+    //        this.servlet = null;
+    //        this.catchUp = null;
+    //        
+    //        // TODO options
+    //        portName = null;
+    //        maxSensors = 0;
+    //        numberOfClamps = 3;
+    //        sumClamps = true;
+    //        recordTemperature = false;
+    //    }
+    //
+    //    public static void main(String[] args) {
+    //        String msg = "<msg>\n   <src>CC128-v0.11</src>\n   <dsb>00089</dsb>\n   <time>13:02:39</time>\n   <tmpr>18.7</tmpr>\n   <sensor>0</sensor>\n   <id>01234</id>\n   <type>1</type>\n   <ch1>\n      <watts>00345</watts>\n   </ch1>\n   <ch2>\n      <watts>02151</watts>\n   </ch2>\n   <ch3>\n      <watts>00000</watts>\n   </ch3>\n</msg>\n";
+    //        msg = "<msg>\n  <date>\n    <dsb>00030</dsb>\n    <hr>00</hr><min>20</min><sec>11</sec>\n  </date>\n  <src>\n    <name>CC02</name>\n    <id>00077</id> \n    <type>1</type>\n    <sver>1.06</sver>\n  </src>\n  <ch1>\n    <watts>00168</watts>\n  </ch1>\n  <ch2>\n    <watts>00000</watts>\n  </ch2>\n  <ch3>\n    <watts>00000</watts>\n  </ch3>\n  <tmpr>25.6</tmpr>\n  <hist>\n    <hrs>\n      <h02>000.3</h02>\n      ....\n      <h26>003.1</h26>\n    </hrs>\n    <days>\n\n      <d01>0014</d01>\n      ....\n      <d31>0000</d31>\n    </days>\n    <mths>\n\n      <m01>0000</m01>\n      ....\n      <m12>0000</m12>\n    </mths>\n    <yrs>\n\n      <y1>0000000</y1>\n      ....\n      <y4>0000000</y4>\n    </yrs>\n  </hist>\n</msg>\n";
+    //        System.out.println(new CurrentCostImporter().currentCostParse(msg));
+    //    }
 }
