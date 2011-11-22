@@ -166,7 +166,7 @@ public class Main {
                 main.server.start();
             }
 
-            {
+            if(!readOnly) {
                 // Always delete everything before 2009; got some due to bug in its-electric 1.4
                 if(options.deleteUntil < 1230000000) options.deleteUntil = 1230000000;
                 int minimum = databaseManager.secondsDb.minimumAfter(0);
