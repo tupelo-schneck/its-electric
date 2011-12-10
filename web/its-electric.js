@@ -524,9 +524,7 @@ ItsElectric.prototype.rangeChangeHandler = function(e) {
 
 ItsElectric.prototype.zoom = function(t) {
     if(this.noFlashEvents) alert("This won't work with noFlashEvents=true.");
-    if(!this.ready || this.noFlashEvents) return;
-    var range = this.annotatedtimeline.getVisibleChartRange();
-    if(range) this.range = range;
+    if(!this.ready || !this.range || this.noFlashEvents) return;
     this.resolution = null;
     var newStart = new Date();
     var newEnd = new Date();
@@ -548,9 +546,7 @@ ItsElectric.prototype.zoom = function(t) {
 
 ItsElectric.prototype.scrollToPresent = function() {
     if(this.noFlashEvents) alert("This won't work with noFlashEvents=true.");
-    if(!this.ready || this.noFlashEvents) return;
-    var range = this.annotatedtimeline.getVisibleChartRange();
-    if(range) this.range = range;
+    if(!this.ready || !this.range || this.noFlashEvents) return;
     var size = this.range.end.getTime() - this.range.start.getTime();
     var newStart = new Date();
     var newEnd = new Date();
