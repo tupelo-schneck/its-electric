@@ -89,6 +89,22 @@ If not, see <http://www.gnu.org/licenses/>.
             itsElectric.requery();
         }            
         
+        function showErrors() {
+            var errorsDiv = document.getElementById('errorsDiv');
+            while(errorsDiv.firstChild) errorsDiv.removeChild(errorsDiv.firstChild);
+            errorsDiv.appendChild(htmlListify(itsElectric.getErrors()));
+        }
+        
+        function htmlListify(xs) {
+            var ol = document.createElement("ol");
+            for(var i = 0; i < xs.length; i++) {
+                var li = document.createElement("li");
+                li.appendChild(document.createTextNode(xs[i]));
+                ol.appendChild(li);
+            }
+            return ol;
+        }
+        
         var resizeTimeout = null;
         window.onresize = function(){
            if(resizeTimeout != null) clearTimeout(resizeTimeout);
@@ -149,6 +165,8 @@ If not, see <http://www.gnu.org/licenses/>.
                 <a id="hideMenu" class="blocky" style="display:none" href="#" onclick="hide('menu');show('showMenu');hide('hideMenu');return false;">Hide menu</a>
                 &nbsp;
                 <span id="busy" style="display:none"><img style="position:relative;top:5px;" src="wait20trans.gif" alt="[busy]"/></span>
+                &nbsp;
+                <span id="errorsLink" style=""><a href="#" onclick="showErrors();return false;">!!!</a></span>
             </div>
         </div>
         <div id="menu" style="display:none;position:absolute;top:42px;z-index:10;width:445px;border:solid 1px;padding:4px;margin-left:1px;background-color:white">
@@ -229,7 +247,9 @@ If not, see <http://www.gnu.org/licenses/>.
                     &nbsp;
                     <i>Currently: <span id="resolutionId"></span></i>
                     <br/>
+                    <a href="#" onclick="itsElectric.requery();return false;">Refresh</a><br/>
                 </p>
+                <div id="errorsDiv"></div>
             </form>
 
             <div class="blocky" id="toolbarId"></div>
