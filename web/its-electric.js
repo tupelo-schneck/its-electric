@@ -43,9 +43,15 @@ function ItsElectric(timelineId,busyId,resolutionId,toolbarId,columnCheckboxesId
     this.querying = false;
     this.pendingQuery = false;
     this.pendingDraw = false;
+    this.errors = [];
+    this.requeryBackoff = ItsElectric.minRequeryBackoff;
 
     this.lastTouched = new Date().getTime();
 }
+
+ItsElectric.maxErrors = 20;
+ItsElectric.minRequeryBackoff = 10000;
+ItsElectric.maxRequeryBackoff = 320000;
 
 ItsElectric.prototype.configure = function(config) {
     this.datasourceURL = config.datasourceURL;
@@ -154,7 +160,6 @@ ItsElectric.prototype.queryURL = function() {
             '&end=' + (100000000 + this.initialZoom) +
             '&realTimeAdjust=yes';
         extendChar = '&';
-        this.firstTime = false;
         this.range = { start:new Date(100000000*1000), end:new Date((100000000+this.initialZoom)*1000) };
         this.maximum = (100000000 + this.initialZoom)*1000;
     }
@@ -194,6 +199,10 @@ ItsElectric.prototype.toolbarQueryURL = function() {
 };
 
 ItsElectric.prototype.requery = function() {
+	clearTimeout(this.requeryTimeoutId);
+	this.requeryTimeoutId = null;
+	clearTimeout(this.realTimeUpdateTimeoutId);
+	this.realTimeUpdateTimeoutId = null;
     if(this.querying) {
         this.pendingQuery = true;
         return;
@@ -210,7 +219,7 @@ ItsElectric.prototype.requery = function() {
 
 ItsElectric.prototype.requeryAfter = function(n) {
     var self = this;
-    setTimeout(function(){self.requery();},n);
+    this.requeryTimeoutId = setTimeout(function(){self.requery();},n);
 };
 
 ItsElectric.prototype.redrawAfter = function(n) {
@@ -228,15 +237,49 @@ ItsElectric.setOnclick = function(self,index,node) {
     node.onclick=function(){self.showOrHideColumn(index,node.checked);};
 };
 
+ItsElectric.prototype.logError = function(s) {
+	if(this.errors.length > ItsElectric.maxErrors) {
+		this.errors.pop();
+	}
+	this.errors.unshift("" + ItsElectric.toISOString(new Date()) + ": " + s);
+};
+
+ItsElectric.prototype.clearErrors = function() {
+	this.errors = [];
+};
+
+ItsElectric.prototype.getErrors = function() {
+	return this.errors;
+};
+
+ItsElectric.toISOString = function(d) {
+	var padzero = ItsElectric.padZero;
+	return d.getFullYear() + '-' +  padzero(d.getMonth() + 1) + '-' + padzero(d.getDate()) + ' ' + padzero(d.getHours()) + ':' +  padzero(d.getMinutes()) + ':' + padzero(d.getSeconds());
+};
+
+ItsElectric.padZero = function(n) {
+	return n < 10 ? '0' + n : n;
+};
+
 ItsElectric.prototype.handleQueryResponse = function(response) {
-    if (response.isError()) {
+    if (Math.random() < 0.5  || response.isError()) {
         if(this.busyId) document.getElementById(this.busyId).style.display="none";
-        alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+        this.logError(response.getMessage() + ' ' + response.getDetailedMessage());
         this.querying = false;
-        if(this.pendingQuery) this.requeryAfter(1);
-        else if(this.pendingDraw) this.redrawAfter(1);
+        if(this.pendingQuery) {
+        	alert("pendingQuery");
+        	this.requeryAfter(1);
+        }
+        else {
+        	if(this.pendingDraw) this.redrawAfter(1);
+        	this.requeryAfter(this.requeryBackoff);
+        	alert(this.requeryBackoff);
+        	this.requeryBackoff *= 2;
+        	if(this.requeryBackoff > ItsElectric.maxRequeryBackoff) this.requeryBackoff = ItsElectric.maxRequeryBackoff;
+        }
         return;
     }
+    this.requeryBackoff = ItsElectric.minRequeryBackoff;
 
     var realTimeNeedsAdjust = this.realTime && this.range && this.range.end.getTime() == this.maximum;
 
@@ -353,6 +396,7 @@ ItsElectric.renameChartOptions = function(element) {
 };
 
 ItsElectric.prototype.redraw = function() {
+    if(!this.data) return;
     if(!this.isRedraw) {
         this.lastTouched = new Date().getTime();
     }
@@ -363,7 +407,6 @@ ItsElectric.prototype.redraw = function() {
     this.querying = true;
     this.pendingDraw = false;
 
-    if(!this.data) return;
     if(this.busyId) document.getElementById(this.busyId).style.display="";
 
     this.canRedraw = this.allowRedraw;
@@ -507,7 +550,7 @@ ItsElectric.prototype.realReadyHandler = function(e) {
 
 ItsElectric.prototype.setRealTimeUpdater = function() {
     var self = this;
-    setTimeout(function(){self.realTimeUpdate();},Math.max(this.currentResolution*1000,this.realTimeUpdateInterval));
+    this.realTimeUpdateTimeoutId = setTimeout(function(){self.realTimeUpdate();},Math.max(this.currentResolution*1000,this.realTimeUpdateInterval));
 }
 
 ItsElectric.prototype.rangeChangeHandler = function(e) {
@@ -590,6 +633,7 @@ ItsElectric.prototype.setResolution = function(t) {
 };
 
 ItsElectric.prototype.realTimeUpdate = function() {
+	this.requeryTimeoutId = null;
     if(!this.ready || !this.realTime || this.noFlashEvents) return;
     if(this.range && this.range.end.getTime() < this.maximum) return;
     if(this.range && this.range.end.getTime() - this.range.start.getTime() == this.initialZoom*1000) {
