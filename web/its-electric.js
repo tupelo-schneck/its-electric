@@ -19,14 +19,15 @@ along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
 */
 
-function ItsElectric(timelineId,busyId,resolutionId,toolbarId,columnCheckboxesId) {
+function ItsElectric(timelineId,busyId,resolutionId,toolbarId,columnCheckboxesId,errorCallback) {
     this.queryPath = "/power";
     this.timelineId = timelineId;
     this.busyId = busyId;
     this.resolutionId = resolutionId;
     this.toolbarId = toolbarId;
     this.columnCheckboxesId = columnCheckboxesId;
-
+    this.errorCallback = errorCallback;
+    
     this.div0 = null;
     this.div1 = null;
     this.div2 = null;
@@ -242,6 +243,7 @@ ItsElectric.prototype.logError = function(s) {
 		this.errors.pop();
 	}
 	this.errors.unshift("" + ItsElectric.toISOString(new Date()) + ": " + s);
+	if(this.errorCallback) this.errorCallback();
 };
 
 ItsElectric.prototype.clearErrors = function() {
@@ -262,18 +264,16 @@ ItsElectric.padZero = function(n) {
 };
 
 ItsElectric.prototype.handleQueryResponse = function(response) {
-    if (Math.random() < 0.5  || response.isError()) {
+    if (response.isError()) {
         if(this.busyId) document.getElementById(this.busyId).style.display="none";
         this.logError(response.getMessage() + ' ' + response.getDetailedMessage());
         this.querying = false;
         if(this.pendingQuery) {
-        	alert("pendingQuery");
         	this.requeryAfter(1);
         }
         else {
         	if(this.pendingDraw) this.redrawAfter(1);
         	this.requeryAfter(this.requeryBackoff);
-        	alert(this.requeryBackoff);
         	this.requeryBackoff *= 2;
         	if(this.requeryBackoff > ItsElectric.maxRequeryBackoff) this.requeryBackoff = ItsElectric.maxRequeryBackoff;
         }
