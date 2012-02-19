@@ -23,8 +23,9 @@ If not, see <http://www.gnu.org/licenses/>.
   <head>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
     <script type="text/javascript" src="its-electric.js"></script>
+    <script type="text/javascript" src="its-electric-ui.js"></script>
     <script type="text/javascript">
-        var itsElectric = new ItsElectric('timeline','busy','resolutionId','toolbarId','columnCheckboxesId');
+        var itsElectric = new ItsElectric('timeline','busy','resolutionId','toolbarId','columnCheckboxesId',errorCallback);
     </script>
     <script type="text/javascript" src="its-electric-config.js"></script>
     <title>it's electric</title>
@@ -33,92 +34,14 @@ If not, see <http://www.gnu.org/licenses/>.
         google.load('visualization', '1', {'packages':['annotatedtimeline']});
         google.setOnLoadCallback(function() { itsElectric.init(); });
     </script>
-    <script type="text/javascript">
-    /*<![CDATA[*/
-        function show(id) {
-            var e = document.getElementById(id);
-            e.style.display = '';
-        }
-        function hide(id) {
-            var e = document.getElementById(id);
-            e.style.display = 'none';
-        }
-        
-        function setMin(id) {
-            var val = document.getElementById(id).value;
-            if(val && val!='') itsElectric.options.min = val;
-            else delete itsElectric.options.min;
-            if(itsElectric.queryPath=='/voltage' || (val && val!='')) itsElectric.options.scaleType = 'maximized';
-            else itsElectric.options.scaleType = 'fixed';
-        }
-        function setMax(id) {
-            var val = document.getElementById(id).value;
-            if(val && val!='') itsElectric.options.max = val;
-            else delete itsElectric.options.max;
-        }
-
-        function changeView(view) {
-            itsElectric.queryPath = "/" + view;
-            if(view=="voltage") {
-                hide('wattsMinAndMax');
-                show('voltsMinAndMax');
-                itsElectric.options.allValuesSuffix="V";
-                setMin('vmin');
-                setMax('vmax');
-            }
-            else if(view=="power-factor") {
-                hide('wattsMinAndMax');
-                hide('voltsMinAndMax');
-                delete itsElectric.options.allValuesSuffix;
-                itsElectric.options.scaleType = 'fixed';
-                delete itsElectric.options.min;
-                delete itsElectric.options.max;
-            }
-            else {
-                show('wattsMinAndMax');
-                hide('voltsMinAndMax');
-                if(view=="volt-amperes") itsElectric.options.allValuesSuffix="VA";
-                else if(view=="volt-amperes-reactive") itsElectric.options.allValuesSuffix="var";
-                else itsElectric.options.allValuesSuffix="W";
-                setMin('wmin');
-                setMax('wmax');
-            }
-            itsElectric.requery();
-        }            
-        
-        window.onload = function(){
-            itsElectric.delta = document.getElementById('delta').checked;
-            changeView(document.getElementById('view').value);
-            if(!itsElectric.hasVoltage) {
-                document.getElementById('view.voltage').disabled = true;
-            }
-            if(!itsElectric.hasKVA) {
-                document.getElementById('view.volt-amperes').disabled = true;
-                document.getElementById('view.volt-amperes-reactive').disabled = true;
-                document.getElementById('view.combined-power').disabled = true;
-                document.getElementById('view.power-factor').disabled = true;
-            }
-            itsElectric.redraw();
-        };
-    /*]]>*/
-    </script>
-    <style type="text/css">
-        .its-electric {
-            font-family: monospace;
-            font-size: 40px;
-            font-weight: bold;
-            letter-spacing: 5px;
-            text-shadow: gray 2px 2px 2px;
-        }
-        .monospace {
-            font-family: monospace;
-        }
-    </style>
+    <link rel="stylesheet" href="its-electric.css"/>
   </head>
   <body>
     <div>
         <span class="its-electric">i<span style="letter-spacing:-5px">t</span><span style="letter-spacing:-3px">'s</span> electric</span>
         <span class="monospace">v1.8</span>
+        &nbsp;
+        <span id="errorsLink" class="blocky" style="display:none"><a href="#" onclick="showErrors();return false;">Show errors</a></span>
     </div>
     
     <div style="position:relative;width:1000px;">
@@ -231,5 +154,19 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 &nbsp; <a href="#" onclick="hide('copying');return false;">hide</a>
         </span>
     </p>
+
+    <div id="errorsOverlay">
+      <div id="errorsOverlayBackground"></div>
+      <div id="errorsOverlayForeground">
+          <div id="errorsOverlayInternal">
+            <p>Recent errors:</p>
+            <div id="errorsDiv"></div>
+            <p>
+                <a href="#" onclick="clearErrors();return false;">Clear Errors</a> &nbsp; &nbsp;
+                <a href="#" onclick="hideErrors();return false;">Hide</a> &nbsp; &nbsp;
+            </p>
+          </div>
+      </div>
+    </div>
   </body>
 </html>

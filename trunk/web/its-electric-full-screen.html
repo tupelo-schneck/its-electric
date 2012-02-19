@@ -23,8 +23,9 @@ If not, see <http://www.gnu.org/licenses/>.
   <head>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
     <script type="text/javascript" src="its-electric.js"></script>
+    <script type="text/javascript" src="its-electric-ui.js"></script>
     <script type="text/javascript">
-        var itsElectric = new ItsElectric('timeline','busy','resolutionId','toolbarId','columnCheckboxesId');
+        var itsElectric = new ItsElectric('timeline','busy','resolutionId','toolbarId','columnCheckboxesId',errorCallback);
         itsElectric.options.displayZoomButtons = false;
         itsElectric.options.legendPosition = 'newRow';
         itsElectric.options.displayRangeSelector = false;
@@ -38,73 +39,6 @@ If not, see <http://www.gnu.org/licenses/>.
     </script>
     <script type="text/javascript">
     /*<![CDATA[*/
-        function show(id) {
-            var e = document.getElementById(id);
-            e.style.display = '';
-        }
-        function hide(id) {
-            var e = document.getElementById(id);
-            e.style.display = 'none';
-        }
-
-        function setMin(id) {
-            var val = document.getElementById(id).value;
-            if(val && val!='') itsElectric.options.min = val;
-            else delete itsElectric.options.min;
-            if(itsElectric.queryPath=='/voltage' || (val && val!='')) itsElectric.options.scaleType = 'maximized';
-            else itsElectric.options.scaleType = 'fixed';
-        }
-        function setMax(id) {
-            var val = document.getElementById(id).value;
-            if(val && val!='') itsElectric.options.max = val;
-            else delete itsElectric.options.max;
-        }
-
-        function changeView(view) {
-            itsElectric.queryPath = "/" + view;
-            if(view=="voltage") {
-                hide('wattsMinAndMax');
-                show('voltsMinAndMax');
-                itsElectric.options.allValuesSuffix="V";
-                setMin('vmin');
-                setMax('vmax');
-            }
-            else if(view=="power-factor") {
-                hide('wattsMinAndMax');
-                hide('voltsMinAndMax');
-                delete itsElectric.options.allValuesSuffix;
-                itsElectric.options.scaleType = 'fixed';
-                delete itsElectric.options.min;
-                delete itsElectric.options.max;
-            }
-            else {
-                show('wattsMinAndMax');
-                hide('voltsMinAndMax');
-                if(view=="volt-amperes") itsElectric.options.allValuesSuffix="VA";
-                else if(view=="volt-amperes-reactive") itsElectric.options.allValuesSuffix="var";
-                else itsElectric.options.allValuesSuffix="W";
-                setMin('wmin');
-                setMax('wmax');
-            }
-            itsElectric.requery();
-        }            
-        
-        function showErrors() {
-            var errorsDiv = document.getElementById('errorsDiv');
-            while(errorsDiv.firstChild) errorsDiv.removeChild(errorsDiv.firstChild);
-            errorsDiv.appendChild(htmlListify(itsElectric.getErrors()));
-        }
-        
-        function htmlListify(xs) {
-            var ol = document.createElement("ol");
-            for(var i = 0; i < xs.length; i++) {
-                var li = document.createElement("li");
-                li.appendChild(document.createTextNode(xs[i]));
-                ol.appendChild(li);
-            }
-            return ol;
-        }
-        
         var resizeTimeout = null;
         window.onresize = function(){
            if(resizeTimeout != null) clearTimeout(resizeTimeout);
@@ -113,38 +47,10 @@ If not, see <http://www.gnu.org/licenses/>.
                }, 
                200);
         };
-        
-        window.onload = function(){
-            itsElectric.delta = document.getElementById('delta').checked;
-            changeView(document.getElementById('view').value);
-            if(!itsElectric.hasVoltage) {
-                document.getElementById('view.voltage').disabled = true;
-            }
-            if(!itsElectric.hasKVA) {
-                document.getElementById('view.volt-amperes').disabled = true;
-                document.getElementById('view.volt-amperes-reactive').disabled = true;
-                document.getElementById('view.combined-power').disabled = true;
-                document.getElementById('view.power-factor').disabled = true;
-            }
-            itsElectric.redraw();
-        };
     /*]]>*/
     </script>
+    <link rel="stylesheet" href="its-electric.css"/>
     <style type="text/css">
-        .its-electric {
-            font-family: monospace;
-            font-size: 40px;
-            font-weight: bold;
-            letter-spacing: 5px;
-            text-shadow: gray 2px 2px 2px;
-        }
-        .monospace {
-            font-family: monospace;
-        }
-        .blocky {
-            font-size:11px;
-            font-family:sans-serif;
-        }
         html, body {
             height: 100%;
             padding: 0;
@@ -163,10 +69,9 @@ If not, see <http://www.gnu.org/licenses/>.
                 &nbsp;
                 <a id="showMenu" class="blocky" href="#" onclick="show('menu');hide('showMenu');show('hideMenu');return false;">Show menu</a>
                 <a id="hideMenu" class="blocky" style="display:none" href="#" onclick="hide('menu');show('showMenu');hide('hideMenu');return false;">Hide menu</a>
+                <span id="errorsLink" class="blocky" style="display:none">&nbsp; <a href="#" onclick="showErrors();return false;">Show errors</a></span>
                 &nbsp;
                 <span id="busy" style="display:none"><img style="position:relative;top:5px;" src="wait20trans.gif" alt="[busy]"/></span>
-                &nbsp;
-                <span id="errorsLink" style=""><a href="#" onclick="showErrors();return false;">!!!</a></span>
             </div>
         </div>
         <div id="menu" style="display:none;position:absolute;top:42px;z-index:10;width:445px;border:solid 1px;padding:4px;margin-left:1px;background-color:white">
@@ -249,7 +154,6 @@ If not, see <http://www.gnu.org/licenses/>.
                     <br/>
                     <a href="#" onclick="itsElectric.requery();return false;">Refresh</a><br/>
                 </p>
-                <div id="errorsDiv"></div>
             </form>
 
             <div class="blocky" id="toolbarId"></div>
@@ -286,5 +190,18 @@ If not, see <http://www.gnu.org/licenses/>.
         <div id="timeline" style="position:absolute;top:0px;width:100%;height:100%;z-index:0;overflow:hidden">
         </div>
     </div>        
+    <div id="errorsOverlay">
+      <div id="errorsOverlayBackground"></div>
+      <div id="errorsOverlayForeground">
+	      <div id="errorsOverlayInternal">
+	        <p>Recent errors:</p>
+	        <div id="errorsDiv"></div>
+	        <p>
+		        <a href="#" onclick="clearErrors();return false;">Clear Errors</a> &nbsp; &nbsp;
+		        <a href="#" onclick="hideErrors();return false;">Hide</a> &nbsp; &nbsp;
+		    </p>
+	      </div>
+      </div>
+    </div>
   </body>
 </html>
