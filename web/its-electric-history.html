@@ -41,6 +41,12 @@ If not, see <http://www.gnu.org/licenses/>.
     /*<![CDATA[*/
         var init = function() {
             var queryURL = itsElectricConfig.datasourceURL;
+            if(queryURL.charAt(queryURL.length-1)=='/') {
+                queryURL = queryURL + "power";
+            }
+            else {
+                queryURL = queryURL + "/power";
+            }
             var query = new google.visualization.Query(queryURL + '?resolution=86400');
             query.send(function(response) {handleQueryResponse(response);});
         }
