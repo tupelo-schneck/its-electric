@@ -79,11 +79,17 @@ public class Options extends org.apache.commons.cli.Options {
     public boolean voltage = false;
     public long voltAmpereImportIntervalMS = 0;
     public int kvaThreads = 0;
-    public boolean record = true;
-    public String ccPortName;
-    public boolean ccOptions;
+
     public boolean tedOptions;
+
+    public boolean record = true;
     public boolean serve = true;
+
+    public boolean ccOptions;
+    public String ccPortName;
+    public int ccMaxSensor = 0;
+    public boolean ccSumClamps = true;
+    public int ccNumberOfClamps = 3;
     
     public TimeZone recordTimeZone = TimeZone.getDefault();
     public TimeZone serveTimeZone = TimeZone.getDefault();
@@ -182,11 +188,28 @@ public class Options extends org.apache.commons.cli.Options {
         this.addOption(ccListSerialPortsOpt);
 
         Option ccPortNameOpt = OptionBuilder.withLongOpt("cc-port-name")
-        .withDescription("Current Cost: port name")
+        .withDescription("Current Cost: port name; required for Current Cost use")
         .withArgName("arg")
         .hasArg().create();
         this.addOption(ccPortNameOpt);
         
+        Option ccMaxSensorOpt = OptionBuilder.withLongOpt("cc-max-sensor")
+        .withDescription("Current Cost: highest sensor number recorded (default 0)")
+        .withArgName("arg")
+        .hasArg().create(); 
+        this.addOption(ccMaxSensorOpt);
+        
+        Option ccSeparateClampsOpt = OptionBuilder.withLongOpt("cc-separate-clamps")
+        .withDescription("Current Cost: if present, have separate readings for each clamp")
+        .hasOptionalArg().withArgName(null).create(); 
+        this.addOption(ccSeparateClampsOpt);
+
+        Option ccNumClampsOpt = OptionBuilder.withLongOpt("cc-num-clamps")
+        .withDescription("Current Cost: if cc-separate-clamps, how many clamps to record for each sensor (default 3)")
+        .withArgName("arg")
+        .hasArg().create(); 
+        this.addOption(ccNumClampsOpt);
+
         this.addOption("h","help",false,"print this help text");
     }
 
@@ -372,6 +395,18 @@ public class Options extends org.apache.commons.cli.Options {
                     ccOptions = true;
                     ccPortName = cmd.getOptionValue("cc-port-name");
                 }
+                if(cmd.hasOption("cc-max-sensor")) {
+                    ccOptions = true;
+                    ccMaxSensor = Integer.parseInt(cmd.getOptionValue("cc-max-sensor"));
+                }
+                if(cmd.hasOption("cc-separate-clamps")) {
+                    ccOptions = true;
+                    ccSumClamps = !optionalBoolean(cmd,"cc-separate-clamps",false);
+                }
+                if(cmd.hasOption("cc-num-clamps")) {
+                    ccOptions = true;
+                    ccNumberOfClamps = Integer.parseInt(cmd.getOptionValue("cc-num-clamps"));
+                }
                 if(cmd.hasOption("h")) {
                     showUsageAndExit = true;
                 }
@@ -401,6 +436,10 @@ public class Options extends org.apache.commons.cli.Options {
         
         if(ccOptions && tedOptions) {
             System.out.println("Cannot combine TED and Current Cost options.");
+            showUsageAndExit = true;
+        }
+        else if (ccOptions && ccPortName==null) {
+            System.out.println("Current Cost use requires --cc-port-name.");
             showUsageAndExit = true;
         }
         
