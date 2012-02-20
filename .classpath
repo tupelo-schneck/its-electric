@@ -12,13 +12,13 @@
 	<classpathentry kind="lib" path="lib/guava-r07.jar"/>
 	<classpathentry kind="lib" path="lib/opencsv-1.8.jar"/>
 	<classpathentry kind="lib" path="lib/visualization-datasource-1.1.1.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-continuation-7.5.1.v20110908.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-http-7.5.1.v20110908.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-io-7.5.1.v20110908.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-security-7.5.1.v20110908.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-server-7.5.1.v20110908.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-servlet-7.5.1.v20110908.jar"/>
-	<classpathentry kind="lib" path="lib/jetty-util-7.5.1.v20110908.jar"/>
 	<classpathentry kind="lib" path="lib/RXTXcomm.jar"/>
+	<classpathentry kind="lib" path="lib/jetty-continuation-7.6.1.v20120215.jar"/>
+	<classpathentry kind="lib" path="lib/jetty-http-7.6.1.v20120215.jar"/>
+	<classpathentry kind="lib" path="lib/jetty-io-7.6.1.v20120215.jar"/>
+	<classpathentry kind="lib" path="lib/jetty-security-7.6.1.v20120215.jar"/>
+	<classpathentry kind="lib" path="lib/jetty-server-7.6.1.v20120215.jar"/>
+	<classpathentry kind="lib" path="lib/jetty-servlet-7.6.1.v20120215.jar"/>
+	<classpathentry kind="lib" path="lib/jetty-util-7.6.1.v20120215.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
