@@ -1,6 +1,11 @@
 "it's electric" news
 http://tupelo-schneck.org/its-electric
 
+Version 1.9 2012-02-21
+======================
+Current Cost support!  User various options starting --cc-*.
+Web page does not freeze for query errors but requeries.
+
 Version 1.8 2011-09-26
 ======================
 Datasource server: better handling of DST.
