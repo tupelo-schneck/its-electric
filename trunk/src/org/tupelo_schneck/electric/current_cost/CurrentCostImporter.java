@@ -41,6 +41,7 @@ public class CurrentCostImporter implements Importer, SerialPortEventListener {
     private static final int TIME_OUT = 5000;
     private static final int[] SERIAL_SPEEDS = new int[] { 57600, 9600, 2400 }; 
     private static final int MAX_FAILS = 5;
+    private static final long ENVIRONMENT_SYNC_INTERVAL = 60*1000;
     private static final long STATS_DUMP_INTERVAL = 5*60*1000;
 
     private final Main main;
@@ -50,7 +51,7 @@ public class CurrentCostImporter implements Importer, SerialPortEventListener {
     private final CatchUp catchUp;
 
     private String portName;
-    private int maxSensors;
+    private int maxSensor;
     private int numberOfClamps;
     private boolean sumClamps;
     private boolean recordTemperature;
@@ -63,7 +64,8 @@ public class CurrentCostImporter implements Importer, SerialPortEventListener {
     private int fails;
 
     private long latestStatsDump;
-
+    private long latestSync;
+    
     public CurrentCostImporter(Main main, Options options, DatabaseManager databaseManager, Servlet servlet, CatchUp catchUp) {
         this.main = main;
         this.databaseManager = databaseManager;
@@ -71,11 +73,10 @@ public class CurrentCostImporter implements Importer, SerialPortEventListener {
         this.servlet = servlet;
         this.catchUp = catchUp;
 
-        // TODO options
         portName = this.options.ccPortName;
-        maxSensors = 0;
-        numberOfClamps = 3;
-        sumClamps = true;
+        maxSensor = this.options.ccMaxSensor;
+        sumClamps = this.options.ccSumClamps;
+        numberOfClamps = this.options.ccNumberOfClamps;
         recordTemperature = false;
     }
 
@@ -224,7 +225,7 @@ public class CurrentCostImporter implements Importer, SerialPortEventListener {
     private static final Pattern channelPattern = Pattern.compile("<ch([123])>\\s*+<watts>([^<]*+)</watts>\\s*+</ch\\1>");
     private static final Pattern temperaturePattern = Pattern.compile("<tmpr(F?+)>([^<]*+)</tmpr\\1>");
 
-    private List<Triple> currentCostParse(String msg){
+    private List<Triple> currentCostParse(String msg) {
         int timestamp = (int)(System.currentTimeMillis()/1000); // TODO use displayed time?
 
         int sensor = 0;
@@ -237,7 +238,7 @@ public class CurrentCostImporter implements Importer, SerialPortEventListener {
             sensor = Integer.parseInt(m.group(1));
         }
 
-        if(sensor > maxSensors) return null;
+        if(sensor > maxSensor) return null;
 
         List<Triple> res = null;
 
@@ -311,18 +312,22 @@ public class CurrentCostImporter implements Importer, SerialPortEventListener {
             catchUp.setMaximumIfNewer(timestamp);
             catchUp.notifyChanges(changes, false);
 
-            try {
-                // TODO throttle
-                databaseManager.environment.sync();
-                log.trace("Environment synced.");
+            synchronized(this) {
                 long now = System.currentTimeMillis();
-                if(now - latestStatsDump > STATS_DUMP_INTERVAL) {
-                    log.trace(databaseManager.environment.getStats(StatsConfig.DEFAULT).toString());
-                    latestStatsDump = now;
+                if(now - latestSync > ENVIRONMENT_SYNC_INTERVAL) {
+                    try {
+                        databaseManager.environment.sync();
+                        latestSync = now;
+                        log.trace("Environment synced.");
+                        if(now - latestStatsDump > STATS_DUMP_INTERVAL) {
+                            log.trace(databaseManager.environment.getStats(StatsConfig.DEFAULT).toString());
+                            latestStatsDump = now;
+                        }
+                    }
+                    catch(DatabaseException e) {
+                        log.debug("Exception syncing environment: " + e);
+                    }
                 }
-            }
-            catch(DatabaseException e) {
-                log.debug("Exception syncing environment: " + e);
             }
         }
     }
@@ -337,26 +342,4 @@ public class CurrentCostImporter implements Importer, SerialPortEventListener {
             }
         }        
     }
-    //    
-    //    
-    //    public CurrentCostImporter() {
-    //        this.main = null;
-    //        this.databaseManager = null;
-    //        this.options = null;
-    //        this.servlet = null;
-    //        this.catchUp = null;
-    //        
-    //        // TODO options
-    //        portName = null;
-    //        maxSensors = 0;
-    //        numberOfClamps = 3;
-    //        sumClamps = true;
-    //        recordTemperature = false;
-    //    }
-    //
-    //    public static void main(String[] args) {
-    //        String msg = "<msg>\n   <src>CC128-v0.11</src>\n   <dsb>00089</dsb>\n   <time>13:02:39</time>\n   <tmpr>18.7</tmpr>\n   <sensor>0</sensor>\n   <id>01234</id>\n   <type>1</type>\n   <ch1>\n      <watts>00345</watts>\n   </ch1>\n   <ch2>\n      <watts>02151</watts>\n   </ch2>\n   <ch3>\n      <watts>00000</watts>\n   </ch3>\n</msg>\n";
-    //        msg = "<msg>\n  <date>\n    <dsb>00030</dsb>\n    <hr>00</hr><min>20</min><sec>11</sec>\n  </date>\n  <src>\n    <name>CC02</name>\n    <id>00077</id> \n    <type>1</type>\n    <sver>1.06</sver>\n  </src>\n  <ch1>\n    <watts>00168</watts>\n  </ch1>\n  <ch2>\n    <watts>00000</watts>\n  </ch2>\n  <ch3>\n    <watts>00000</watts>\n  </ch3>\n  <tmpr>25.6</tmpr>\n  <hist>\n    <hrs>\n      <h02>000.3</h02>\n      ....\n      <h26>003.1</h26>\n    </hrs>\n    <days>\n\n      <d01>0014</d01>\n      ....\n      <d31>0000</d31>\n    </days>\n    <mths>\n\n      <m01>0000</m01>\n      ....\n      <m12>0000</m12>\n    </mths>\n    <yrs>\n\n      <y1>0000000</y1>\n      ....\n      <y4>0000000</y4>\n    </yrs>\n  </hist>\n</msg>\n";
-    //        System.out.println(new CurrentCostImporter().currentCostParse(msg));
-    //    }
 }
