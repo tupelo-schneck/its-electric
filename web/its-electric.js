@@ -288,7 +288,19 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     var numCols = data.getNumberOfColumns();
 
     // INSERT DATA-ADJUSTING CODE
-
+    
+//// Example: this code sums all columns     
+//    for(var i = 0; i < numRows; i++) { 
+//    	var sum = 0;
+//    	for(var j = 1; j < numCols; j++) {
+//    		sum += data.getValue(i,j);
+//    	}
+//    	data.setValue(i,1,sum);
+//    }
+//    data.setColumnLabel(1,"Total");
+//    data.removeColumns(2,numCols - 1);
+//    numCols = 2;
+    
     if(this.columnCheckboxesId!=null) {
         var obj = document.getElementById(this.columnCheckboxesId);
         while(obj.firstChild) obj.removeChild(obj.firstChild);
