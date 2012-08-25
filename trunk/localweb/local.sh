@@ -34,7 +34,7 @@ sed -e '/CHANGE URL HERE/ s/localhost:8081/tupelo-schneck.org:8081/' \
     web/its-electric-history.html \
     > build/web/its-electric-history.html
 sed -e "/INSERT DATA-ADJUSTING CODE/ i\\
-    for(var i = 0; i < numRows; i++) { data.setValue(i,1,Math.max(0,data.getValue(i,1)-Math.max(0,data.getValue(i,3)-280))); data.setValue(i,2,Math.max(0,data.getValue(i,2)-Math.max(0,data.getValue(i,4)-280))); }" \
+    for(var i = 0; i < numRows; i++) { data.setValue(i,1,Math.max(0,data.getValue(i,1)-Math.max(0,data.getValue(i,3)+200))); data.setValue(i,2,Math.max(0,data.getValue(i,2)-Math.max(0,data.getValue(i,4)-280))); }" \
     web/its-electric.js \
     > build/web/its-electric.js
 cp web/* /Library/WebServer/Documents/$where
