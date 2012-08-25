@@ -266,14 +266,14 @@ public class TimeSeriesDatabase {
         if(power==null && voltage==null && voltAmperes==null) return;
         OperationStatus status = cursor.put(keyEntry(timestamp, mtu), dataEntry(power,voltage, voltAmperes));
         if(status!=OperationStatus.SUCCESS) {
-            throw new DatabaseException("Unexpected status " + status);
+            throw new DatabaseException("Unexpected status " + status) {};
         }
     }
 
     public void delete(int timestamp, byte mtu) throws DatabaseException {
         OperationStatus status = database.delete(null, keyEntry(timestamp, mtu));
         if(status!=OperationStatus.SUCCESS) {
-            throw new DatabaseException("Unexpected status " + status);
+            throw new DatabaseException("Unexpected status " + status) {};
         }
     }
 
@@ -291,13 +291,13 @@ public class TimeSeriesDatabase {
             return true;
         }
         if(status!=OperationStatus.KEYEXIST) {
-            throw new DatabaseException("Unexpected status " + status);
+            throw new DatabaseException("Unexpected status " + status) {};
         }
 
         DatabaseEntry readDataEntry = new DatabaseEntry();
         status = cursor.getSearchKey(key,readDataEntry,LockMode.READ_UNCOMMITTED);
         if(status!=OperationStatus.SUCCESS) {
-            throw new DatabaseException("Unexpected status " + status);
+            throw new DatabaseException("Unexpected status " + status) {};
         }
         byte[] buf = readDataEntry.getData();
         Integer oldPower = powerOfData(buf);
@@ -315,7 +315,7 @@ public class TimeSeriesDatabase {
         data = dataEntry(newPower,newVoltage,newVoltAmperes);
         status = cursor.put(key, data);
         if(status!=OperationStatus.SUCCESS) {
-            throw new DatabaseException("Unexpected status " + status);
+            throw new DatabaseException("Unexpected status " + status) {};
         }
         return true;
     }
