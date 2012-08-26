@@ -17,7 +17,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 
 package org.tupelo_schneck.electric;
 
@@ -56,25 +56,25 @@ import com.ibm.icu.util.TimeZone;
 public class Options extends org.apache.commons.cli.Options {
     private static final String ITS_ELECTRIC_PROPERTIES = "its-electric.properties";
 
-	Log log = LogFactory.getLog(Options.class);
-    
+    Log log = LogFactory.getLog(Options.class);
+
     public static final BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-    
+
     static {
         System.setProperty("org.apache.commons.logging.simplelog.showdatetime", "true");
-        
+
         // The following allows you can access an https URL without having the certificate in the truststore 
         TrustManager[] trustAllCerts = new TrustManager[] { 
-            new X509TrustManager() { 
-                @Override
-                public java.security.cert.X509Certificate[] getAcceptedIssuers() { 
-                    return null; 
+                new X509TrustManager() { 
+                    @Override
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() { 
+                        return null; 
+                    } 
+                    @Override
+                    public void checkClientTrusted( java.security.cert.X509Certificate[] certs, String authType) { } 
+                    @Override
+                    public void checkServerTrusted( java.security.cert.X509Certificate[] certs, String authType) { } 
                 } 
-                @Override
-                public void checkClientTrusted( java.security.cert.X509Certificate[] certs, String authType) { } 
-                @Override
-                public void checkServerTrusted( java.security.cert.X509Certificate[] certs, String authType) { } 
-            } 
         }; 
         // Install the all-trusting trust manager 
         try { 
@@ -116,7 +116,7 @@ public class Options extends org.apache.commons.cli.Options {
     public int ccMaxSensor = 0;
     public boolean ccSumClamps = true;
     public int ccNumberOfClamps = 3;
-    
+
     public TimeZone recordTimeZone = TimeZone.getDefault();
     public TimeZone serveTimeZone = TimeZone.getDefault();
 
@@ -125,34 +125,34 @@ public class Options extends org.apache.commons.cli.Options {
     public int endTime;
     public int resolution;
     public boolean exportByMTU = true;
-    
+
     public int deleteUntil;
-    
+
     @SuppressWarnings("static-access")
     public Options() {
-    	Option optionFile=OptionBuilder.withLongOpt("config-file")
-    			.withDescription("file to read config options from")
-    			.hasArg().withArgName("arg").create();
-    	this.addOption(optionFile);
-    	
+        Option optionFile=OptionBuilder.withLongOpt("config-file")
+                .withDescription("file to read config options from")
+                .hasArg().withArgName("arg").create();
+        this.addOption(optionFile);
+
         Option noServeOpt = OptionBuilder.withLongOpt("no-serve")
-        .withDescription("if present, do not serve Google Visualization data")
-        .hasOptionalArg().withArgName(null).create(); 
+                .withDescription("if present, do not serve Google Visualization data")
+                .hasOptionalArg().withArgName(null).create(); 
         this.addOption(noServeOpt);
-        
+
         Option noRecordOpt = OptionBuilder.withLongOpt("no-record")
-        .withDescription("if present, do not record data from TED")
-        .hasOptionalArg().withArgName(null).create(); 
+                .withDescription("if present, do not record data from TED")
+                .hasOptionalArg().withArgName(null).create(); 
         this.addOption(noRecordOpt);
 
         Option exportOpt = OptionBuilder.withLongOpt("export")
-        .withDescription("export CSV for existing data from <start> to <end> of resolution <res>; implies --no-serve --no-record")
-        .hasArgs(3).withArgName("start> <end> <res").withValueSeparator(' ').create();
+                .withDescription("export CSV for existing data from <start> to <end> of resolution <res>; implies --no-serve --no-record")
+                .hasArgs(3).withArgName("start> <end> <res").withValueSeparator(' ').create();
         this.addOption(exportOpt);
 
         Option exportStyleOpt = OptionBuilder.withLongOpt("export-style")
-        .withDescription("if 'timestamp', export data is one line per timestamp; otherwise one line per timestamp/mtu pair")
-        .hasArg().create();
+                .withDescription("if 'timestamp', export data is one line per timestamp; otherwise one line per timestamp/mtu pair")
+                .hasArg().create();
         this.addOption(exportStyleOpt);
 
         this.addOption("d","database-directory",true,"database directory (required)");
@@ -166,79 +166,79 @@ public class Options extends org.apache.commons.cli.Options {
         this.addOption("i","import-interval",true,"seconds between imports of data, or 0 for only hour-long imports (default 4)");
         this.addOption("o","import-overlap",true,"extra seconds imported each time for good measure (default 8)");        
         this.addOption("e","long-import-interval",true,"seconds between imports of whole hours, or 0 for only short imports (default 300)");
-        
+
         Option voltageOpt = OptionBuilder.withLongOpt("voltage")
-        .withDescription("whether to include voltage data (default no)")
-        .hasOptionalArg().withArgName(null).create("v"); 
+                .withDescription("whether to include voltage data (default no)")
+                .hasOptionalArg().withArgName(null).create("v"); 
         this.addOption(voltageOpt);
-        
+
         Option kvaOpt = OptionBuilder.withLongOpt("volt-ampere-import-interval")
-        .withDescription("seconds between polls for kVA data (accepts decimal values; default 0 means no kVA data)")
-        .withArgName(null) // save space in help text
-        .hasArg().create("k"); 
+                .withDescription("seconds between polls for kVA data (accepts decimal values; default 0 means no kVA data)")
+                .withArgName(null) // save space in help text
+                .hasArg().create("k"); 
         this.addOption(kvaOpt);
-        
+
         Option kvaThreadsOpt = OptionBuilder.withLongOpt("volt-ampere-threads")
-        .withDescription("number of threads for polling kVA (default 0 means share short import thread)")
-        .withArgName("arg")
-        .hasArg().create(); 
+                .withDescription("number of threads for polling kVA (default 0 means share short import thread)")
+                .withArgName("arg")
+                .hasArg().create(); 
         this.addOption(kvaThreadsOpt);
 
         Option timeZoneOpt = OptionBuilder.withLongOpt("record-time-zone")
-        .withDescription("time zone for TED Gateway as ISO8601 offset or tz/zoneinfo name (default use time zone of its-electric install)")
-        .withArgName("arg")
-        .hasArg().create(); 
+                .withDescription("time zone for TED Gateway as ISO8601 offset or tz/zoneinfo name (default use time zone of its-electric install)")
+                .withArgName("arg")
+                .hasArg().create(); 
         this.addOption(timeZoneOpt);
 
         timeZoneOpt = OptionBuilder.withLongOpt("serve-time-zone")
-        .withDescription("time zone for data service output as ISO8601 offset or tz/zoneinfo name (default use time zone of its-electric install)")
-        .withArgName("arg")
-        .hasArg().create(); 
+                .withDescription("time zone for data service output as ISO8601 offset or tz/zoneinfo name (default use time zone of its-electric install)")
+                .withArgName("arg")
+                .hasArg().create(); 
         this.addOption(timeZoneOpt);
 
         timeZoneOpt = OptionBuilder.withLongOpt("time-zone")
-        .withDescription("convenience parameter combining serve-time-zone and record-time-zone")
-        .withArgName("arg")
-        .hasArg().create(); 
+                .withDescription("convenience parameter combining serve-time-zone and record-time-zone")
+                .withArgName("arg")
+                .hasArg().create(); 
         this.addOption(timeZoneOpt);
 
         timeZoneOpt = OptionBuilder.withLongOpt("ted-no-dst")
-        .withDescription("convenience parameter; if set, record-time-zone is set to serve-time-zone with no DST")
-        .hasOptionalArg().withArgName(null).create(); 
+                .withDescription("convenience parameter; if set, record-time-zone is set to serve-time-zone with no DST")
+                .hasOptionalArg().withArgName(null).create(); 
         this.addOption(timeZoneOpt);
 
         Option deleteUntilOpt = OptionBuilder.withLongOpt("delete-until")
-        .withDescription("if present, delete all entries in database up to this time; confirmation required")
-        .withArgName("arg")
-        .hasArg().create(); 
+                .withDescription("if present, delete all entries in database up to this time; confirmation required")
+                .withArgName("arg")
+                .hasArg().create(); 
         this.addOption(deleteUntilOpt);
-        
+
         Option ccListSerialPortsOpt = OptionBuilder.withLongOpt("cc-list-serial-ports")
-        .withDescription("Current Cost: list all serial ports and exit")
-        .create();
+                .withDescription("Current Cost: list all serial ports and exit")
+                .create();
         this.addOption(ccListSerialPortsOpt);
 
         Option ccPortNameOpt = OptionBuilder.withLongOpt("cc-port-name")
-        .withDescription("Current Cost: port name; required for Current Cost use")
-        .withArgName("arg")
-        .hasArg().create();
+                .withDescription("Current Cost: port name; required for Current Cost use")
+                .withArgName("arg")
+                .hasArg().create();
         this.addOption(ccPortNameOpt);
-        
+
         Option ccMaxSensorOpt = OptionBuilder.withLongOpt("cc-max-sensor")
-        .withDescription("Current Cost: highest sensor number recorded (default 0)")
-        .withArgName("arg")
-        .hasArg().create(); 
+                .withDescription("Current Cost: highest sensor number recorded (default 0)")
+                .withArgName("arg")
+                .hasArg().create(); 
         this.addOption(ccMaxSensorOpt);
-        
+
         Option ccSeparateClampsOpt = OptionBuilder.withLongOpt("cc-separate-clamps")
-        .withDescription("Current Cost: if present, have separate readings for each clamp")
-        .hasOptionalArg().withArgName(null).create(); 
+                .withDescription("Current Cost: if present, have separate readings for each clamp")
+                .hasOptionalArg().withArgName(null).create(); 
         this.addOption(ccSeparateClampsOpt);
 
         Option ccNumClampsOpt = OptionBuilder.withLongOpt("cc-num-clamps")
-        .withDescription("Current Cost: if cc-separate-clamps, how many clamps to record for each sensor (default 3)")
-        .withArgName("arg")
-        .hasArg().create(); 
+                .withDescription("Current Cost: if cc-separate-clamps, how many clamps to record for each sensor (default 3)")
+                .withArgName("arg")
+                .hasArg().create(); 
         this.addOption(ccNumClampsOpt);
 
         this.addOption("h","help",false,"print this help text");
@@ -258,121 +258,121 @@ public class Options extends org.apache.commons.cli.Options {
             throw new NumberFormatException("expecting true/false or yes/no for " + val);
         }
     }
-    
+
     private static class FileConfig {
-    	Properties props=new Properties();
+        Properties props=new Properties();
 
-    	FileConfig(String fileName) throws IOException {
-    		props.load(new BufferedReader(new InputStreamReader(new FileInputStream(fileName),"UTF-8")));
-    	}
+        FileConfig(String fileName) throws IOException {
+            props.load(new BufferedReader(new InputStreamReader(new FileInputStream(fileName),"UTF-8")));
+        }
 
-    	boolean hasOption(String longOpt,String shortOpt) {
-    		longOpt = (longOpt==null ? "" : longOpt);
-    		shortOpt = (shortOpt==null ? "" : shortOpt);
-    		return props.containsKey(longOpt) || props.containsKey(shortOpt);
-    	}
+        boolean hasOption(String longOpt,String shortOpt) {
+            longOpt = (longOpt==null ? "" : longOpt);
+            shortOpt = (shortOpt==null ? "" : shortOpt);
+            return props.containsKey(longOpt) || props.containsKey(shortOpt);
+        }
 
-    	String getOptionValue(String longOpt,String shortOpt) {
-    		if(!hasOption(longOpt,shortOpt)) return null;
-    		longOpt = (longOpt==null ? "" : longOpt);
-    		shortOpt = (shortOpt==null ? "" : shortOpt);
+        String getOptionValue(String longOpt,String shortOpt) {
+            if(!hasOption(longOpt,shortOpt)) return null;
+            longOpt = (longOpt==null ? "" : longOpt);
+            shortOpt = (shortOpt==null ? "" : shortOpt);
 
-    		String optionValue = null;
-    		optionValue = props.getProperty(longOpt);
-    		if(optionValue!=null && !optionValue.equals("")) return optionValue.trim();
-    		optionValue = props.getProperty(shortOpt);
-    		if(optionValue!=null && !optionValue.equals("")) return optionValue.trim();
-    		return  null;
-    	}
+            String optionValue = null;
+            optionValue = props.getProperty(longOpt);
+            if(optionValue!=null && !optionValue.equals("")) return optionValue.trim();
+            optionValue = props.getProperty(shortOpt);
+            if(optionValue!=null && !optionValue.equals("")) return optionValue.trim();
+            return  null;
+        }
     }
-    
+
     private class OptionWrapper {
-    	private final CommandLine cmd;
-    	private final FileConfig config;
+        private final CommandLine cmd;
+        private final FileConfig config;
 
-    	OptionWrapper(CommandLine cmd,FileConfig config) {
-    		this.cmd = cmd;
-    		this.config = config;
-    	}
-    	
-    	private boolean cmdHasOption(String longOpt, String shortOpt) {
-    		return (cmd.hasOption(longOpt) || cmd.hasOption(shortOpt));
-    	}
-    	
-    	private boolean configHasOption(String longOpt, String shortOpt) {
-    		return ((config!=null) ? config.hasOption(longOpt, shortOpt) : false);
-    	}
-    	
-    	boolean hasOption(String longOpt, String shortOpt) {
-    		longOpt = (longOpt==null ? "" : longOpt);
-    		shortOpt = (shortOpt==null ? "" : shortOpt);
-    		return cmdHasOption(longOpt, shortOpt) || configHasOption(longOpt, shortOpt);
-    	}
-    	
-    	String getOptionValue(String longOpt,String shortOpt) {
-    		String optionValue = null;
-    		
-    		longOpt = (longOpt==null ? "" : longOpt);
-    		shortOpt = (shortOpt==null? "" : shortOpt);
-    		
-    		Option option = !longOpt.equals("") ? Options.this.getOption(longOpt) : Options.this.getOption(shortOpt);
-    	
-    		if(cmdHasOption(longOpt, shortOpt)) {
-    			optionValue = cmd.getOptionValue(longOpt);
-    			if(optionValue==null)
-    				optionValue = cmd.getOptionValue(shortOpt);
-    		}
-    		else if(configHasOption(longOpt,shortOpt)) {
-    			optionValue = config.getOptionValue(longOpt, shortOpt);
-    			
-    			if(optionValue==null && option.hasArg() && !option.hasOptionalArg()) {
-    				throw new NumberFormatException(longOpt+"/"+shortOpt+" requires mandatory argument");
-    			}
-    			if(optionValue!=null && !option.hasArg() && !option.hasOptionalArg()) {
-    				throw new NumberFormatException(longOpt+"/"+shortOpt+" does not have argument");
-    			}
-    		}
-    		return optionValue;
-    	}
-    	
-    	String[] getOptionValues(String longOpt, String shortOpt) {
-    		String[] optionValues = null;
-    		
-    		longOpt = (longOpt==null ? "" : longOpt);
-    		shortOpt = (shortOpt==null? "" : shortOpt);
-    		
-    		Option option = !longOpt.equals("") ? Options.this.getOption(longOpt) : Options.this.getOption(shortOpt);
-    		
-    		if(cmdHasOption(longOpt,shortOpt)) {
-    			optionValues = cmd.getOptionValues(longOpt);
-    			if(optionValues== null) optionValues = cmd.getOptionValues(shortOpt);
-    		}
-    		else if(configHasOption(longOpt,shortOpt)) {
-    			String optionValue = config.getOptionValue(longOpt, shortOpt);
-    			
-    			if(optionValue==null && (option.hasArgs() || option.hasArg())) {
-    				throw new NumberFormatException(longOpt+"/"+shortOpt+" requires mandatory argument");
-    			}
-    			if(optionValue!=null && !option.hasArgs() && !option.hasOptionalArg() && !option.hasArg()) {
-    				throw new NumberFormatException(longOpt+"/"+shortOpt+" does require an argument");
-    			}
-    			
-    			if(optionValue!=null) {
-    				char argSeparator = option.getValueSeparator();
-    				String argSeparatorRegex;
-    				if(argSeparator==' ') argSeparatorRegex = "\\s++";
-    				else argSeparatorRegex = Pattern.quote(String.valueOf(argSeparator));
-    				optionValues = optionValue.split(argSeparatorRegex);
-    			}
-    			
-    			if(option.hasArgs() && (optionValues==null || optionValues.length!=option.getArgs())) {
-    				throw new NumberFormatException(longOpt+"/"+shortOpt+" requires " + option.getArgs() + " mandatory arguments");
-    			}
-    		}
-    		return optionValues;
-    	}
+        OptionWrapper(CommandLine cmd,FileConfig config) {
+            this.cmd = cmd;
+            this.config = config;
+        }
+
+        private boolean cmdHasOption(String longOpt, String shortOpt) {
+            return (cmd.hasOption(longOpt) || cmd.hasOption(shortOpt));
+        }
+
+        private boolean configHasOption(String longOpt, String shortOpt) {
+            return ((config!=null) ? config.hasOption(longOpt, shortOpt) : false);
+        }
+
+        boolean hasOption(String longOpt, String shortOpt) {
+            longOpt = (longOpt==null ? "" : longOpt);
+            shortOpt = (shortOpt==null ? "" : shortOpt);
+            return cmdHasOption(longOpt, shortOpt) || configHasOption(longOpt, shortOpt);
+        }
+
+        String getOptionValue(String longOpt,String shortOpt) {
+            String optionValue = null;
+
+            longOpt = (longOpt==null ? "" : longOpt);
+            shortOpt = (shortOpt==null? "" : shortOpt);
+
+            Option option = !longOpt.equals("") ? Options.this.getOption(longOpt) : Options.this.getOption(shortOpt);
+
+            if(cmdHasOption(longOpt, shortOpt)) {
+                optionValue = cmd.getOptionValue(longOpt);
+                if(optionValue==null)
+                    optionValue = cmd.getOptionValue(shortOpt);
+            }
+            else if(configHasOption(longOpt,shortOpt)) {
+                optionValue = config.getOptionValue(longOpt, shortOpt);
+
+                if(optionValue==null && option.hasArg() && !option.hasOptionalArg()) {
+                    throw new NumberFormatException(longOpt+"/"+shortOpt+" requires mandatory argument");
+                }
+                if(optionValue!=null && !option.hasArg() && !option.hasOptionalArg()) {
+                    throw new NumberFormatException(longOpt+"/"+shortOpt+" does not have argument");
+                }
+            }
+            return optionValue;
+        }
+
+        String[] getOptionValues(String longOpt, String shortOpt) {
+            String[] optionValues = null;
+
+            longOpt = (longOpt==null ? "" : longOpt);
+            shortOpt = (shortOpt==null? "" : shortOpt);
+
+            Option option = !longOpt.equals("") ? Options.this.getOption(longOpt) : Options.this.getOption(shortOpt);
+
+            if(cmdHasOption(longOpt,shortOpt)) {
+                optionValues = cmd.getOptionValues(longOpt);
+                if(optionValues== null) optionValues = cmd.getOptionValues(shortOpt);
+            }
+            else if(configHasOption(longOpt,shortOpt)) {
+                String optionValue = config.getOptionValue(longOpt, shortOpt);
+
+                if(optionValue==null && (option.hasArgs() || option.hasArg())) {
+                    throw new NumberFormatException(longOpt+"/"+shortOpt+" requires mandatory argument");
+                }
+                if(optionValue!=null && !option.hasArgs() && !option.hasOptionalArg() && !option.hasArg()) {
+                    throw new NumberFormatException(longOpt+"/"+shortOpt+" does require an argument");
+                }
+
+                if(optionValue!=null) {
+                    char argSeparator = option.getValueSeparator();
+                    String argSeparatorRegex;
+                    if(argSeparator==' ') argSeparatorRegex = "\\s++";
+                    else argSeparatorRegex = Pattern.quote(String.valueOf(argSeparator));
+                    optionValues = optionValue.split(argSeparatorRegex);
+                }
+
+                if(option.hasArgs() && (optionValues==null || optionValues.length!=option.getArgs())) {
+                    throw new NumberFormatException(longOpt+"/"+shortOpt+" requires " + option.getArgs() + " mandatory arguments");
+                }
+            }
+            return optionValues;
+        }
     }
-    
+
     /** Returns true if program should continue */
     public boolean parseOptions(String[] args) throws IOException {
         // create the parser
@@ -382,7 +382,7 @@ public class Options extends org.apache.commons.cli.Options {
         OptionWrapper options=null;
         boolean showUsageAndExit = false;
         boolean listSerialPortsAndExit = false;
-    	boolean hasDbFilename = true;
+        boolean hasDbFilename = true;
         try {
             // parse the command line arguments
             cmd = parser.parse(this, args);
@@ -398,21 +398,21 @@ public class Options extends org.apache.commons.cli.Options {
         }
         else {
             try {
-            	if(cmd.hasOption("config-file")) {
-            		String optionFileName = cmd.getOptionValue("config-file");
-            		
-            		try {
-            			config = new FileConfig(optionFileName);
-            		}
-            		catch(IOException exp) {
-            			System.err.println(exp.getMessage());
-            			showUsageAndExit = true;
-            		}
-            	}
-            	
-            	options = new OptionWrapper(cmd, config);
+                if(cmd.hasOption("config-file")) {
+                    String optionFileName = cmd.getOptionValue("config-file");
 
-            	hasDbFilename = true;
+                    try {
+                        config = new FileConfig(optionFileName);
+                    }
+                    catch(IOException exp) {
+                        System.err.println(exp.getMessage());
+                        showUsageAndExit = true;
+                    }
+                }
+
+                options = new OptionWrapper(cmd, config);
+
+                hasDbFilename = true;
                 if(options.hasOption("database-directory","d")) {
                     dbFilename = options.getOptionValue("database-directory","d");
                 }
@@ -420,33 +420,33 @@ public class Options extends org.apache.commons.cli.Options {
                     dbFilename = cmd.getArgs()[0];
                 }
                 else {
-                	hasDbFilename = false;
+                    hasDbFilename = false;
                 }
 
                 if(config==null && hasDbFilename) {
-                	File defaultConfigFile = new File(dbFilename,ITS_ELECTRIC_PROPERTIES);
-                	if(defaultConfigFile.exists()) {
-                		try {
-                			config = new FileConfig(defaultConfigFile.getAbsolutePath());
-                		}
-                		catch(IOException exp) {
-                			System.err.println(exp.getMessage());
-                			showUsageAndExit = true;
-                		}
-                		options = new OptionWrapper(cmd,config);
-                	}
+                    File defaultConfigFile = new File(dbFilename,ITS_ELECTRIC_PROPERTIES);
+                    if(defaultConfigFile.exists()) {
+                        try {
+                            config = new FileConfig(defaultConfigFile.getAbsolutePath());
+                        }
+                        catch(IOException exp) {
+                            System.err.println(exp.getMessage());
+                            showUsageAndExit = true;
+                        }
+                        options = new OptionWrapper(cmd,config);
+                    }
                 }
-                
+
                 if(options.hasOption("no-serve", null)) {
-                	serve = !optionalBoolean(options,"no-serve", null,false);
+                    serve = !optionalBoolean(options,"no-serve", null,false);
                 }
                 if(options.hasOption("no-record", null)) {
                     record = !optionalBoolean(options,"no-record", null,false);
                 }
-                
+
                 boolean recordChanged = false;
                 boolean serveChanged = false;
-                
+
                 if(options.hasOption("time-zone", null)) {
                     String input = options.getOptionValue("time-zone",null);
                     input = convertISO8601TimeZone(input);
@@ -483,7 +483,7 @@ public class Options extends org.apache.commons.cli.Options {
                     recordTimeZone = TimeZone.getTimeZone(input);
                     recordChanged = true;
                 }
-                
+
                 if(recordChanged) log.info("Record Time Zone: " + TimeZone.getCanonicalID(recordTimeZone.getID()) + ", " + recordTimeZone.getDisplayName());
                 if(serveChanged) log.info("Serve Time Zone: " + TimeZone.getCanonicalID(serveTimeZone.getID()) + ", " + serveTimeZone.getDisplayName());
 
@@ -499,11 +499,11 @@ public class Options extends org.apache.commons.cli.Options {
                 if(options.hasOption("export-style", null)) {
                     exportByMTU = !options.getOptionValue("export-style", null).trim().toLowerCase().equals("timestamp");
                 }
-                
+
                 if(options.hasOption("delete-until", null)) {
                     deleteUntil = Util.timestampFromUserInput(options.getOptionValue("delete-until",null),false,serveTimeZone);
                 }
-                
+
                 if(options.hasOption("port","p")) {
                     String val = options.getOptionValue("port","p");
                     if(val.equals("none")) {
@@ -588,24 +588,24 @@ public class Options extends org.apache.commons.cli.Options {
                 if(options.hasOption("help","h")) {
                     showUsageAndExit = true;
                 }
-            
+
                 if(options.hasOption("cc-list-serial-ports",null)) {
                     listSerialPortsAndExit = true;
                 }
             }
             catch (NumberFormatException e) {
-            	System.err.println(e.getMessage()); 
+                System.err.println(e.getMessage()); 
                 showUsageAndExit = true;
             }
         }
-          
+
         if(!hasDbFilename && !listSerialPortsAndExit) {
-        	showUsageAndExit = true;
+            showUsageAndExit = true;
         }
         else if(!serve && !record && !export && deleteUntil==0 && !listSerialPortsAndExit) {
             showUsageAndExit = true;
         }
-        
+
         if(ccOptions && tedOptions) {
             System.out.println("Cannot combine TED and Current Cost options.");
             showUsageAndExit = true;
@@ -614,7 +614,7 @@ public class Options extends org.apache.commons.cli.Options {
             System.out.println("Current Cost use requires --cc-port-name.");
             showUsageAndExit = true;
         }
-        
+
         if(showUsageAndExit) {
             showUsage();
             return false;
@@ -632,71 +632,71 @@ public class Options extends org.apache.commons.cli.Options {
         }
     }
 
-	private void showUsage() {
-		StringBuilder header = new StringBuilder();
-		header.append("\n");
-		header.append("The \"it's electric\" Java program is designed to perform two simultaneous\n");
-		header.append("activities:\n");
-		header.append("(1) it records data from TED into a permanent database; and\n");
-		header.append("(2) it serves data from the database in Google Visualization API format.\n");
-		header.append("Additionally, the program can\n");
-		header.append("(3) export data from the database in CSV format.\n");
-		header.append("\n");
-		header.append("To export data, use: java -jar its-electric-*.jar -d <database-directory>\n");
-		header.append("                                      --export <start> <end> <resolution>\n");
-		header.append("\n");
-		header.append("You can specify to only record data using option --no-serve (e.g. for an\n");
-		header.append("unattended setup) and to only serve data using option --no-record (e.g. with a\n");
-		header.append("static copy of an its-electric database).\n");
-		header.append("\n");
-		header.append("Options -d (specifying the database directory) and -m (specifying the number of\n");
-		header.append("MTUs) are important for both recording and serving.  Option -g (the TED Gateway\n");
-		header.append("URL) and options -v and -k (which determine whether to record voltage and\n");
-		header.append("volt-amperes) are important for recording.  Option -p (the port on which to\n");
-		header.append("serve) is important for serving.  Other options are generally minor.\n");
-		header.append("\n");
-		header.append("Options (-d is REQUIRED):");
-		
-		HelpFormatter help = new HelpFormatter();
-		PrintWriter writer = new PrintWriter(System.out);
-		writer.println("usage: java -jar its-electric-*.jar [options]");
-		writer.println(header.toString());
-		help.printOptions(writer,80,this,0,0);
-		writer.flush();
-		writer.close();
-	}
+    private void showUsage() {
+        StringBuilder header = new StringBuilder();
+        header.append("\n");
+        header.append("The \"it's electric\" Java program is designed to perform two simultaneous\n");
+        header.append("activities:\n");
+        header.append("(1) it records data from TED into a permanent database; and\n");
+        header.append("(2) it serves data from the database in Google Visualization API format.\n");
+        header.append("Additionally, the program can\n");
+        header.append("(3) export data from the database in CSV format.\n");
+        header.append("\n");
+        header.append("To export data, use: java -jar its-electric-*.jar -d <database-directory>\n");
+        header.append("                                      --export <start> <end> <resolution>\n");
+        header.append("\n");
+        header.append("You can specify to only record data using option --no-serve (e.g. for an\n");
+        header.append("unattended setup) and to only serve data using option --no-record (e.g. with a\n");
+        header.append("static copy of an its-electric database).\n");
+        header.append("\n");
+        header.append("Options -d (specifying the database directory) and -m (specifying the number of\n");
+        header.append("MTUs) are important for both recording and serving.  Option -g (the TED Gateway\n");
+        header.append("URL) and options -v and -k (which determine whether to record voltage and\n");
+        header.append("volt-amperes) are important for recording.  Option -p (the port on which to\n");
+        header.append("serve) is important for serving.  Other options are generally minor.\n");
+        header.append("\n");
+        header.append("Options (-d is REQUIRED):");
 
-	private void readAndProcessPassword() throws IOException {
-		System.err.print("Please enter password for username '" + username + "': ");
-		password = Options.reader.readLine();
-		Authenticator.setDefault(new Authenticator() {
-		    @Override
-		    protected PasswordAuthentication getPasswordAuthentication() {
-		        return new PasswordAuthentication(username, password.toCharArray());
-		    }
-		});
-	}
+        HelpFormatter help = new HelpFormatter();
+        PrintWriter writer = new PrintWriter(System.out);
+        writer.println("usage: java -jar its-electric-*.jar [options]");
+        writer.println(header.toString());
+        help.printOptions(writer,80,this,0,0);
+        writer.flush();
+        writer.close();
+    }
 
-	private void confirmDeleteUntil() {
-		if(deleteUntil > 1230000000) {
-		    boolean doit;
-		    System.err.print("Irrevocably delete all data up to " + Util.dateString(deleteUntil) + "? (yes/no [no]) ");
-		    try {
-		        String input = Options.reader.readLine();
-		        doit = input!=null && input.toLowerCase().trim().equals("yes");
-		    }
-		    catch(IOException e) {
-		        doit = false;
-		    }
-		    if(!doit) deleteUntil = 0;
-		}
-	}
+    private void readAndProcessPassword() throws IOException {
+        System.err.print("Please enter password for username '" + username + "': ");
+        password = Options.reader.readLine();
+        Authenticator.setDefault(new Authenticator() {
+            @Override
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(username, password.toCharArray());
+            }
+        });
+    }
 
-	private String convertISO8601TimeZone(String input) {
-		Matcher m = Pattern.compile("([+-]\\d{2}):?+(\\d{2})").matcher(input);
-		if(m.matches()) {
-		    input = "GMT" + m.group(1) + m.group(2);
-		}
-		return input;
-	}
+    private void confirmDeleteUntil() {
+        if(deleteUntil > 1230000000) {
+            boolean doit;
+            System.err.print("Irrevocably delete all data up to " + Util.dateString(deleteUntil) + "? (yes/no [no]) ");
+            try {
+                String input = Options.reader.readLine();
+                doit = input!=null && input.toLowerCase().trim().equals("yes");
+            }
+            catch(IOException e) {
+                doit = false;
+            }
+            if(!doit) deleteUntil = 0;
+        }
+    }
+
+    private String convertISO8601TimeZone(String input) {
+        Matcher m = Pattern.compile("([+-]\\d{2}):?+(\\d{2})").matcher(input);
+        if(m.matches()) {
+            input = "GMT" + m.group(1) + m.group(2);
+        }
+        return input;
+    }
 }
