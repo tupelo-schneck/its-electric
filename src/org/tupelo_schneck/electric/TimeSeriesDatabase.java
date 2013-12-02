@@ -520,16 +520,16 @@ public class TimeSeriesDatabase {
                         log.error("Unexpected status around " + Util.dateString(timestamp) + " in database " + resolution);
                     }
 
-                    // Delete everything after 2030
-                    //                key = keyEntry(1894000000,(byte)0);
-                    //                status = cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
-                    //                while(status==OperationStatus.SUCCESS) {
-                    //                    byte[] buf = key.getData();
-                    //                    int timestamp = intOfBytes(buf,0);
-                    //                    log.info("Deleting " + Main.dateString(timestamp));
-                    //                    status = cursor.delete();
-                    //                    if(status==OperationStatus.SUCCESS) status = cursor.getNext(key, readDataEntry, LockMode.READ_UNCOMMITTED);
-                    //                }
+//                     Delete everything after 2030
+                    key = keyEntry(1894000000,(byte)0);
+                    status = cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
+                    while(status==OperationStatus.SUCCESS) {
+                        byte[] buf = key.getData();
+                        timestamp = intOfBytes(buf,0);
+                        log.trace("Deleting " + Util.dateString(timestamp));
+                        status = cursor.delete();
+                        if(status==OperationStatus.SUCCESS) status = cursor.getNext(key, readDataEntry, LockMode.READ_UNCOMMITTED);
+                    }
                 }
                 finally {
                     cursor.close();
