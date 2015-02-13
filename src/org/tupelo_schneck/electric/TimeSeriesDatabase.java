@@ -264,6 +264,7 @@ public class TimeSeriesDatabase {
 
     public void put(Cursor cursor,int timestamp, byte mtu, Integer power, Integer voltage, Integer voltAmperes) throws DatabaseException {
         if(power==null && voltage==null && voltAmperes==null) return;
+        if (timestamp < 1230000000 || timestamp > 1894000000) return;
         OperationStatus status = cursor.put(keyEntry(timestamp, mtu), dataEntry(power,voltage, voltAmperes));
         if(status!=OperationStatus.SUCCESS) {
             throw new DatabaseException("Unexpected status " + status) {};
@@ -283,6 +284,7 @@ public class TimeSeriesDatabase {
     
     public boolean putIfChanged(Cursor cursor, Triple triple) throws DatabaseException {
         if(triple.power==null && triple.voltage==null && triple.voltAmperes==null) return false;
+        if (triple.timestamp < 1230000000 || triple.timestamp > 1894000000) return false;
         OperationStatus status;
         DatabaseEntry key = keyEntry(triple.timestamp,triple.mtu);
         DatabaseEntry data = dataEntry(triple.power,triple.voltage,triple.voltAmperes);
@@ -521,6 +523,7 @@ public class TimeSeriesDatabase {
                     }
 
 //                     Delete everything after 2030
+                    log.trace("Deleting after 2030");
                     key = keyEntry(1894000000,(byte)0);
                     status = cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
                     while(status==OperationStatus.SUCCESS) {
