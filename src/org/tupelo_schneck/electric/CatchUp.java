@@ -58,7 +58,7 @@ public class CatchUp implements Runnable {
         this.main = main;
         this.options = options;
         this.databaseManager = databaseManager;
-        caughtUpTo = new int[options.mtus];
+        caughtUpTo = new int[options.mtus + options.spyders];
     }
     
     @Override
@@ -78,7 +78,7 @@ public class CatchUp implements Runnable {
             // at start or following a reset, figure out where we are caught up to
             Arrays.fill(caughtUpTo, Integer.MAX_VALUE);
             for (int i = 1; i < DatabaseManager.numDurations; i++) {
-                for(byte mtu = 0; mtu < options.mtus; mtu++) {
+                for(byte mtu = 0; mtu < options.mtus + options.spyders; mtu++) {
                     if(databaseManager.databases[i].maxForMTU[mtu] < caughtUpTo[mtu]) {
                         caughtUpTo[mtu] = databaseManager.databases[i].maxForMTU[mtu];
                     }
@@ -88,7 +88,7 @@ public class CatchUp implements Runnable {
             // This is because we might have crashed right after getting
             // reset data for an hour ago, but before doing the reset.
             if(firstTime) {
-                for(byte mtu = 0; mtu < options.mtus; mtu++) {
+                for(byte mtu = 0; mtu < options.mtus + options.spyders; mtu++) {
                     caughtUpTo[mtu] -= 7200;
                 }
                 firstTime = false;
@@ -104,7 +104,7 @@ public class CatchUp implements Runnable {
             // perform the reset
             synchronized(resetLock) {
                 reset = false;
-                for(byte mtu = 0; mtu < options.mtus; mtu++) {
+                for(byte mtu = 0; mtu < options.mtus + options.spyders; mtu++) {
                     if(resetTimestamp[mtu]!=0) {
                         for (int i = 1; i < DatabaseManager.numDurations; i++) {
                             databaseManager.databases[i].resetForNewData(resetTimestamp[mtu], mtu);
@@ -119,7 +119,7 @@ public class CatchUp implements Runnable {
     private void catchUpNewData() {
         // find starting place
         int catchupStart = Integer.MAX_VALUE;
-        for(byte mtu = 0; mtu < options.mtus; mtu++) {
+        for(byte mtu = 0; mtu < options.mtus + options.spyders; mtu++) {
             if(caughtUpTo[mtu] + 1 < catchupStart) {
                 catchupStart = caughtUpTo[mtu] + 1;
             }
@@ -189,7 +189,7 @@ public class CatchUp implements Runnable {
             boolean setNewData = false;
             synchronized(resetLock) {
                 if(resetTimestamp==null) {
-                    resetTimestamp = new int[options.mtus];
+                    resetTimestamp = new int[options.mtus + options.spyders];
     //                Arrays.fill(resetTimestamp,0);
                 }
     

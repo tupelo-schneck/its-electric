@@ -81,8 +81,8 @@ public class Servlet extends DataSourceServlet {
         log.trace("Minimum is " + Util.dateString(getMinimum()));
         int[] maxSeconds = databaseManager.secondsDb.maxForMTU.clone();
         Arrays.sort(maxSeconds);
-        for(byte mtu = 0; mtu < options.mtus; mtu++) {
-            if(maxSeconds[mtu] + CatchUp.LAG > maxSeconds[options.mtus-1]) {
+        for(byte mtu = 0; mtu < options.mtus + options.spyders; mtu++) {
+            if(maxSeconds[mtu] + CatchUp.LAG > maxSeconds[options.mtus + options.spyders-1]) {
                 setMaximumIfNewer(maxSeconds[mtu]);
                 break;
             }
@@ -209,21 +209,29 @@ public class Servlet extends DataSourceServlet {
             data = new DataTable();
             ArrayList<ColumnDescription> cd = new ArrayList<ColumnDescription>();
             cd.add(new ColumnDescription("Date", ValueType.DATETIME, "Date"));
-            for(int mtu = 0; mtu < options.mtus; mtu++) {
-                String label = "MTU" + (mtu+1);
+            for(int mtu = 0; mtu < options.mtus + options.spyders; mtu++) {
+                String label = getLabel(mtu);
                 cd.add(new ColumnDescription(label, ValueType.NUMBER, label));
             }
             if(params.queryType==QueryType.COMBINED_POWER) {
-                for(int mtu = 0; mtu < options.mtus; mtu++) {
-                    String label = "MTU" + (mtu+1) + "var";
+                for(int mtu = 0; mtu < options.mtus + options.spyders; mtu++) {
+                    String label = getLabel(mtu) + "var";
                     cd.add(new ColumnDescription(label, ValueType.NUMBER, label));
                 }
-                for(int mtu = 0; mtu < options.mtus; mtu++) {
-                    String label = "MTU" + (mtu+1) + "VA";
+                for(int mtu = 0; mtu < options.mtus + options.spyders; mtu++) {
+                    String label = getLabel(mtu) + "VA";
                     cd.add(new ColumnDescription(label, ValueType.NUMBER, label));
                 }
             }
             data.addColumns(cd);
+        }
+
+        private String getLabel(int mtu) {
+            if (mtu < options.mtus) { 
+                return "MTU" + (mtu+1);
+            } else {
+                return "Spyder" + (mtu+1 - options.mtus);
+            }
         }
         
         private void addNullsTo(int nextMTU) {
@@ -241,13 +249,13 @@ public class Servlet extends DataSourceServlet {
                 TableRow oldRow = row;
                 row = new TableRow();
                 row.addCell(oldRow.getCell(0));
-                for(int mtu = 0; mtu < options.mtus; mtu++) {
+                for(int mtu = 0; mtu < options.mtus + options.spyders; mtu++) {
                     row.addCell(oldRow.getCell(1+mtu*3));
                 }
-                for(int mtu = 0; mtu < options.mtus; mtu++) {
+                for(int mtu = 0; mtu < options.mtus + options.spyders; mtu++) {
                     row.addCell(oldRow.getCell(2+mtu*3));
                 }
-                for(int mtu = 0; mtu < options.mtus; mtu++) {
+                for(int mtu = 0; mtu < options.mtus + options.spyders; mtu++) {
                     row.addCell(oldRow.getCell(3+mtu*3));
                 }
             }
@@ -256,7 +264,7 @@ public class Servlet extends DataSourceServlet {
         
         private void finishRow() {
             if(row!=null) {
-                addNullsTo(options.mtus);
+                addNullsTo(options.mtus + options.spyders);
                 addRow();
                 row = null;
                 lastTime = 0;
@@ -265,7 +273,7 @@ public class Servlet extends DataSourceServlet {
         }
         
         private void addTriple(Triple triple) {
-            if(triple.mtu >= options.mtus) return;
+            if(triple.mtu >= options.mtus + options.spyders) return;
             if(triple.timestamp < lastTime) return;
             if(params.queryType==QueryType.VOLTAGE && triple.voltage==null) return;
             else if(params.queryType==QueryType.POWER && triple.power==null) return;

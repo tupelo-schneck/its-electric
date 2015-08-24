@@ -21,11 +21,13 @@ If not, see <http://www.gnu.org/licenses/>.
 
 package org.tupelo_schneck.electric.ted;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Arrays;
 import java.util.Iterator;
 
 import org.apache.commons.codec.binary.Base64;
@@ -43,8 +45,9 @@ public class ImportIterator implements Iterator<Triple> {
     private final InputStream urlStream;
     private final Base64 base64 = new Base64();
     private final GregorianCalendar cal;
+    private final Options options;
 
-    private byte[] line = new byte[25];
+    private byte[] line;
     private volatile boolean closed;
     private Triple pushback;
     private int inDSTOverlap; // 0 not, 1 first part, 2 second part
@@ -55,9 +58,10 @@ public class ImportIterator implements Iterator<Triple> {
         this.cal = new GregorianCalendar(this.timeZone); 
         this.mtu = mtu;
         this.useVoltage = options.voltage;
+        this.options = options;
         URL url;
         try {
-            url = new URL(options.gatewayURL+"/history/rawsecondhistory.raw?INDEX=1&MTU="+mtu+"&COUNT="+count);
+            url = new URL(getUrl(options, mtu, count));
         }
         catch (MalformedURLException e) {
             throw new RuntimeException(e);
@@ -66,7 +70,7 @@ public class ImportIterator implements Iterator<Triple> {
         urlConnection.setConnectTimeout(60000);
         urlConnection.setReadTimeout(60000);
         urlConnection.connect();
-        urlStream = urlConnection.getInputStream();
+        urlStream = new BufferedInputStream(urlConnection.getInputStream());
         urlConnection.setReadTimeout(1000);
         getNextLine();
         
@@ -79,12 +83,25 @@ public class ImportIterator implements Iterator<Triple> {
             }
             pushback = next;
             
-            if(Util.inDSTOverlap(timeZone, first.timestamp)) {
+            if(!"ted-pro".equals(options.device) && Util.inDSTOverlap(timeZone, first.timestamp)) {
                 int now = (int)(System.currentTimeMillis()/1000);
                 if(now < first.timestamp - 1800) inDSTOverlap = 1;
                 else inDSTOverlap = 2;
             }
             previousTimestamp = first.timestamp;
+        }
+    }
+
+    private String getUrl(final Options options, final byte mtu, final int count) {
+        if ("ted-pro".equals(options.device)) {
+            if (mtu < options.mtus) { 
+                return options.gatewayURL+"/history/export.raw?D=0&M=" + (mtu+1) + "&C=" + count;
+            } else {
+                int spyder = mtu - options.mtus;
+                return options.gatewayURL+"/history/export.raw?D=1&M=" + spyder + "&C=" + count;
+            }
+        } else {
+            return options.gatewayURL+"/history/rawsecondhistory.raw?INDEX=1&MTU="+mtu+"&COUNT="+count;
         }
     }
 
@@ -94,17 +111,24 @@ public class ImportIterator implements Iterator<Triple> {
     }
 
     private void getNextLine() {
+        byte[] buf = new byte[25];
         try {
             int n = 0;
-            while(n < 25) {
-                int r = urlStream.read(line,n,25-n);
-                if(r <= 0) {
+            while (n < 25) {
+                int r = urlStream.read();
+                if (r < 0) {
                     close();
                     return;
                 }
-                n += r;
+                if (r == '\n') {
+                    line = Arrays.copyOfRange(buf, 0, n);
+                    return;
+                }
+                buf[n] = (byte)r;
+                n++;
             }
-            if(line[24]!='\n') close();
+            if(buf[24]!='\n') close();
+            line = Arrays.copyOfRange(buf, 0, n);
         }
         catch(IOException e) {
             close();
@@ -141,7 +165,37 @@ public class ImportIterator implements Iterator<Triple> {
     private Triple nextFromLine() {
         if(closed) return null;
         byte[] decoded = base64.decode(line);
-        if(decoded==null || decoded.length<16) return null;
+        if (decoded == null) return null;
+        if ("ted-pro".equals(options.device)) {
+            return tedProNextFromLine(decoded);
+        } else {
+            return ted5000NextFromLine(decoded);
+        }
+    }
+    
+    private Triple tedProNextFromLine(byte[] decoded) {    
+        if (decoded[0] != (byte)0xA4) return null;
+        if (!checksumChecks(decoded)) return null;
+        if (decoded.length < ((mtu < options.mtus) ? 16 : 14)) return null;
+        int timestamp = intOfBytes(decoded, 1);
+        previousTimestamp = timestamp;
+        Integer power = Integer.valueOf(intOfBytes(decoded, 5));
+        Integer voltage = (useVoltage && mtu < options.mtus) ? Integer.valueOf(unsignedShortOfBytes(decoded,13)) : null;
+        Triple res = new Triple(timestamp,mtu,power,voltage,null);
+        getNextLine();
+        return res;
+    }
+    
+    private static boolean checksumChecks(byte[] decoded) {
+        byte sum = 0;
+        for (int i = 0; i < decoded.length - 1; i++) {
+            sum += decoded[i];
+        }
+        return sum == decoded[decoded.length - 1];
+    }
+    
+    private Triple ted5000NextFromLine(byte[] decoded) {    
+        if(decoded.length<16) return null;
         if((0x00FF & decoded[0]) < 9) {
             // TED5000 uses sentinel value 2005-05-05 05:05:05.  
             // Here we skip anything before 2009.
@@ -179,7 +233,7 @@ public class ImportIterator implements Iterator<Triple> {
         if(first==null) return null;
         int timestamp = first.timestamp;
         int power = first.power.intValue();
-        int voltage = useVoltage ? first.voltage.intValue() : 0;
+        int voltage = (useVoltage && first.voltage != null) ? first.voltage.intValue() : 0;
         int count = 1;
         while(true) {
             Triple next = privateNext();
@@ -195,7 +249,7 @@ public class ImportIterator implements Iterator<Triple> {
             else {
                 count++;
                 power += next.power.intValue();
-                voltage += useVoltage ? next.voltage.intValue() : 0;
+                voltage += (useVoltage && next.voltage != null) ? next.voltage.intValue() : 0;
             }
         }
         if(count==1) return first;

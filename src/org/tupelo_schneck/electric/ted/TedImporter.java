@@ -192,10 +192,10 @@ public class TedImporter implements Importer {
             
             int newMin = Integer.MAX_VALUE;
             int newMax = 0;
-            int[] newMaxForMTU = new int[options.mtus];
+            int[] newMaxForMTU = new int[options.mtus + options.spyders];
             List<Triple.Key> changes = new ArrayList<Triple.Key>();
 
-            for(byte mtu = 0; mtu < options.mtus; mtu++) {
+            for(byte mtu = 0; mtu < options.mtus + options.spyders; mtu++) {
                 if(!main.isRunning) return;
                 
                 MinAndMax minAndMax = changesFromImport(count,mtu,longImport && options.importInterval > 0);
@@ -208,8 +208,8 @@ public class TedImporter implements Importer {
             }
             int[] maxSeconds = newMaxForMTU.clone();
             Arrays.sort(maxSeconds);
-            int latestMax = maxSeconds[options.mtus-1];
-            for(byte mtu = 0; mtu < options.mtus; mtu++) {
+            int latestMax = maxSeconds[options.mtus + options.spyders - 1];
+            for(byte mtu = 0; mtu < options.mtus + options.spyders; mtu++) {
                 if(maxSeconds[mtu] + CatchUp.LAG > latestMax) {
                     newMax = maxSeconds[mtu];
                     break;
@@ -227,7 +227,7 @@ public class TedImporter implements Importer {
             catchUp.notifyChanges(changes, false);
             
             synchronized(minMaxLock) {
-                for(byte mtu = 0; mtu < options.mtus; mtu++) {
+                for(byte mtu = 0; mtu < options.mtus + options.spyders; mtu++) {
                     if(newMaxForMTU[mtu] < maxSecondForMTU[mtu]) {
                         newMaxForMTU[mtu] = maxSecondForMTU[mtu];
                     }

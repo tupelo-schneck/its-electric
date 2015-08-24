@@ -90,12 +90,15 @@ public class Options extends org.apache.commons.cli.Options {
         } catch (Exception e) { } 
     }
 
+    public String device = null;
+    
     public String dbFilename = null;
     public String gatewayURL = "http://TED5000";
     public String username = null;
     public String password = null;
     public String serverLogFilename;
     public byte mtus = 1;
+    public byte spyders = 0;
     public int importOverlap = 8;
     public int importInterval = 4; // seconds
     public int longImportInterval = 5*60;
@@ -134,7 +137,12 @@ public class Options extends org.apache.commons.cli.Options {
                 .withDescription("file to read config options from")
                 .hasArg().withArgName("arg").create();
         this.addOption(optionFile);
-
+        
+        Option deviceOpt=OptionBuilder.withLongOpt("device")
+                .withDescription("device (ted-5000, ted-pro, current-cost; default ted-5000)")
+                .hasArg().withArgName("arg").create();
+        this.addOption(deviceOpt);
+        
         Option noServeOpt = OptionBuilder.withLongOpt("no-serve")
                 .withDescription("if present, do not serve Google Visualization data")
                 .hasOptionalArg().withArgName(null).create(); 
@@ -158,7 +166,8 @@ public class Options extends org.apache.commons.cli.Options {
         this.addOption("d","database-directory",true,"database directory (required)");
         this.addOption("p","port",true,"port served by datasource server (\"none\" same as --no-serve; default 8081)");
         this.addOption("m","mtus",true,"number of MTUs (default 1)");
-        this.addOption("g","gateway-url",true,"URL of TED 5000 gateway (\"none\" same as --no-record; default http://TED5000)");
+        this.addOption("s","spyders",true,"number of Spyder CTs (default 0)");
+        this.addOption("g","gateway-url",true,"URL of TED gateway (\"none\" same as --no-record; default http://TED5000)");
         this.addOption("u","username",true,"username for password-protected TED gateway (will prompt for password; default none)");
         this.addOption("n","num-points",true,"target number of data points returned over the zoom region (default 1000)");
         this.addOption("x","max-points",true,"number of data points beyond which server will not go (default 5000)");
@@ -437,6 +446,22 @@ public class Options extends org.apache.commons.cli.Options {
                     }
                 }
 
+                if (options.hasOption("device", null)) {
+                    device = options.getOptionValue("device", null);
+                    
+                    if ("ted-5000".equals(device)) {
+                        tedOptions = true;
+                    } else if ("ted-pro".equals(device)) {
+                        tedOptions = true;
+                    } else if ("current-cost".equals(device)) {
+                        ccOptions = true;
+                    } else {
+                        showUsageAndExit = true;
+                    }
+                } else {
+                    device = "ted-5000";
+                }
+
                 if(options.hasOption("no-serve", null)) {
                     serve = !optionalBoolean(options,"no-serve", null,false);
                 }
@@ -523,6 +548,12 @@ public class Options extends org.apache.commons.cli.Options {
                     tedOptions = true;
                     mtus = Byte.parseByte(options.getOptionValue("mtus","m"));
                     if(mtus<=0 || mtus >4) showUsageAndExit = true;
+                }
+                if(options.hasOption("spyders","s")) {
+                    tedOptions = true;
+                    spyders = Byte.parseByte(options.getOptionValue("spyders","s"));
+                    if(spyders<=0 || spyders >32) showUsageAndExit = true;
+                    if (spyders > 0 && !"ted-pro".equals(device)) showUsageAndExit = true;
                 }
                 if(options.hasOption("username","u")) {
                     tedOptions = true;
