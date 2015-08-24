@@ -51,6 +51,8 @@ public class TimeSeriesDatabase {
     
     public final int resolution;
     public final String resolutionString;
+    
+    private final int actualMtus;
 
     // start[mtu] is the next entry that the database will get;
     // sum[mtu] and count[mtu] are accumulated to find the average.
@@ -131,14 +133,26 @@ public class TimeSeriesDatabase {
     }
 
     // 4-byte timestamp, 1-byte mtu
-    private static DatabaseEntry keyEntry(int timestamp, byte mtu) {
+    private DatabaseEntry keyEntry(int timestamp, byte mtu) {
         byte[] buf = new byte[5];
         buf[0] = (byte) ((timestamp >> 24) & 0xFF);
         buf[1] = (byte) ((timestamp >> 16) & 0xFF);
         buf[2] = (byte) ((timestamp >> 8) & 0xFF);
         buf[3] = (byte) (timestamp & 0xFF);
-        buf[4] = mtu;
+        if (mtu < actualMtus) {
+            buf[4] = mtu;
+        } else {
+            buf[4] = (byte)(0x40 | (mtu - actualMtus));
+        }
         return new DatabaseEntry(buf);
+    }
+    
+    private byte getDisplayMtu(byte mtu) {
+        if ((mtu & 0x40) != 0) {
+            return (byte)((mtu & 0x3F) + actualMtus);
+        } else {
+            return mtu;
+        }
     }
     
     private static int sizeOfInteger(Integer i) {
@@ -191,10 +205,11 @@ public class TimeSeriesDatabase {
         return new DatabaseEntry(buf);
     }
 
-    public TimeSeriesDatabase(Environment environment, boolean readOnly, String name, byte mtus, int resolution, String resolutionString, int timeZoneRawOffset) {
+    public TimeSeriesDatabase(Environment environment, boolean readOnly, String name, byte actualMtus, byte mtus, int resolution, String resolutionString, int timeZoneRawOffset) {
         this.timeZoneRawOffset = timeZoneRawOffset;
         this.resolution = resolution;
         this.resolutionString = resolutionString;
+        this.actualMtus = actualMtus;
         try {
             synchronized(TimeSeriesDatabase.class) {
                 if(ALLOW_CREATE_CONFIG==null) {
@@ -227,7 +242,7 @@ public class TimeSeriesDatabase {
                     int timestamp = 0;
                     while(status == OperationStatus.SUCCESS && done < mtus && timestamp > (latestTimestamp - MAX_RECHECK)) {
                         byte[] buf = key.getData();
-                        byte mtu = buf[4];
+                        byte mtu = getDisplayMtu(buf[4]);
                         timestamp = intOfBytes(buf,0);
                         if(latestTimestamp==0) latestTimestamp = timestamp;
                         if(mtu < mtus && start[mtu]==0) {
@@ -392,7 +407,7 @@ public class TimeSeriesDatabase {
         public Triple next() {
             byte[] buf = key.getData();
             int timestamp = intOfBytes(buf,0);
-            byte mtu = buf[4];
+            byte mtu = getDisplayMtu(buf[4]);
             buf = data.getData();
             Integer power = powerOfData(buf);
             Integer voltage = voltageOfData(buf);
@@ -499,27 +514,29 @@ public class TimeSeriesDatabase {
                     readDataEntry.setPartial(0,0,true);
                     key = keyEntry(0,(byte)0);
                     OperationStatus status = cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
-                    int lastPrintedTimestamp = 0;
-                    int interval = 86400;
-                    if(resolution >= 3600) interval = 864000;
-                    int timestamp = 0;
-                    while(main.isRunning && status==OperationStatus.SUCCESS) {
-                        byte[] buf = key.getData();
-                        timestamp = intOfBytes(buf,0);
-                        if(timestamp<until) {
-                            //log.info("Deleting " + Main.dateString(timestamp));
-                            status = cursor.delete();
-                            if(lastPrintedTimestamp==0) lastPrintedTimestamp = timestamp;
-                            else if(timestamp / interval > lastPrintedTimestamp / interval) {
-                                lastPrintedTimestamp = timestamp;
-                                log.trace("Deleted until " + Util.dateString(timestamp) + " in database " + resolution);
+                    if (status != OperationStatus.NOTFOUND) {
+                        int lastPrintedTimestamp = 0;
+                        int interval = 86400;
+                        if(resolution >= 3600) interval = 864000;
+                        int timestamp = 0;
+                        while(main.isRunning && status==OperationStatus.SUCCESS) {
+                            byte[] buf = key.getData();
+                            timestamp = intOfBytes(buf,0);
+                            if(timestamp<until) {
+                                //log.info("Deleting " + Main.dateString(timestamp));
+                                status = cursor.delete();
+                                if(lastPrintedTimestamp==0) lastPrintedTimestamp = timestamp;
+                                else if(timestamp / interval > lastPrintedTimestamp / interval) {
+                                    lastPrintedTimestamp = timestamp;
+                                    log.trace("Deleted until " + Util.dateString(timestamp) + " in database " + resolution);
+                                }
+                                if(status==OperationStatus.SUCCESS) status = cursor.getNext(key, readDataEntry, LockMode.READ_UNCOMMITTED);
                             }
-                            if(status==OperationStatus.SUCCESS) status = cursor.getNext(key, readDataEntry, LockMode.READ_UNCOMMITTED);
+                            else break;
                         }
-                        else break;
-                    }
-                    if(status!=OperationStatus.SUCCESS) {
-                        log.error("Unexpected status around " + Util.dateString(timestamp) + " in database " + resolution);
+                        if(status!=OperationStatus.SUCCESS) {
+                            log.error("Unexpected status around " + Util.dateString(timestamp) + " in database " + resolution);
+                        }
                     }
 
 //                     Delete everything after 2030
@@ -528,7 +545,7 @@ public class TimeSeriesDatabase {
                     status = cursor.getSearchKeyRange(key, readDataEntry, LockMode.READ_UNCOMMITTED);
                     while(status==OperationStatus.SUCCESS) {
                         byte[] buf = key.getData();
-                        timestamp = intOfBytes(buf,0);
+                        int timestamp = intOfBytes(buf,0);
                         log.trace("Deleting " + Util.dateString(timestamp));
                         status = cursor.delete();
                         if(status==OperationStatus.SUCCESS) status = cursor.getNext(key, readDataEntry, LockMode.READ_UNCOMMITTED);

@@ -105,7 +105,7 @@ public class Main {
                     if(triple.timestamp < lastTime) continue;
                     if(triple.timestamp > lastTime) {
                         if(row.length()>0) {
-                            for(int i = lastMTU + 1; i < options.mtus; i++) {
+                            for(int i = lastMTU + 1; i < options.mtus + options.spyders; i++) {
                                 row.append(",,,");
                             }
                             System.out.println(row);
@@ -127,7 +127,7 @@ public class Main {
                     if(triple.voltAmperes!=null) row.append(triple.voltAmperes);
                 }
                 if(row.length()>0) {
-                    for(int i = lastMTU + 1; i < options.mtus; i++) {
+                    for(int i = lastMTU + 1; i < options.mtus + options.spyders; i++) {
                         row.append(",,,");
                     }
                     System.out.println(row);

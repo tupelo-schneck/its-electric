@@ -73,7 +73,7 @@ public class DatabaseManager {
         log.info("Environment opened.");
 
         for(int i = 0; i < numDurations; i++) {
-            databases[i] = new TimeSeriesDatabase(environment, readOnly, String.valueOf(durations[i]), options.mtus, durations[i], durationStrings[i], options.serveTimeZone.getRawOffset() / 1000);
+            databases[i] = new TimeSeriesDatabase(environment, readOnly, String.valueOf(durations[i]), options.mtus, (byte)(options.mtus + options.spyders), durations[i], durationStrings[i], options.serveTimeZone.getRawOffset() / 1000);
             log.trace("Database " + i + " opened");
         }
         secondsDb = databases[0];
