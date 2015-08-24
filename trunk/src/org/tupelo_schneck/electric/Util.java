@@ -1,7 +1,7 @@
 /*
 This file is part of
 "it's electric": software for storing and viewing home energy monitoring data
-Copyright (C) 2009--2012 Robert R. Tupelo-Schneck <schneck@gmail.com>
+Copyright (C) 2009--2015 Robert R. Tupelo-Schneck <schneck@gmail.com>
 http://tupelo-schneck.org/its-electric
 
 "it's electric" is free software: you can redistribute it and/or modify

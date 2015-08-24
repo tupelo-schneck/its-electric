@@ -8,8 +8,11 @@ web pages with HTML, CSS, and Javascript.
 
 The "it's electric" Java program is designed to perform two simultaneous
 activities:
-(1) it records data from TED into a permanent database; and
+(1) it records data from TED (or other device) into a permanent database; and
 (2) it serves data from the database in Google Visualization API format.
+
+"it's electric" works with TED 5000 (heavily tested), Ted Pro (somewhat
+tested), and Current Cost (barely tested).
 
 The "it's electric" web pages will then talk to the server set up by the Java
 program in order to display the data as an interactive chart.  You can simply
@@ -30,17 +33,22 @@ Quick Start Guide
 0) Install Java (Mac: automatic; Windows: visit java.com) and Adobe
 Flash Player ( http://get.adobe.com/flashplayer/ )
 
-1) Extract all files from its-electric-1.9.zip.
+1) Extract all files from its-electric-1.10.zip.
 
 2) Open the command prompt and cd to the extracted its-electric directory.
 
 3) Type the command:
-java -jar its-electric-1.9.jar -g http://192.168.1.99 -m 2 -d its-electric-db
+java -jar its-electric-1.10.jar -g http://192.168.1.99 -m 2 -d its-electric-db
 BUT CHANGE "192.168.1.99" to the IP address of your TED Gateway, and
 change "2" (in "-m 2") to the number of MTUs in your TED system.
 
 (Note: if your TED Gateway is automatically assigned an IP address, you can
 try using -g http://TED5000 which is known to work on Windows.)
+
+If using TED Pro use arguments like: --device ted-pro --spyders 16
+
+If using Current Cost try "java -jar its-electric-1.10.jar -h" to list 
+available options.
 
 4) Tell Flash to trust the its-electric web pages by going to the Flash Player 
 Settings Manager and adding that file to the trusted locations.  Go to
@@ -73,11 +81,15 @@ Running "it's electric": in detail
 ==================================
 
 (1) You'll need to run the "it's electric" Java program, which polls 
-the TED 5000 for data, stores it in a database along with averages 
-over longer time spans, and runs the server which provides the data 
-according to the Google Visualizations API.  The command is:
+the TED 5000 (or TED Pro, or Current Cost) for data, stores it in a database 
+along with averages over longer time spans, and runs the server which provides 
+the data according to the Google Visualizations API.  The command is:
  
   java -jar its-electric-{version}.jar [options]
+
+The option --device specifies the device.  Default is ted-5000, other 
+options are ted-pro and current-cost.  Use option -h/--help to list 
+all available options.
 
 The option -d is required, to specify the directory in your filesystem 
 where the database will be stored.  Note: the database gets big, on 
@@ -185,7 +197,7 @@ The Fine Print
 ==============
 
 "it's electric": software for storing and viewing home energy monitoring data
-Copyright (C) 2009--2012 Robert R. Tupelo-Schneck <schneck@gmail.com>
+Copyright (C) 2009--2015 Robert R. Tupelo-Schneck <schneck@gmail.com>
 http://tupelo-schneck.org/its-electric
 
 "it's electric" is free software: you can redistribute it and/or modify
