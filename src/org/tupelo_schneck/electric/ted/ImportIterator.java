@@ -98,7 +98,7 @@ public class ImportIterator implements Iterator<Triple> {
                 return options.gatewayURL+"/history/export.raw?D=0&M=" + (mtu+1) + "&C=" + count;
             } else {
                 int spyder = mtu - options.mtus;
-                return options.gatewayURL+"/history/export.raw?D=1&M=" + spyder + "&C=" + count;
+                return options.gatewayURL+"/history/export.raw?D=1&M=" + (spyder+1) + "&C=" + count;
             }
         } else {
             return options.gatewayURL+"/history/rawsecondhistory.raw?INDEX=1&MTU="+mtu+"&COUNT="+count;
