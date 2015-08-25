@@ -73,7 +73,7 @@ Installation advice from users
 
 I've highlighted a couple of posts by users, detailing installation on their
 platforms, at 
-http://code.google.com/p/its-electric/wiki/InstallationAdviceFromUsers
+https://github.com/tupelo-schneck/its-electric/blob/wiki/InstallationAdviceFromUsers.md
 
 
 
@@ -188,10 +188,9 @@ The full source of "it's electric" is included in the
 its-electric-{version}.jar file.  If you unzip it, you'll have a copy
 of the Eclipse project that I used to develop it, and an Ant build file
 to recreate it.  Please tell me about your modifications, I'm quite
-likely to include them in future versions!  We also have a Google Code
+likely to include them in future versions!  We also have a GitHub
 project at 
-http://code.google.com/p/its-electric/
-
+https://github.com/tupelo-schneck/its-electric/
 
 The Fine Print
 ==============
