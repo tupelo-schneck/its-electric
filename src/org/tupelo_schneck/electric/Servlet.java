@@ -298,7 +298,7 @@ public class Servlet extends DataSourceServlet {
             addNullsTo(triple.mtu);
             if(params.queryType==QueryType.VOLTAGE) {
                 if(triple.voltage==null) row.addCell(NULL_NUMBER);
-                else row.addCell((double)triple.voltage.intValue()/20);
+                else row.addCell((double)triple.voltage.intValue()/options.voltageDivisor);
             }
             else if(params.queryType==QueryType.POWER) {
                 if(triple.power==null) row.addCell(NULL_NUMBER);

@@ -106,6 +106,7 @@ public class Options extends org.apache.commons.cli.Options {
     public int maxDataPoints = 5000;
     public int port = 8081;
     public boolean voltage = false;
+    public int voltageDivisor = 10;
     public long voltAmpereImportIntervalMS = 0;
     public int kvaThreads = 0;
 
@@ -181,6 +182,11 @@ public class Options extends org.apache.commons.cli.Options {
                 .hasOptionalArg().withArgName(null).create("v"); 
         this.addOption(voltageOpt);
 
+        Option voltageDivisorOpt = OptionBuilder.withLongOpt("voltage-divisor")
+                .withDescription("number to divide raw stored voltage by (default 20 for TED 5000, 10 for TED Pro)")
+                .hasArg().create();
+        this.addOption(voltageDivisorOpt);
+        
         Option kvaOpt = OptionBuilder.withLongOpt("volt-ampere-import-interval")
                 .withDescription("seconds between polls for kVA data (accepts decimal values; default 0 means no kVA data)")
                 .withArgName(null) // save space in help text
@@ -622,6 +628,13 @@ public class Options extends org.apache.commons.cli.Options {
 
                 if(options.hasOption("cc-list-serial-ports",null)) {
                     listSerialPortsAndExit = true;
+                }
+                
+                if ("ted-5000".equals(device)) {
+                    voltageDivisor = 20;
+                }
+                if (options.hasOption("voltage-divisor", null)) {
+                    voltageDivisor = Integer.parseInt(options.getOptionValue("voltage-divisor", null));
                 }
             }
             catch (NumberFormatException e) {
