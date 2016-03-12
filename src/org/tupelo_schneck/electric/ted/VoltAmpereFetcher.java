@@ -120,7 +120,7 @@ public class VoltAmpereFetcher {
         Scanner timeScanner = new Scanner(urlStream);
         try {
             urlConnection.setReadTimeout(1000);
-            String gatewayTimeChunk = this.scanner.findWithinHorizon(tedProGatewayTimePattern, 4096);
+            String gatewayTimeChunk = timeScanner.findWithinHorizon(tedProGatewayTimePattern, 4096);
             if (gatewayTimeChunk == null) return 0;
             Matcher m = tedProGatewayTimePattern.matcher(gatewayTimeChunk);
             if (!m.matches()) return 0;
@@ -165,6 +165,9 @@ public class VoltAmpereFetcher {
             return 0;
         }
 
+        this.scanner.skip(skipPattern);
+        this.scanner.skip(skipToMTUPattern);
+        
         GregorianCalendar cal = new GregorianCalendar(timeZone);
         cal.set(2000+year,month-1,day,hour,minute,second);
         int timestamp = (int)(cal.getTimeInMillis() / 1000);
@@ -230,9 +233,6 @@ public class VoltAmpereFetcher {
         try {
             int timestamp = gatewayTime();
             if(timestamp==0) return res;
-            
-            this.scanner.skip(skipPattern);
-            this.scanner.skip(skipToMTUPattern);
             
             for(int i = 0; i < mtus; i++) {
                 Triple triple = nextKVA(timestamp);
