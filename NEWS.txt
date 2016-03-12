@@ -1,6 +1,10 @@
 "it's electric" news
 http://tupelo-schneck.org/its-electric
 
+Version 1.10.2 2016-03-11
+=========================
+Bug fix to Ted Pro KVA fetching.
+
 Version 1.10.1 2015-10-09
 =========================
 Bug fix to Ted Pro voltage display.
