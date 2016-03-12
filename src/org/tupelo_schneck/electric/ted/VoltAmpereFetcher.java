@@ -46,6 +46,7 @@ public class VoltAmpereFetcher {
     Scanner scanner;
     byte mtus;
     TimeZone timeZone;
+    final Options options;
     
     static Pattern skipPattern = Pattern.compile("(?>" + "<[^PG][^>]*+>" + "|" + "<P[^>]{5,}+>" + "|" + "[^<]++" + ")*+");
     static Pattern skipToMTUPattern = Pattern.compile("(?>" + "<[^M][^>]*+>" + "|" + "<M[^T][^>]*+>" + "|" + "[^<]++" + ")*+");
@@ -60,16 +61,28 @@ public class VoltAmpereFetcher {
     static Pattern minutePattern =  Pattern.compile("<Minute>([^<]*+)</Minute>");
     static Pattern secondPattern =  Pattern.compile("<Second>([^<]*+)</Second>");
     
+    static Pattern tedProGatewayTimePattern = Pattern.compile("<Time>([0-9]*+)</Time>");
+    static Pattern tedProMtuPattern = Pattern.compile("<MTU([0-9]*)>");
+
     public VoltAmpereFetcher(Options options) {
         this.gatewayURL = options.gatewayURL;
         this.mtus = options.mtus;
         this.timeZone = options.recordTimeZone;
+        this.options = options;
+    }
+    
+    private String getUrl() {
+        if ("ted-pro".equals(options.device)) {
+            return gatewayURL + "/api/SystemOverview.xml?T=0";
+        } else {
+            return gatewayURL+"/api/LiveData.xml";
+        }
     }
     
     private void connect() throws IOException {
         URL url;
         try {
-            url = new URL(gatewayURL+"/api/LiveData.xml");
+            url = new URL(getUrl());
         }
         catch (MalformedURLException e) {
             throw new RuntimeException(e);
@@ -84,7 +97,42 @@ public class VoltAmpereFetcher {
     }
 
     /** Returns 0 if failure */
-    private int gatewayTime() {
+    private int gatewayTime() throws IOException {
+        if ("ted-pro".equals(options.device)) {
+            return tedProGatewayTime();
+        } else {
+            return ted5000GatewayTime();
+        }
+    }
+
+    private int tedProGatewayTime() throws IOException {
+        URL url;
+        try {
+            url = new URL(gatewayURL + "/api/Rate.xml");
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
+        URLConnection urlConnection = url.openConnection();
+        urlConnection.setConnectTimeout(60000);
+        urlConnection.setReadTimeout(60000);
+        urlConnection.connect();
+        InputStream urlStream = urlConnection.getInputStream();
+        Scanner timeScanner = new Scanner(urlStream);
+        try {
+            urlConnection.setReadTimeout(1000);
+            String gatewayTimeChunk = this.scanner.findWithinHorizon(tedProGatewayTimePattern, 4096);
+            if (gatewayTimeChunk == null) return 0;
+            Matcher m = tedProGatewayTimePattern.matcher(gatewayTimeChunk);
+            if (!m.matches()) return 0;
+            return Integer.parseInt(m.group(1));
+        } catch (NumberFormatException e) {
+            return 0;
+        } finally {
+            timeScanner.close();
+        }
+    }
+    
+    private int ted5000GatewayTime() {
         this.scanner.skip(skipPattern);
         String gatewayTimeChunk = this.scanner.findWithinHorizon(gatewayTimeChunkPattern, 4096);
         if(gatewayTimeChunk==null) return 0;
@@ -116,7 +164,7 @@ public class VoltAmpereFetcher {
         catch(NumberFormatException e) {
             return 0;
         }
-            
+
         GregorianCalendar cal = new GregorianCalendar(timeZone);
         cal.set(2000+year,month-1,day,hour,minute,second);
         int timestamp = (int)(cal.getTimeInMillis() / 1000);
@@ -128,6 +176,14 @@ public class VoltAmpereFetcher {
     }
     
     private Triple nextKVA(int timestamp) {
+        if ("ted-pro".equals(options.device)) {
+            return tedProNextKVA(timestamp);
+        } else {
+            return ted5000NextKVA(timestamp);
+        }
+    }
+    
+    private Triple ted5000NextKVA(int timestamp) {
         String mtuChunk = this.scanner.findWithinHorizon(mtuChunkPattern, 4096);
         if(mtuChunk==null) return null;
         try {
@@ -137,12 +193,30 @@ public class VoltAmpereFetcher {
             m.usePattern(kvaPattern);
             if(!m.find()) return null;
             int kva = Integer.parseInt(m.group(1));
-            
             return new Triple(timestamp,(byte)(mtu-1),null,null,Integer.valueOf(kva));
         }
         catch(NumberFormatException e) {
             return null;
         }
+    }
+    
+    private Triple tedProNextKVA(int timestamp) {
+        String mtuChunk = this.scanner.findWithinHorizon(tedProMtuPattern, 4096);
+        if(mtuChunk==null) return null;
+        try {
+            Matcher m = tedProMtuPattern.matcher(mtuChunk);
+            if(!m.matches()) return null;
+            byte mtu = Byte.parseByte(m.group(1));
+            String kvaChunk = this.scanner.findWithinHorizon(kvaPattern, 4096);
+            m = kvaPattern.matcher(kvaChunk);
+            if(!m.matches()) return null;
+            int kva = Integer.parseInt(m.group(1));
+            return new Triple(timestamp,(byte)(mtu-1),null,null,Integer.valueOf(kva));
+        }
+        catch(NumberFormatException e) {
+            return null;
+        }
+
     }
     
     public List<Triple> doImport() {
@@ -166,6 +240,9 @@ public class VoltAmpereFetcher {
                 res.add(triple);
             }
             
+            return res;
+        }
+        catch(IOException e) {
             return res;
         }
         finally {
