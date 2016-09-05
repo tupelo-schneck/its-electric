@@ -1,4 +1,7 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
 <!--
 This file is part of
 "it's electric": software for storing and viewing home energy monitoring data
@@ -19,14 +22,11 @@ You should have received a copy of the GNU Affero General Public License
 along with "it's electric", as legal/COPYING-agpl.txt.
 If not, see <http://www.gnu.org/licenses/>.
 -->
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
     <title>it's electric history</title>
-    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script type="text/javascript">
-        google.load('visualization', '1', {'packages':['barchart', 'table']});
-        google.setOnLoadCallback(function() { init(); });
+        google.charts.load('current', {'packages':['corechart','table']});
+        google.charts.setOnLoadCallback(function() { init(); });
     </script>
     <script type="text/javascript">
         var itsElectricConfig;
@@ -167,7 +167,7 @@ If not, see <http://www.gnu.org/licenses/>.
 
             var chart = new google.visualization.BarChart(document.getElementById('barChart'));
             chart.draw(data, {width: 1000, height: data.getNumberOfRows() * (data.getNumberOfColumns()-1) * 11 + 60, reverseAxis: false,
-                              legend:'top', legendFontSize: 20, axisFontSize: 20});
+                              legend:{position:'top', textStyle:{fontSize:16}}, fontSize: 20});
         }
     /*]]>*/
     </script>
