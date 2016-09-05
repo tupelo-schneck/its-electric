@@ -407,7 +407,30 @@ ItsElectric.setDateAdjusted = function(date,time) {
 //    date.setTime(time - date.getTimezoneOffset()*60000);
 };
 
+// zoom buttons pushed
+ItsElectric.prototype.detectRangeChange = function() {
+    var newRange = this.annotatedtimeline.getVisibleChartRange();
+    if (this.range.start.getTime() != newRange.start.getTime()) {
+        return true;
+    } else {
+        return false;
+    }
+};
+
 ItsElectric.prototype.readyHandler = function(e) {
+    this.ready = true;
+    if (this.handlingRangeChange) {
+        this.handlingRangeChange = false;
+        return;
+    }
+    if (!this.querying && this.detectRangeChange()) {
+        requery();
+        return;
+    }
+    if (!this.calledDraw) {
+        return;
+    }
+    
     delete this.options.zoomStartTime;
     delete this.options.zoomEndTime;
 
@@ -453,10 +476,6 @@ ItsElectric.prototype.readyHandler = function(e) {
 //        if(j==4) alert("" + j + " "  + watts[j]);
 //    }
 
-    this.ready = true;
-    if (!this.calledDraw) {
-        return;
-    }
     this.querying = false;
     this.calledDraw = false;
     if(this.busyId) document.getElementById(this.busyId).style.display="none";
@@ -482,6 +501,7 @@ ItsElectric.prototype.setRealTimeUpdater = function() {
 
 ItsElectric.prototype.rangeChangeHandler = function(e) {
     var self = this;
+    this.handlingRangeChange = true;
     clearTimeout(this.rangeChangeTimeout);
     if (!this.querying) {
         if(this.busyId) document.getElementById(this.busyId).style.display="";
