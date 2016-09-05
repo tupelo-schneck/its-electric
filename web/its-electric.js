@@ -419,15 +419,11 @@ ItsElectric.prototype.detectRangeChange = function() {
 
 ItsElectric.prototype.readyHandler = function(e) {
     this.ready = true;
-    if (this.handlingRangeChange) {
-        this.handlingRangeChange = false;
-        return;
-    }
-    if (!this.querying && this.detectRangeChange()) {
-        this.rangeChangeHandler();
-        return;
-    }
     if (!this.calledDraw) {
+        if (!this.querying && this.detectRangeChange()) {
+            this.rangeChangeHandler();
+            return;
+        }
         return;
     }
     
@@ -501,7 +497,6 @@ ItsElectric.prototype.setRealTimeUpdater = function() {
 
 ItsElectric.prototype.rangeChangeHandler = function(e) {
     var self = this;
-    if (e) this.handlingRangeChange = true;
     clearTimeout(this.rangeChangeTimeout);
     if (!this.querying) {
         if(this.busyId) document.getElementById(this.busyId).style.display="";
