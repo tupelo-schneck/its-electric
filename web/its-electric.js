@@ -79,7 +79,7 @@ ItsElectric.prototype.init = function() {
     this.div1.style.height = '100%';
     this.div1.style.zIndex = 1;
     this.div0.appendChild(this.div1);
-    this.annotatedtimeline = new google.visualization.AnnotatedTimeLine(this.div1);
+    this.annotatedtimeline = new google.visualization.AnnotationChart(this.div1);
     this.allowRedraw = false;
 
     this.div2 = document.createElement('div');
@@ -88,7 +88,7 @@ ItsElectric.prototype.init = function() {
     this.div2.style.height = '100%';
     this.div2.style.zIndex = 0;
     this.div0.appendChild(this.div2);
-    this.annotatedtimeline2 = new google.visualization.AnnotatedTimeLine(this.div2);
+    this.annotatedtimeline2 = new google.visualization.AnnotationChart(this.div2);
     this.allowRedraw2 = false;
 
     var self = this;

@@ -67,10 +67,12 @@ function changeView(view) {
         setMin('wmin');
         setMax('wmax');
     }
-    itsElectric.requery();
+    if (!inOnload) itsElectric.requery();
+    inOnload = false;
 }            
 
 window.onload = function(){
+    inOnload = true;
     itsElectric.delta = document.getElementById('delta').checked;
     changeView(document.getElementById('view').value);
     if(!itsElectric.hasVoltage) {
