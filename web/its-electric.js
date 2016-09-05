@@ -424,7 +424,7 @@ ItsElectric.prototype.readyHandler = function(e) {
         return;
     }
     if (!this.querying && this.detectRangeChange()) {
-        this.requery();
+        this.rangeChangeHandler();
         return;
     }
     if (!this.calledDraw) {
@@ -501,7 +501,7 @@ ItsElectric.prototype.setRealTimeUpdater = function() {
 
 ItsElectric.prototype.rangeChangeHandler = function(e) {
     var self = this;
-    this.handlingRangeChange = true;
+    if (e) this.handlingRangeChange = true;
     clearTimeout(this.rangeChangeTimeout);
     if (!this.querying) {
         if(this.busyId) document.getElementById(this.busyId).style.display="";
