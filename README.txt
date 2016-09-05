@@ -32,12 +32,12 @@ Quick Start Guide
 
 0) Install Java (Mac: automatic; Windows: visit java.com)
 
-1) Extract all files from its-electric-1.10.2.zip.
+1) Extract all files from its-electric-1.10.3-pre.zip.
 
 2) Open the command prompt and cd to the extracted its-electric directory.
 
 3) Type the command:
-java -jar its-electric-1.10.2.jar -g http://192.168.1.99 -m 2 -d its-electric-db
+java -jar its-electric-1.10.3-pre.jar -g http://192.168.1.99 -m 2 -d its-electric-db
 BUT CHANGE "192.168.1.99" to the IP address of your TED Gateway, and
 change "2" (in "-m 2") to the number of MTUs in your TED system.
 
@@ -46,7 +46,7 @@ try using -g http://TED5000 which is known to work on Windows.)
 
 If using TED Pro use arguments like: --device ted-pro --spyders 16
 
-If using Current Cost try "java -jar its-electric-1.10.2.jar -h" to list 
+If using Current Cost try "java -jar its-electric-1.10.3-pre.jar -h" to list 
 available options.
 
 4) Open its-electric/web/its-electric.html in your browser (for instance, 
