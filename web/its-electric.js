@@ -40,6 +40,9 @@ function ItsElectric(timelineId,busyId,resolutionId,toolbarId,columnCheckboxesId
     this.maximum = 0;
     this.columnChecked = [];
 
+    this.calledDraw = false;
+    this.rangeChangeTimeout = null;
+    
     this.querying = false;
     this.pendingQuery = false;
     this.pendingDraw = false;
@@ -183,7 +186,7 @@ ItsElectric.prototype.toolbarQueryURL = function() {
 };
 
 ItsElectric.prototype.requery = function() {
-	clearTimeout(this.requeryTimeoutId);
+    clearTimeout(this.requeryTimeoutId);
 	this.requeryTimeoutId = null;
 	clearTimeout(this.realTimeUpdateTimeoutId);
 	this.realTimeUpdateTimeoutId = null;
@@ -419,7 +422,7 @@ ItsElectric.prototype.redraw = function() {
         this.options.zoomStartTime = startDate;
         this.options.zoomEndTime = endDate;
     }
-
+    this.calledDraw = true;
     this.annotatedtimeline.draw(this.data, this.options);
 
     if(this.noFlashEvents) this.readyHandler(null);
@@ -511,10 +514,13 @@ ItsElectric.prototype.realReadyHandler = function(e) {
 //        if(j==4) alert("" + j + " "  + watts[j]);
 //    }
 
-    if(this.busyId) document.getElementById(this.busyId).style.display="none";
-
     this.ready = true;
+    if (!this.calledDraw) {
+        return;
+    }
     this.querying = false;
+    this.calledDraw = false;
+    if(this.busyId) document.getElementById(this.busyId).style.display="none";
     if(this.firstTime && !this.noFlashEvents) {
         this.firstTime = false;
         this.zoom(this.initialZoom);
@@ -536,6 +542,15 @@ ItsElectric.prototype.setRealTimeUpdater = function() {
 }
 
 ItsElectric.prototype.rangeChangeHandler = function(e) {
+    var self = this;
+    clearTimeout(this.rangeChangeTimeout);
+    if (!this.querying) {
+        if(this.busyId) document.getElementById(this.busyId).style.display="";
+        this.rangeChangeTimeout = setTimeout(function () { self.realRangeChangeHandler(); }, 1000);
+    }
+}
+    
+ItsElectric.prototype.realRangeChangeHandler = function(e) {
     var oldRange = 0;
     if(this.range) {
         oldRange = this.range.end.getTime() - this.range.start.getTime();
