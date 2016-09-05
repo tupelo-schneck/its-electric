@@ -30,7 +30,6 @@ function ItsElectric(timelineId,busyId,resolutionId,toolbarId,columnCheckboxesId
     
     this.div0 = null;
     this.div1 = null;
-    this.div2 = null;
 
     this.ready = false;
     this.firstTime = true;
@@ -77,31 +76,15 @@ ItsElectric.prototype.init = function() {
     this.div1.style.position = 'absolute';
     this.div1.style.width = '100%';
     this.div1.style.height = '100%';
-    this.div1.style.zIndex = 1;
     this.div0.appendChild(this.div1);
     this.annotatedtimeline = new google.visualization.AnnotationChart(this.div1);
     this.allowRedraw = false;
-
-    this.div2 = document.createElement('div');
-    this.div2.style.position = 'absolute';
-    this.div2.style.width = '100%';
-    this.div2.style.height = '100%';
-    this.div2.style.zIndex = 0;
-    this.div0.appendChild(this.div2);
-    this.annotatedtimeline2 = new google.visualization.AnnotationChart(this.div2);
-    this.allowRedraw2 = false;
 
     var self = this;
     google.visualization.events.addListener(this.annotatedtimeline,
                                             'ready',
                                             function(e){self.readyHandler(e);});
     google.visualization.events.addListener(this.annotatedtimeline,
-                                            'rangechange',
-                                            function(e){self.rangeChangeHandler(e);});
-    google.visualization.events.addListener(this.annotatedtimeline2,
-                                            'ready',
-                                            function(e){self.readyHandler(e);});
-    google.visualization.events.addListener(this.annotatedtimeline2,
                                             'rangechange',
                                             function(e){self.rangeChangeHandler(e);});
     this.requery();
@@ -422,14 +405,6 @@ ItsElectric.prototype.redraw = function() {
     if(this.busyId) document.getElementById(this.busyId).style.display="";
 
     this.canRedraw = this.allowRedraw;
-    if(!this.isRedraw || !this.canRedraw) {
-        var temp = this.annotatedtimeline;
-        this.annotatedtimeline = this.annotatedtimeline2;
-        this.annotatedtimeline2 = temp;
-        temp = this.allowRedraw;
-        this.allowRedraw = this.allowRedraw2;
-        this.allowRedraw2 = temp;
-    }
     if(this.isRedraw && (this.canRedraw || !this.allowRedraw)) {
         this.options.allowRedraw = true;
         this.allowRedraw = true;
@@ -496,13 +471,6 @@ ItsElectric.prototype.realReadyHandler = function(e) {
         obj.appendChild(document.createTextNode(this.resolutionString));
     }
 
-    if(!this.isRedraw || !this.canRedraw) {
-        var temp = this.div2;
-        this.div2 = this.div1;
-        this.div1 = temp;
-        this.div1.style.zIndex = 1;
-        this.div2.style.zIndex = 0;
-    }
     this.isRedraw = false;
 
 //    var start = this.minimum;
