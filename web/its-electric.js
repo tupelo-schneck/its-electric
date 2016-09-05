@@ -416,15 +416,6 @@ ItsElectric.prototype.readyHandler = function(e) {
     delete this.options.zoomStartTime;
     delete this.options.zoomEndTime;
 
-    var hiddenColumns = [];
-    for(var i = 0; i < this.columnChecked.length; i++) {
-        if(this.columnChecked[i]==false) hiddenColumns.push(i);
-    }
-    if(hiddenColumns.length>0) {
-        this.annotatedtimeline.hideDataColumns([]);
-        this.annotatedtimeline.hideDataColumns(hiddenColumns);
-    }
-
     if(this.resolutionId) {
         var obj = document.getElementById(this.resolutionId);
         while(obj.firstChild) obj.removeChild(obj.firstChild);
@@ -558,19 +549,9 @@ ItsElectric.prototype.showOrHideColumn = function(col,show) {
     var self = this;
     setTimeout(function(){
         if(show) {
-            var tohide = [];
-            for(var i = 0; i < col && i < self.columnChecked.length; i++) {
-                if(false!==self.columnChecked[i]) tohide.push(i);
-            }
-            if(tohide.length>0) {
-                self.annotatedtimeline.hideDataColumns([]);
-                self.annotatedtimeline.hideDataColumns(tohide);
-            }
-            tohide.push(col);
-            self.annotatedtimeline.showDataColumns(tohide.reverse());
+            self.annotatedtimeline.showDataColumns(col);
         }
         else {
-            self.annotatedtimeline.hideDataColumns([]);
             self.annotatedtimeline.hideDataColumns(col);
         }
     },1);
