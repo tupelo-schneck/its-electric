@@ -327,16 +327,17 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
 
     // Make this.maximum be the time at which client's local time is the same clock time as the server's maximum
     this.timeZoneOffset = parseInt(data.getTableProperty('timeZoneOffset'));
-    this.maximum = parseInt(data.getTableProperty('maximum'))*1000; // + this.timeZoneOffset*1000;
+    this.maximum = parseInt(data.getTableProperty('maximum'))*1000 - this.timeZoneOffset*1000;
     if(isNaN(this.maximum) || this.maximum==0) {
         this.maximum = rangeEnd;
     }
-    else {
-        var maximumDate = new Date(this.maximum);
-        maximumDate.setTime(this.maximum + maximumDate.getTimezoneOffset()*60000);
-        maximumDate.setTime(this.maximum + maximumDate.getTimezoneOffset()*60000);
-        this.maximum = maximumDate.getTime();
-    }
+// no longer needed for AnnotationChart?
+//    else {
+//        var maximumDate = new Date(this.maximum);
+//        maximumDate.setTime(this.maximum + maximumDate.getTimezoneOffset()*60000);
+//        maximumDate.setTime(this.maximum + maximumDate.getTimezoneOffset()*60000);
+//        this.maximum = maximumDate.getTime();
+//    }
 
     if(this.minimum!=0 && (numRows==0 || this.minimum < rangeStart)) {
         data.insertRows(0,1);
@@ -427,9 +428,10 @@ ItsElectric.prototype.redraw = function() {
 // this horribleness makes things behave close to daylight saving time change
 ItsElectric.setDateAdjusted = function(date,time) {
     date.setTime(time);
-    date.setTime(time - date.getTimezoneOffset()*60000);
-    // yes, again, in case we are close to DST
-    date.setTime(time - date.getTimezoneOffset()*60000);
+// no longer needed for AnnotationChart?
+//    date.setTime(time - date.getTimezoneOffset()*60000);
+//    // yes, again, in case we are close to DST
+//    date.setTime(time - date.getTimezoneOffset()*60000);
 };
 
 ItsElectric.prototype.readyHandler = function(e) {
