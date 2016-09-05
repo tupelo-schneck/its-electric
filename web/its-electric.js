@@ -64,8 +64,6 @@ ItsElectric.prototype.configure = function(config) {
     this.realTimeUpdateInterval = config.realTimeUpdateInterval;
     this.hasVoltage = config.hasVoltage;
     this.hasKVA = config.hasKVA;
-    this.noFlashEvents = config.noFlashEvents; // set true to make it work (somewhat) when
-                                               // accessing a file: URL without privileges
 }
 
 ItsElectric.prototype.init = function() {
@@ -204,8 +202,7 @@ ItsElectric.prototype.redrawAfter = function(n) {
 ItsElectric.prototype.options = {displayAnnotations: false,
                                  displayExactValues: true,
                                  allValuesSuffix: 'W',
-                                 dateFormat: 'yyyy-MM-dd HH:mm:ss',
-                                 wmode: 'opaque'};
+                                 dateFormat: 'yyyy-MM-dd HH:mm:ss'};
 
 ItsElectric.setOnclick = function(self,index,node) {
     node.onclick=function(){self.showOrHideColumn(index,node.checked);};
@@ -399,8 +396,6 @@ ItsElectric.prototype.redraw = function() {
     this.options.zoomEndTime = endDate;
     this.calledDraw = true;
     this.annotatedtimeline.draw(this.data, this.options);
-
-    if(this.noFlashEvents) this.readyHandler(null);
 };
 
 // this horribleness makes things behave close to daylight saving time change
@@ -465,7 +460,7 @@ ItsElectric.prototype.readyHandler = function(e) {
     this.querying = false;
     this.calledDraw = false;
     if(this.busyId) document.getElementById(this.busyId).style.display="none";
-    if(this.firstTime && !this.noFlashEvents) {
+    if(this.firstTime) {
         this.firstTime = false;
         this.zoom(this.initialZoom);
     }
@@ -507,8 +502,7 @@ ItsElectric.prototype.realRangeChangeHandler = function(e) {
 };
 
 ItsElectric.prototype.zoom = function(t) {
-    if(this.noFlashEvents) alert("This won't work with noFlashEvents=true.");
-    if(!this.ready || !this.range || this.noFlashEvents) return;
+    if(!this.ready || !this.range) return;
     this.resolution = null;
     var newStart = new Date();
     var newEnd = new Date();
@@ -529,8 +523,7 @@ ItsElectric.prototype.zoom = function(t) {
 };
 
 ItsElectric.prototype.scrollToPresent = function() {
-    if(this.noFlashEvents) alert("This won't work with noFlashEvents=true.");
-    if(!this.ready || !this.range || this.noFlashEvents) return;
+    if(!this.ready || !this.range) return;
     var size = this.range.end.getTime() - this.range.start.getTime();
     var newStart = new Date();
     var newEnd = new Date();
@@ -565,7 +558,7 @@ ItsElectric.prototype.setResolution = function(t) {
 
 ItsElectric.prototype.realTimeUpdate = function() {
 	this.requeryTimeoutId = null;
-    if(!this.ready || !this.realTime || this.noFlashEvents) return;
+    if(!this.ready || !this.realTime) return;
     if(this.range && this.range.end.getTime() < this.maximum) return;
     if(this.range && this.range.end.getTime() - this.range.start.getTime() == this.initialZoom*1000) {
         var now = new Date().getTime();

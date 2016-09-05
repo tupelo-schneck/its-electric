@@ -30,8 +30,7 @@ which you can then import into other databases or spreadsheets for analysis.
 Quick Start Guide
 =================
 
-0) Install Java (Mac: automatic; Windows: visit java.com) and Adobe
-Flash Player ( http://get.adobe.com/flashplayer/ )
+0) Install Java (Mac: automatic; Windows: visit java.com)
 
 1) Extract all files from its-electric-1.10.2.zip.
 
@@ -50,18 +49,10 @@ If using TED Pro use arguments like: --device ted-pro --spyders 16
 If using Current Cost try "java -jar its-electric-1.10.2.jar -h" to list 
 available options.
 
-4) Tell Flash to trust the its-electric web pages by going to the Flash Player 
-Settings Manager and adding that file to the trusted locations.  Go to
-
-http://www.macromedia.com/support/documentation/en/flashplayer/help/settings_manager04.html
-
-click on "Add Location" in the "Edit Locations" dropdown, and 
-"Browse for folder" to the extracted its-electric/web subdirectory.
-
-5) Open its-electric/web/its-electric.html in your browser (for instance, 
+4) Open its-electric/web/its-electric.html in your browser (for instance, 
 by double-clicking it). 
 
-6) (optional) If you want to monitor voltage, add "-v" to the command in 
+5) (optional) If you want to monitor voltage, add "-v" to the command in 
 step (3).  If you want to monitor kVA, add "-k 2" where 2 is the number of 
 seconds "it's electric" waits between polls for kVA data.  You'll also need 
 to edit "its-electric-config.js" and change "hasVoltage" and/or "hasKVA" to 
@@ -150,22 +141,6 @@ access the files through a webserver.  (On a Mac, this just means
 opening System Preferences to the Sharing pane, turning on Web 
 Sharing, and putting the files in /Library/WebServer/Documents; then 
 you can point your browser at http://localhost/its-electric.html.)  
-
-***IMPORTANT***:
-If you try to access its-electric.html using a file: URL, it's 
-probably not going to work.  This has to do with Flash security 
-settings.  You can fix this by going to the Flash Player Settings 
-Manager and adding the relevant files to the trusted locations.  
-Go to
-
-http://www.macromedia.com/support/documentation/en/flashplayer/help/settings_manager04.html  
-
-click on "Add Location" in the "Edit Locations" dropdown, and browse to
-the folder "its-electric/web".
-
-(If you really want to use a file: URL without doing that, you can try
-setting "noFlashEvents: true" in its-electric-config.js, and it should limp 
-along.  Not recommended.)
 
 If you do share your "it's electric" over the Web, make sure you include 
 a link to the source download.  If you modify your source, you'll need 
