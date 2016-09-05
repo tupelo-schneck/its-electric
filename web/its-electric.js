@@ -424,7 +424,7 @@ ItsElectric.prototype.readyHandler = function(e) {
         return;
     }
     if (!this.querying && this.detectRangeChange()) {
-        requery();
+        this.requery();
         return;
     }
     if (!this.calledDraw) {
