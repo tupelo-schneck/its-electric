@@ -81,7 +81,6 @@ ItsElectric.prototype.init = function() {
     this.div1.style.height = '100%';
     this.div0.appendChild(this.div1);
     this.annotatedtimeline = new google.visualization.AnnotationChart(this.div1);
-    this.allowRedraw = false;
 
     var self = this;
     google.visualization.events.addListener(this.annotatedtimeline,
@@ -103,41 +102,29 @@ ItsElectric.prototype.queryURL = function() {
       queryURL = queryURL + this.queryPath;
     }
     var extendChar = '?';
-    if(!this.isRedraw || !this.allowRedraw) {
-        queryURL = queryURL + extendChar + 'extraPoints=2';
-        extendChar = '&';
-    }
+    queryURL = queryURL + extendChar + 'extraPoints=2';
+    extendChar = '&';
     if(realTimeNeedsAdjust) {
         queryURL = queryURL + extendChar + 'realTimeAdjust=yes';
         extendChar = '&';
     }
     if(this.ready) {
         if(this.range && (this.range.start.getTime() != this.minimum || this.range.end.getTime() != this.maximum)) {
-            if(this.isRedraw && this.allowRedraw) {
-                var start = Math.floor(this.range.start.getTime()/1000);
-                var end = Math.floor(this.range.end.getTime()/1000);
+            var start = Math.floor(this.range.start.getTime()/1000);
+            var end = Math.floor(this.range.end.getTime()/1000);
+            queryURL = queryURL + extendChar +
+            'start='+ start +
+            '&end=' + end;
+            extendChar = '&';
+            if(this.partialRange) {
+                var rangeStart = start - (end - start);
+                rangeStart = Math.floor(Math.max(this.minimum/1000, rangeStart));
+                var rangeEnd = end + (end - start);
+                rangeEnd = Math.floor(Math.min(this.maximum/1000, rangeEnd));
                 queryURL = queryURL + extendChar +
-                           'rangeStart='+ start +
-                           '&rangeEnd=' + end;
+                'rangeStart=' + rangeStart +
+                '&rangeEnd=' + rangeEnd;
                 extendChar = '&';
-            }
-            else {
-                var start = Math.floor(this.range.start.getTime()/1000);
-                var end = Math.floor(this.range.end.getTime()/1000);
-                queryURL = queryURL + extendChar +
-                           'start='+ start +
-                           '&end=' + end;
-                extendChar = '&';
-                if(this.partialRange) {
-                    var rangeStart = start - (end - start);
-                    rangeStart = Math.floor(Math.max(this.minimum/1000, rangeStart));
-                    var rangeEnd = end + (end - start);
-                    rangeEnd = Math.floor(Math.min(this.maximum/1000, rangeEnd));
-                    queryURL = queryURL + extendChar +
-                            'rangeStart=' + rangeStart +
-                            '&rangeEnd=' + rangeEnd;
-                    extendChar = '&';
-                }
             }
         }
     }
@@ -368,8 +355,6 @@ ItsElectric.prototype.handleQueryResponse = function(response) {
     this.resolutionString = data.getTableProperty('resolutionString');
     this.currentResolution = parseInt(data.getTableProperty('resolution'));
 
-    if(this.currentResolution > 60 && !this.allowRedraw) this.isRedraw = false;
-
     this.data = data;
     this.querying = false; // fake reentrant lock
     this.redraw();
@@ -396,9 +381,7 @@ ItsElectric.renameChartOptions = function(element) {
 
 ItsElectric.prototype.redraw = function() {
     if(!this.data) return;
-    if(!this.isRedraw) {
-        this.lastTouched = new Date().getTime();
-    }
+    this.lastTouched = new Date().getTime();
     if(this.querying) {
         this.pendingDraw = true;
         return;
@@ -408,20 +391,12 @@ ItsElectric.prototype.redraw = function() {
 
     if(this.busyId) document.getElementById(this.busyId).style.display="";
 
-    this.canRedraw = this.allowRedraw;
-    if(this.isRedraw && (this.canRedraw || !this.allowRedraw)) {
-        this.options.allowRedraw = true;
-        this.allowRedraw = true;
-    }
-    else {
-        this.allowRedraw = false;
-        var startDate = new Date();
-        var endDate = new Date();
-        ItsElectric.setDateAdjusted(startDate, this.range.start.getTime());
-        ItsElectric.setDateAdjusted(endDate, this.range.end.getTime());
-        this.options.zoomStartTime = startDate;
-        this.options.zoomEndTime = endDate;
-    }
+    var startDate = new Date();
+    var endDate = new Date();
+    ItsElectric.setDateAdjusted(startDate, this.range.start.getTime());
+    ItsElectric.setDateAdjusted(endDate, this.range.end.getTime());
+    this.options.zoomStartTime = startDate;
+    this.options.zoomEndTime = endDate;
     this.calledDraw = true;
     this.annotatedtimeline.draw(this.data, this.options);
 
@@ -440,43 +415,21 @@ ItsElectric.setDateAdjusted = function(date,time) {
 ItsElectric.prototype.readyHandler = function(e) {
     delete this.options.zoomStartTime;
     delete this.options.zoomEndTime;
-    delete this.options.allowRedraw;
 
-    if(!this.isRedraw || !this.canRedraw) {
-        var hiddenColumns = [];
-        for(var i = 0; i < this.columnChecked.length; i++) {
-            if(this.columnChecked[i]==false) hiddenColumns.push(i);
-        }
-        if(hiddenColumns.length>0) {
-            this.annotatedtimeline.hideDataColumns([]);
-            this.annotatedtimeline.hideDataColumns(hiddenColumns);
-        }
+    var hiddenColumns = [];
+    for(var i = 0; i < this.columnChecked.length; i++) {
+        if(this.columnChecked[i]==false) hiddenColumns.push(i);
     }
-    else {
+    if(hiddenColumns.length>0) {
         this.annotatedtimeline.hideDataColumns([]);
+        this.annotatedtimeline.hideDataColumns(hiddenColumns);
     }
 
-    if(this.allowRedraw) {
-        this.annotatedtimeline.setVisibleChartRange(new Date(this.range.start.getTime()),new Date(this.range.end.getTime()));
-    }
-
-    if(this.allowRedraw && (!this.isRedraw || !this.canRedraw)) {
-        var self = this;
-        setTimeout(function(){self.realReadyHandler(e);},500);
-    }
-    else {
-        this.realReadyHandler(e);
-    }
-};
-
-ItsElectric.prototype.realReadyHandler = function(e) {
     if(this.resolutionId) {
         var obj = document.getElementById(this.resolutionId);
         while(obj.firstChild) obj.removeChild(obj.firstChild);
         obj.appendChild(document.createTextNode(this.resolutionString));
     }
-
-    this.isRedraw = false;
 
 //    var start = this.minimum;
 //    var end = this.maximum;
@@ -641,7 +594,6 @@ ItsElectric.prototype.realTimeUpdate = function() {
         }
     }
     if(!this.querying) {
-        this.isRedraw = true;
         this.requery();
     }
 };
